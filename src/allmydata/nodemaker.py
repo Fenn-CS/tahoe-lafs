@@ -15,11 +15,18 @@ from allmydata import uri
 
 @implementer(INodeMaker)
 class NodeMaker(object):
-
-    def __init__(self, storage_broker, secret_holder, history,
-                 uploader, terminator,
-                 default_encoding_parameters, mutable_file_default,
-                 key_generator, blacklist=None):
+    def __init__(
+        self,
+        storage_broker,
+        secret_holder,
+        history,
+        uploader,
+        terminator,
+        default_encoding_parameters,
+        mutable_file_default,
+        key_generator,
+        blacklist=None,
+    ):
         self.storage_broker = storage_broker
         self.secret_holder = secret_holder
         self.history = history
@@ -30,28 +37,39 @@ class NodeMaker(object):
         self.key_generator = key_generator
         self.blacklist = blacklist
 
-        self._node_cache = weakref.WeakValueDictionary() # uri -> node
+        self._node_cache = weakref.WeakValueDictionary()  # uri -> node
 
     def _create_lit(self, cap):
         return LiteralFileNode(cap)
+
     def _create_immutable(self, cap):
-        return ImmutableFileNode(cap, self.storage_broker, self.secret_holder,
-                                 self.terminator, self.history)
+        return ImmutableFileNode(
+            cap, self.storage_broker, self.secret_holder, self.terminator, self.history
+        )
+
     def _create_immutable_verifier(self, cap):
-        return CiphertextFileNode(cap, self.storage_broker, self.secret_holder,
-                                  self.terminator, self.history)
+        return CiphertextFileNode(
+            cap, self.storage_broker, self.secret_holder, self.terminator, self.history
+        )
+
     def _create_mutable(self, cap):
-        n = MutableFileNode(self.storage_broker, self.secret_holder,
-                            self.default_encoding_parameters,
-                            self.history)
+        n = MutableFileNode(
+            self.storage_broker,
+            self.secret_holder,
+            self.default_encoding_parameters,
+            self.history,
+        )
         return n.init_from_cap(cap)
+
     def _create_dirnode(self, filenode):
         return DirectoryNode(filenode, self, self.uploader)
 
-    def create_from_cap(self, writecap, readcap=None, deep_immutable=False, name=u"<unknown name>"):
+    def create_from_cap(
+        self, writecap, readcap=None, deep_immutable=False, name=u"<unknown name>"
+    ):
         # this returns synchronously. It starts with a "cap string".
         assert isinstance(writecap, (bytes, type(None))), type(writecap)
-        assert isinstance(readcap,  (bytes, type(None))), type(readcap)
+        assert isinstance(readcap, (bytes, type(None))), type(readcap)
 
         bigcap = writecap or readcap
         if not bigcap:
@@ -69,8 +87,7 @@ class NodeMaker(object):
         try:
             node = self._node_cache[memokey]
         except KeyError:
-            cap = uri.from_string(bigcap, deep_immutable=deep_immutable,
-                                  name=name)
+            cap = uri.from_string(bigcap, deep_immutable=deep_immutable, name=name)
             node = self._create_from_single_cap(cap)
 
             # node is None for an unknown URI, otherwise it is a type for which
@@ -78,8 +95,9 @@ class NodeMaker(object):
             # ticket #1679.
             if node is None:
                 # don't cache UnknownNode
-                node = UnknownNode(writecap, readcap,
-                                   deep_immutable=deep_immutable, name=name)
+                node = UnknownNode(
+                    writecap, readcap, deep_immutable=deep_immutable, name=name
+                )
             elif node.is_mutable():
                 self._node_cache[memokey] = node  # note: WeakValueDictionary
 
@@ -101,15 +119,27 @@ class NodeMaker(object):
             return self._create_immutable(cap)
         if isinstance(cap, uri.CHKFileVerifierURI):
             return self._create_immutable_verifier(cap)
-        if isinstance(cap, (uri.ReadonlySSKFileURI, uri.WriteableSSKFileURI,
-                            uri.WriteableMDMFFileURI, uri.ReadonlyMDMFFileURI)):
+        if isinstance(
+            cap,
+            (
+                uri.ReadonlySSKFileURI,
+                uri.WriteableSSKFileURI,
+                uri.WriteableMDMFFileURI,
+                uri.ReadonlyMDMFFileURI,
+            ),
+        ):
             return self._create_mutable(cap)
-        if isinstance(cap, (uri.DirectoryURI,
-                            uri.ReadonlyDirectoryURI,
-                            uri.ImmutableDirectoryURI,
-                            uri.LiteralDirectoryURI,
-                            uri.MDMFDirectoryURI,
-                            uri.ReadonlyMDMFDirectoryURI)):
+        if isinstance(
+            cap,
+            (
+                uri.DirectoryURI,
+                uri.ReadonlyDirectoryURI,
+                uri.ImmutableDirectoryURI,
+                uri.LiteralDirectoryURI,
+                uri.MDMFDirectoryURI,
+                uri.ReadonlyMDMFDirectoryURI,
+            ),
+        ):
             filenode = self._create_from_single_cap(cap.get_filenode_cap())
             return self._create_dirnode(filenode)
         return None
@@ -117,8 +147,12 @@ class NodeMaker(object):
     def create_mutable_file(self, contents=None, keysize=None, version=None):
         if version is None:
             version = self.mutable_file_default
-        n = MutableFileNode(self.storage_broker, self.secret_holder,
-                            self.default_encoding_parameters, self.history)
+        n = MutableFileNode(
+            self.storage_broker,
+            self.secret_holder,
+            self.default_encoding_parameters,
+            self.history,
+        )
         d = self.key_generator.generate(keysize)
         d.addCallback(n.create_with_keys, contents, version=version)
         d.addCallback(lambda res: n)
@@ -127,13 +161,16 @@ class NodeMaker(object):
     def create_new_mutable_directory(self, initial_children={}, version=None):
         # initial_children must have metadata (i.e. {} instead of None)
         for (name, (node, metadata)) in initial_children.iteritems():
-            precondition(isinstance(metadata, dict),
-                         "create_new_mutable_directory requires metadata to be a dict, not None", metadata)
+            precondition(
+                isinstance(metadata, dict),
+                "create_new_mutable_directory requires metadata to be a dict, not None",
+                metadata,
+            )
             node.raise_error()
-        d = self.create_mutable_file(lambda n:
-                                     MutableData(pack_children(initial_children,
-                                                    n.get_writekey())),
-                                     version=version)
+        d = self.create_mutable_file(
+            lambda n: MutableData(pack_children(initial_children, n.get_writekey())),
+            version=version,
+        )
         d.addCallback(self._create_dirnode)
         return d
 
@@ -144,7 +181,6 @@ class NodeMaker(object):
         uploadable = Data(packed, convergence)
         # XXX should pass reactor arg
         d = self.uploader.upload(uploadable)
-        d.addCallback(lambda results:
-                      self.create_from_cap(None, results.get_uri()))
+        d.addCallback(lambda results: self.create_from_cap(None, results.get_uri()))
         d.addCallback(self._create_dirnode)
         return d

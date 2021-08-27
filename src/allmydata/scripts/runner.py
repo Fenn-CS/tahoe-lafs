@@ -8,10 +8,24 @@ from twisted.python import usage
 from twisted.internet import defer, task, threads
 
 from allmydata.scripts.common import get_default_nodedir
-from allmydata.scripts import debug, create_node, cli, \
-    stats_gatherer, admin, tahoe_daemonize, tahoe_start, \
-    tahoe_stop, tahoe_restart, tahoe_run, tahoe_invite
-from allmydata.util.encodingutil import quote_output, quote_local_unicode_path, get_io_encoding
+from allmydata.scripts import (
+    debug,
+    create_node,
+    cli,
+    stats_gatherer,
+    admin,
+    tahoe_daemonize,
+    tahoe_start,
+    tahoe_stop,
+    tahoe_restart,
+    tahoe_run,
+    tahoe_invite,
+)
+from allmydata.util.encodingutil import (
+    quote_output,
+    quote_local_unicode_path,
+    get_io_encoding,
+)
 from allmydata.util.eliotutil import (
     opt_eliot_destination,
     opt_help_eliot_destinations,
@@ -24,15 +38,21 @@ from .. import (
 
 _default_nodedir = get_default_nodedir()
 
-NODEDIR_HELP = ("Specify which Tahoe node directory should be used. The "
-                "directory should either contain a full Tahoe node, or a "
-                "file named node.url that points to some other Tahoe node. "
-                "It should also contain a file named '"
-                + os.path.join('private', 'aliases') +
-                "' which contains the mapping from alias name to root "
-                "dirnode URI.")
+NODEDIR_HELP = (
+    "Specify which Tahoe node directory should be used. The "
+    "directory should either contain a full Tahoe node, or a "
+    "file named node.url that points to some other Tahoe node. "
+    "It should also contain a file named '"
+    + os.path.join("private", "aliases")
+    + "' which contains the mapping from alias name to root "
+    "dirnode URI."
+)
 if _default_nodedir:
-    NODEDIR_HELP += " [default for most commands: " + quote_local_unicode_path(_default_nodedir) + "]"
+    NODEDIR_HELP += (
+        " [default for most commands: "
+        + quote_local_unicode_path(_default_nodedir)
+        + "]"
+    )
 
 
 # XXX all this 'dispatch' stuff needs to be unified + fixed up
@@ -46,8 +66,18 @@ _control_node_dispatch = {
 
 process_control_commands = [
     ["run", None, tahoe_run.RunOptions, "run a node without daemonizing"],
-    ["daemonize", None, tahoe_daemonize.DaemonizeOptions, "(deprecated) run a node in the background"],
-    ["start", None, tahoe_start.StartOptions, "(deprecated) start a node in the background and confirm it started"],
+    [
+        "daemonize",
+        None,
+        tahoe_daemonize.DaemonizeOptions,
+        "(deprecated) run a node in the background",
+    ],
+    [
+        "start",
+        None,
+        tahoe_start.StartOptions,
+        "(deprecated) start a node in the background and confirm it started",
+    ],
     ["stop", None, tahoe_stop.StopOptions, "(deprecated) stop a node"],
     ["restart", None, tahoe_restart.RestartOptions, "(deprecated) restart a node"],
 ]
@@ -59,24 +89,41 @@ class Options(usage.Options):
     stdout = sys.stdout
     stderr = sys.stderr
 
-    subCommands = (     create_node.subCommands
-                    +   stats_gatherer.subCommands
-                    +   admin.subCommands
-                    +   process_control_commands
-                    +   debug.subCommands
-                    +   cli.subCommands
-                    +   tahoe_invite.subCommands
-                    )
+    subCommands = (
+        create_node.subCommands
+        + stats_gatherer.subCommands
+        + admin.subCommands
+        + process_control_commands
+        + debug.subCommands
+        + cli.subCommands
+        + tahoe_invite.subCommands
+    )
 
     optFlags = [
         ["quiet", "q", "Operate silently."],
         ["version", "V", "Display version numbers."],
-        ["version-and-path", None, "Display version numbers and paths to their locations."],
+        [
+            "version-and-path",
+            None,
+            "Display version numbers and paths to their locations.",
+        ],
     ]
     optParameters = [
         ["node-directory", "d", None, NODEDIR_HELP],
-        ["wormhole-server", None, u"ws://wormhole.tahoe-lafs.org:4000/v1", "The magic wormhole server to use.", six.text_type],
-        ["wormhole-invite-appid", None, u"tahoe-lafs.org/invite", "The appid to use on the wormhole server.", six.text_type],
+        [
+            "wormhole-server",
+            None,
+            u"ws://wormhole.tahoe-lafs.org:4000/v1",
+            "The magic wormhole server to use.",
+            six.text_type,
+        ],
+        [
+            "wormhole-invite-appid",
+            None,
+            u"tahoe-lafs.org/invite",
+            "The appid to use on the wormhole server.",
+            six.text_type,
+        ],
     ]
 
     def opt_version(self):
@@ -89,19 +136,24 @@ class Options(usage.Options):
     opt_help_eliot_destinations = opt_help_eliot_destinations
 
     def __str__(self):
-        return ("\nUsage: tahoe [global-options] <command> [command-options]\n"
-                + self.getUsage())
+        return (
+            "\nUsage: tahoe [global-options] <command> [command-options]\n"
+            + self.getUsage()
+        )
 
-    synopsis = "\nUsage: tahoe [global-options]" # used only for subcommands
+    synopsis = "\nUsage: tahoe [global-options]"  # used only for subcommands
 
     def getUsage(self, **kwargs):
         t = usage.Options.getUsage(self, **kwargs)
         t = t.replace("Options:", "\nGlobal options:", 1)
-        return t + "\nPlease run 'tahoe <command> --help' for more details on each command.\n"
+        return (
+            t
+            + "\nPlease run 'tahoe <command> --help' for more details on each command.\n"
+        )
 
     def postOptions(self):
-        if not hasattr(self, 'subOptions'):
-            if not hasattr(self, 'no_command_needed'):
+        if not hasattr(self, "subOptions"):
+            if not hasattr(self, "no_command_needed"):
                 raise usage.UsageError("must specify a command")
             sys.exit(0)
 
@@ -110,13 +162,17 @@ create_dispatch = {}
 for module in (create_node, stats_gatherer):
     create_dispatch.update(module.dispatch)
 
+
 def parse_options(argv, config=None):
     if not config:
         config = Options()
-    config.parseOptions(argv) # may raise usage.error
+    config.parseOptions(argv)  # may raise usage.error
     return config
 
-def parse_or_exit_with_explanation(argv, stdout=sys.stdout, stderr=sys.stderr, stdin=sys.stdin):
+
+def parse_or_exit_with_explanation(
+    argv, stdout=sys.stdout, stderr=sys.stderr, stdin=sys.stdin
+):
     config = Options()
     config.stdout = stdout
     config.stdin = stdin
@@ -125,22 +181,25 @@ def parse_or_exit_with_explanation(argv, stdout=sys.stdout, stderr=sys.stderr, s
         parse_options(argv, config=config)
     except usage.error as e:
         c = config
-        while hasattr(c, 'subOptions'):
+        while hasattr(c, "subOptions"):
             c = c.subOptions
         print(str(c), file=stdout)
         try:
             msg = e.args[0].decode(get_io_encoding())
         except Exception:
             msg = repr(e)
-        print("%s:  %s\n" % (sys.argv[0], quote_output(msg, quotemarks=False)), file=stdout)
+        print(
+            "%s:  %s\n" % (sys.argv[0], quote_output(msg, quotemarks=False)),
+            file=stdout,
+        )
         sys.exit(1)
     return config
 
-def dispatch(config,
-             stdin=sys.stdin, stdout=sys.stdout, stderr=sys.stderr):
+
+def dispatch(config, stdin=sys.stdin, stdout=sys.stdout, stderr=sys.stderr):
     command = config.subCommand
     so = config.subOptions
-    if config['quiet']:
+    if config["quiet"]:
         stdout = StringIO()
     so.stdout = stdout
     so.stderr = stderr
@@ -177,9 +236,11 @@ def dispatch(config,
         f.trap(usage.UsageError)
         print("Error: {}".format(f.value.message))
         sys.exit(1)
+
     d.addCallback(_raise_sys_exit)
     d.addErrback(_error)
     return d
+
 
 def _maybe_enable_eliot_logging(options, reactor):
     if options.get("destinations"):
@@ -191,13 +252,17 @@ def _maybe_enable_eliot_logging(options, reactor):
     # Pass on the options so we can dispatch the subcommand.
     return options
 
+
 def run():
     # TODO(3035): Remove tox-check when error becomes a warning
-    if 'TOX_ENV_NAME' not in os.environ:
-        assert sys.version_info < (3,), u"Tahoe-LAFS does not run under Python 3. Please use Python 2.7.x."
+    if "TOX_ENV_NAME" not in os.environ:
+        assert sys.version_info < (
+            3,
+        ), u"Tahoe-LAFS does not run under Python 3. Please use Python 2.7.x."
 
     if sys.platform == "win32":
         from allmydata.windows.fixups import initialize
+
         initialize()
     # doesn't return: calls sys.exit(rc)
     task.react(_run_with_reactor)
@@ -210,21 +275,19 @@ def _setup_coverage(reactor):
     """
     # can we put this _setup_coverage call after we hit
     # argument-parsing?
-    if '--coverage' not in sys.argv:
+    if "--coverage" not in sys.argv:
         return
-    sys.argv.remove('--coverage')
+    sys.argv.remove("--coverage")
 
     try:
         import coverage
     except ImportError:
-        raise RuntimeError(
-                "The 'coveage' package must be installed to use --coverage"
-        )
+        raise RuntimeError("The 'coveage' package must be installed to use --coverage")
 
     # this doesn't change the shell's notion of the environment, but
     # it makes the test in process_startup() succeed, which is the
     # goal here.
-    os.environ["COVERAGE_PROCESS_START"] = '.coveragerc'
+    os.environ["COVERAGE_PROCESS_START"] = ".coveragerc"
 
     # maybe-start the global coverage, unless it already got started
     cov = coverage.process_startup()
@@ -240,7 +303,8 @@ def _setup_coverage(reactor):
         """
         cov.stop()
         cov.save()
-    reactor.addSystemEventTrigger('after', 'shutdown', write_coverage_data)
+
+    reactor.addSystemEventTrigger("after", "shutdown", write_coverage_data)
 
 
 def _run_with_reactor(reactor):
@@ -250,17 +314,20 @@ def _run_with_reactor(reactor):
     d = defer.maybeDeferred(parse_or_exit_with_explanation, sys.argv[1:])
     d.addCallback(_maybe_enable_eliot_logging, reactor)
     d.addCallback(dispatch)
+
     def _show_exception(f):
         # when task.react() notices a non-SystemExit exception, it does
         # log.err() with the failure and then exits with rc=1. We want this
         # to actually print the exception to stderr, like it would do if we
         # weren't using react().
         if f.check(SystemExit):
-            return f # dispatch function handled it
+            return f  # dispatch function handled it
         f.printTraceback(file=sys.stderr)
         sys.exit(1)
+
     d.addErrback(_show_exception)
     return d
+
 
 if __name__ == "__main__":
     run()

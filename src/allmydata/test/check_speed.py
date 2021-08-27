@@ -8,13 +8,14 @@ from foolscap.api import Tub, fireEventually
 
 MB = 1000000
 
+
 class SpeedTest(object):
     DO_IMMUTABLE = True
     DO_MUTABLE_CREATE = True
     DO_MUTABLE = True
 
     def __init__(self, test_client_dir):
-        #self.real_stderr = sys.stderr
+        # self.real_stderr = sys.stderr
         log.startLogging(open("st.log", "a"), setStdout=False)
         f = open(os.path.join(test_client_dir, "private", "control.furl"), "r")
         self.control_furl = f.read().strip()
@@ -30,14 +31,18 @@ class SpeedTest(object):
         d.addCallback(lambda res: self.setUp())
         d.addCallback(lambda res: self.do_test())
         d.addBoth(self.tearDown)
+
         def _err(err):
             self.failed = err
             log.err(err)
             print(err)
+
         d.addErrback(_err)
+
         def _done(res):
             reactor.stop()
             return res
+
         d.addBoth(_done)
         reactor.run()
         if self.failed:
@@ -51,10 +56,12 @@ class SpeedTest(object):
         self.tub.setOption("expose-remote-exception-types", False)
         self.tub.setServiceParent(self.base_service)
         d = self.tub.getReference(self.control_furl)
+
         def _gotref(rref):
             self.client_rref = rref
             print("Got Client Control reference")
             return self.stall(5)
+
         d.addCallback(_gotref)
         return d
 
@@ -80,8 +87,9 @@ class SpeedTest(object):
     def measure_rtt(self, res):
         # use RIClient.get_nodeid() to measure the foolscap-level RTT
         d = self.client_rref.callRemote("measure_peer_response_time")
+
         def _got(res):
-            assert len(res) # need at least one peer
+            assert len(res)  # need at least one peer
             times = res.values()
             self.total_rtt = sum(times)
             self.average_rtt = sum(times) / len(times)
@@ -90,50 +98,55 @@ class SpeedTest(object):
             print("total-RTT: %f" % self.total_rtt)
             print("average-RTT: %f" % self.average_rtt)
             print("max-RTT: %f" % self.max_rtt)
+
         d.addCallback(_got)
         return d
 
     def do_test(self):
         print("doing test")
         d = defer.succeed(None)
-        d.addCallback(self.one_test, "startup", 1, 1000, False) #ignore this one
+        d.addCallback(self.one_test, "startup", 1, 1000, False)  # ignore this one
         d.addCallback(self.measure_rtt)
 
         if self.DO_IMMUTABLE:
             # immutable files
             d.addCallback(self.one_test, "1x 200B", 1, 200, False)
             d.addCallback(self.one_test, "10x 200B", 10, 200, False)
+
             def _maybe_do_100x_200B(res):
                 if self.upload_times["10x 200B"] < 5:
                     print("10x 200B test went too fast, doing 100x 200B test")
                     return self.one_test(None, "100x 200B", 100, 200, False)
                 return
+
             d.addCallback(_maybe_do_100x_200B)
-            d.addCallback(self.one_test, "1MB", 1, 1*MB, False)
-            d.addCallback(self.one_test, "10MB", 1, 10*MB, False)
+            d.addCallback(self.one_test, "1MB", 1, 1 * MB, False)
+            d.addCallback(self.one_test, "10MB", 1, 10 * MB, False)
+
             def _maybe_do_100MB(res):
                 if self.upload_times["10MB"] > 30:
                     print("10MB test took too long, skipping 100MB test")
                     return
-                return self.one_test(None, "100MB", 1, 100*MB, False)
+                return self.one_test(None, "100MB", 1, 100 * MB, False)
+
             d.addCallback(_maybe_do_100MB)
 
         if self.DO_MUTABLE_CREATE:
             # mutable file creation
-            d.addCallback(self.one_test, "10x 200B SSK creation", 10, 200,
-                          "create")
+            d.addCallback(self.one_test, "10x 200B SSK creation", 10, 200, "create")
 
         if self.DO_MUTABLE:
             # mutable file upload/download
             d.addCallback(self.one_test, "10x 200B SSK", 10, 200, "upload")
+
             def _maybe_do_100x_200B_SSK(res):
                 if self.upload_times["10x 200B SSK"] < 5:
                     print("10x 200B SSK test went too fast, doing 100x 200B SSK")
-                    return self.one_test(None, "100x 200B SSK", 100, 200,
-                                         "upload")
+                    return self.one_test(None, "100x 200B SSK", 100, 200, "upload")
                 return
+
             d.addCallback(_maybe_do_100x_200B_SSK)
-            d.addCallback(self.one_test, "1MB SSK", 1, 1*MB, "upload")
+            d.addCallback(self.one_test, "1MB SSK", 1, 1 * MB, "upload")
 
         d.addCallback(self.calculate_speeds)
         return d
@@ -151,12 +164,12 @@ class SpeedTest(object):
             print("upload per-file time: %.3fs" % B)
             print("upload per-file times-avg-RTT: %f" % (B / self.average_rtt))
             print("upload per-file times-total-RTT: %f" % (B / self.total_rtt))
-            A1 = 1*MB / (self.upload_times["1MB"] - B) # in bytes per second
+            A1 = 1 * MB / (self.upload_times["1MB"] - B)  # in bytes per second
             print("upload speed (1MB):", self.number(A1, "Bps"))
-            A2 = 10*MB / (self.upload_times["10MB"] - B)
+            A2 = 10 * MB / (self.upload_times["10MB"] - B)
             print("upload speed (10MB):", self.number(A2, "Bps"))
             if "100MB" in self.upload_times:
-                A3 = 100*MB / (self.upload_times["100MB"] - B)
+                A3 = 100 * MB / (self.upload_times["100MB"] - B)
                 print("upload speed (100MB):", self.number(A3, "Bps"))
 
             # download
@@ -167,12 +180,12 @@ class SpeedTest(object):
             print("download per-file time: %.3fs" % B)
             print("download per-file times-avg-RTT: %f" % (B / self.average_rtt))
             print("download per-file times-total-RTT: %f" % (B / self.total_rtt))
-            A1 = 1*MB / (self.download_times["1MB"] - B) # in bytes per second
+            A1 = 1 * MB / (self.download_times["1MB"] - B)  # in bytes per second
             print("download speed (1MB):", self.number(A1, "Bps"))
-            A2 = 10*MB / (self.download_times["10MB"] - B)
+            A2 = 10 * MB / (self.download_times["10MB"] - B)
             print("download speed (10MB):", self.number(A2, "Bps"))
             if "100MB" in self.download_times:
-                A3 = 100*MB / (self.download_times["100MB"] - B)
+                A3 = 100 * MB / (self.download_times["100MB"] - B)
                 print("download speed (100MB):", self.number(A3, "Bps"))
 
         if self.DO_MUTABLE_CREATE:
@@ -187,7 +200,7 @@ class SpeedTest(object):
             else:
                 B = self.upload_times["10x 200B SSK"] / 10
             print("upload per-file time SSK: %.3fs" % B)
-            A1 = 1*MB / (self.upload_times["1MB SSK"] - B) # in bytes per second
+            A1 = 1 * MB / (self.upload_times["1MB SSK"] - B)  # in bytes per second
             print("upload speed SSK (1MB):", self.number(A1, "Bps"))
 
             # download SSK
@@ -196,8 +209,8 @@ class SpeedTest(object):
             else:
                 B = self.download_times["10x 200B SSK"] / 10
             print("download per-file time SSK: %.3fs" % B)
-            A1 = 1*MB / (self.download_times["1MB SSK"] - B) # in bytes per
-                                                             # second
+            A1 = 1 * MB / (self.download_times["1MB SSK"] - B)  # in bytes per
+            # second
             print("download speed SSK (1MB):", self.number(A1, "Bps"))
 
     def number(self, value, suffix=""):
@@ -209,15 +222,20 @@ class SpeedTest(object):
         elif value < 1000:
             fmt = "%d%s"
         elif value < 1e6:
-            fmt = "%.2fk%s"; scaling = 1e3
+            fmt = "%.2fk%s"
+            scaling = 1e3
         elif value < 1e9:
-            fmt = "%.2fM%s"; scaling = 1e6
+            fmt = "%.2fM%s"
+            scaling = 1e6
         elif value < 1e12:
-            fmt = "%.2fG%s"; scaling = 1e9
+            fmt = "%.2fG%s"
+            scaling = 1e9
         elif value < 1e15:
-            fmt = "%.2fT%s"; scaling = 1e12
+            fmt = "%.2fT%s"
+            scaling = 1e12
         elif value < 1e18:
-            fmt = "%.2fP%s"; scaling = 1e15
+            fmt = "%.2fP%s"
+            scaling = 1e15
         else:
             fmt = "huge! %g%s"
         return fmt % (value / scaling, suffix)
@@ -228,7 +246,7 @@ class SpeedTest(object):
         return d
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_client_dir = sys.argv[1]
     st = SpeedTest(test_client_dir)
     st.run()

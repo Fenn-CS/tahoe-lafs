@@ -1,4 +1,3 @@
-
 from allmydata.introducer.server import create_introducer
 
 # apparently need to support "old .tac files" that may have

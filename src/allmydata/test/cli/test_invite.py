@@ -12,8 +12,8 @@ from ...client import (
     read_config,
 )
 
-class _FakeWormhole(object):
 
+class _FakeWormhole(object):
     def __init__(self, outgoing_messages):
         self.messages = []
         self._outgoing = outgoing_messages
@@ -26,9 +26,11 @@ class _FakeWormhole(object):
 
     def get_welcome(self):
         return defer.succeed(
-            json.dumps({
-                u"welcome": {},
-            })
+            json.dumps(
+                {
+                    u"welcome": {},
+                }
+            )
         )
 
     def allocate_code(self):
@@ -49,7 +51,6 @@ def _create_fake_wormhole(outgoing_messages):
 
 
 class Join(GridTestMixin, CLITestMixin, unittest.TestCase):
-
     @defer.inlineCallbacks
     def setUp(self):
         self.basedir = self.mktemp()
@@ -63,22 +64,27 @@ class Join(GridTestMixin, CLITestMixin, unittest.TestCase):
         """
         node_dir = self.mktemp()
 
-        with mock.patch('allmydata.scripts.create_node.wormhole') as w:
-            fake_wh = _create_fake_wormhole([
-                json.dumps({u"abilities": {u"server-v1": {}}}),
-                json.dumps({
-                    u"shares-needed": 1,
-                    u"shares-happy": 1,
-                    u"shares-total": 1,
-                    u"nickname": u"somethinghopefullyunique",
-                    u"introducer": u"pb://foo",
-                }),
-            ])
+        with mock.patch("allmydata.scripts.create_node.wormhole") as w:
+            fake_wh = _create_fake_wormhole(
+                [
+                    json.dumps({u"abilities": {u"server-v1": {}}}),
+                    json.dumps(
+                        {
+                            u"shares-needed": 1,
+                            u"shares-happy": 1,
+                            u"shares-total": 1,
+                            u"nickname": u"somethinghopefullyunique",
+                            u"introducer": u"pb://foo",
+                        }
+                    ),
+                ]
+            )
             w.create = mock.Mock(return_value=fake_wh)
 
             rc, out, err = yield run_cli(
                 "create-client",
-                "--join", "1-abysmal-ant",
+                "--join",
+                "1-abysmal-ant",
                 node_dir,
             )
 
@@ -89,12 +95,11 @@ class Join(GridTestMixin, CLITestMixin, unittest.TestCase):
                 "pb://foo",
                 set(
                     furl
-                    for (furl, cache)
-                    in config.get_introducer_configuration().values()
+                    for (furl, cache) in config.get_introducer_configuration().values()
                 ),
             )
 
-            with open(join(node_dir, 'tahoe.cfg'), 'r') as f:
+            with open(join(node_dir, "tahoe.cfg"), "r") as f:
                 config = f.read()
             self.assertIn(u"somethinghopefullyunique", config)
 
@@ -105,23 +110,28 @@ class Join(GridTestMixin, CLITestMixin, unittest.TestCase):
         """
         node_dir = self.mktemp()
 
-        with mock.patch('allmydata.scripts.create_node.wormhole') as w:
-            fake_wh = _create_fake_wormhole([
-                json.dumps({u"abilities": {u"server-v1": {}}}),
-                json.dumps({
-                    u"shares-needed": 1,
-                    u"shares-happy": 1,
-                    u"shares-total": 1,
-                    u"nickname": u"somethinghopefullyunique",
-                    u"introducer": u"pb://foo",
-                    u"something-else": u"not allowed",
-                }),
-            ])
+        with mock.patch("allmydata.scripts.create_node.wormhole") as w:
+            fake_wh = _create_fake_wormhole(
+                [
+                    json.dumps({u"abilities": {u"server-v1": {}}}),
+                    json.dumps(
+                        {
+                            u"shares-needed": 1,
+                            u"shares-happy": 1,
+                            u"shares-total": 1,
+                            u"nickname": u"somethinghopefullyunique",
+                            u"introducer": u"pb://foo",
+                            u"something-else": u"not allowed",
+                        }
+                    ),
+                ]
+            )
             w.create = mock.Mock(return_value=fake_wh)
 
             rc, out, err = yield run_cli(
                 "create-client",
-                "--join", "1-abysmal-ant",
+                "--join",
+                "1-abysmal-ant",
                 node_dir,
             )
 
@@ -131,7 +141,6 @@ class Join(GridTestMixin, CLITestMixin, unittest.TestCase):
 
 
 class Invite(GridTestMixin, CLITestMixin, unittest.TestCase):
-
     @defer.inlineCallbacks
     def setUp(self):
         self.basedir = self.mktemp()
@@ -140,7 +149,8 @@ class Invite(GridTestMixin, CLITestMixin, unittest.TestCase):
         intro_dir = os.path.join(self.basedir, "introducer")
         yield run_cli(
             "create-introducer",
-            "--listen", "none",
+            "--listen",
+            "none",
             intro_dir,
         )
 
@@ -156,28 +166,31 @@ class Invite(GridTestMixin, CLITestMixin, unittest.TestCase):
         with open(join(priv_dir, "introducer.furl"), "w") as f:
             f.write("pb://fooblam\n")
 
-        with mock.patch('allmydata.scripts.tahoe_invite.wormhole') as w:
-            fake_wh = _create_fake_wormhole([
-                json.dumps({u"abilities": {u"client-v1": {}}}),
-            ])
+        with mock.patch("allmydata.scripts.tahoe_invite.wormhole") as w:
+            fake_wh = _create_fake_wormhole(
+                [
+                    json.dumps({u"abilities": {u"client-v1": {}}}),
+                ]
+            )
             w.create = mock.Mock(return_value=fake_wh)
 
             rc, out, err = yield run_cli(
-                "-d", intro_dir,
+                "-d",
+                intro_dir,
                 "invite",
-                "--shares-needed", "1",
-                "--shares-happy", "1",
-                "--shares-total", "1",
+                "--shares-needed",
+                "1",
+                "--shares-happy",
+                "1",
+                "--shares-total",
+                "1",
                 "foo",
             )
             self.assertEqual(2, len(fake_wh.messages))
             self.assertEqual(
                 json.loads(fake_wh.messages[0]),
                 {
-                    "abilities":
-                    {
-                        "server-v1": {}
-                    },
+                    "abilities": {"server-v1": {}},
                 },
             )
             self.assertEqual(
@@ -198,18 +211,24 @@ class Invite(GridTestMixin, CLITestMixin, unittest.TestCase):
         """
         intro_dir = os.path.join(self.basedir, "introducer")
 
-        with mock.patch('allmydata.scripts.tahoe_invite.wormhole') as w:
-            fake_wh = _create_fake_wormhole([
-                json.dumps({u"abilities": {u"client-v1": {}}}),
-            ])
+        with mock.patch("allmydata.scripts.tahoe_invite.wormhole") as w:
+            fake_wh = _create_fake_wormhole(
+                [
+                    json.dumps({u"abilities": {u"client-v1": {}}}),
+                ]
+            )
             w.create = mock.Mock(return_value=fake_wh)
 
             rc, out, err = yield run_cli(
-                "-d", intro_dir,
+                "-d",
+                intro_dir,
                 "invite",
-                "--shares-needed", "1",
-                "--shares-happy", "1",
-                "--shares-total", "1",
+                "--shares-needed",
+                "1",
+                "--shares-happy",
+                "1",
+                "--shares-total",
+                "1",
                 "foo",
             )
             self.assertNotEqual(rc, 0)
@@ -227,18 +246,24 @@ class Invite(GridTestMixin, CLITestMixin, unittest.TestCase):
         with open(join(priv_dir, "introducer.furl"), "w") as f:
             f.write("pb://fooblam\n")
 
-        with mock.patch('allmydata.scripts.tahoe_invite.wormhole') as w:
-            fake_wh = _create_fake_wormhole([
-                json.dumps({u"abilities": {u"client-v9000": {}}}),
-            ])
+        with mock.patch("allmydata.scripts.tahoe_invite.wormhole") as w:
+            fake_wh = _create_fake_wormhole(
+                [
+                    json.dumps({u"abilities": {u"client-v9000": {}}}),
+                ]
+            )
             w.create = mock.Mock(return_value=fake_wh)
 
             rc, out, err = yield run_cli(
-                "-d", intro_dir,
+                "-d",
+                intro_dir,
                 "invite",
-                "--shares-needed", "1",
-                "--shares-happy", "1",
-                "--shares-total", "1",
+                "--shares-needed",
+                "1",
+                "--shares-happy",
+                "1",
+                "--shares-total",
+                "1",
                 "foo",
             )
             self.assertNotEqual(rc, 0)
@@ -256,18 +281,24 @@ class Invite(GridTestMixin, CLITestMixin, unittest.TestCase):
         with open(join(priv_dir, "introducer.furl"), "w") as f:
             f.write("pb://fooblam\n")
 
-        with mock.patch('allmydata.scripts.tahoe_invite.wormhole') as w:
-            fake_wh = _create_fake_wormhole([
-                json.dumps({}),
-            ])
+        with mock.patch("allmydata.scripts.tahoe_invite.wormhole") as w:
+            fake_wh = _create_fake_wormhole(
+                [
+                    json.dumps({}),
+                ]
+            )
             w.create = mock.Mock(return_value=fake_wh)
 
             rc, out, err = yield run_cli(
-                "-d", intro_dir,
+                "-d",
+                intro_dir,
                 "invite",
-                "--shares-needed", "1",
-                "--shares-happy", "1",
-                "--shares-total", "1",
+                "--shares-needed",
+                "1",
+                "--shares-happy",
+                "1",
+                "--shares-total",
+                "1",
                 "foo",
             )
             self.assertNotEqual(rc, 0)
@@ -285,22 +316,27 @@ class Invite(GridTestMixin, CLITestMixin, unittest.TestCase):
         with open(join(priv_dir, "introducer.furl"), "w") as f:
             f.write("pb://fooblam\n")
 
-        with mock.patch('allmydata.scripts.create_node.wormhole') as w:
-            fake_wh = _create_fake_wormhole([
-                json.dumps({u"abilities": {u"server-v9000": {}}}),
-                json.dumps({
-                    "shares-needed": "1",
-                    "shares-total": "1",
-                    "shares-happy": "1",
-                    "nickname": "foo",
-                    "introducer": "pb://fooblam",
-                }),
-            ])
+        with mock.patch("allmydata.scripts.create_node.wormhole") as w:
+            fake_wh = _create_fake_wormhole(
+                [
+                    json.dumps({u"abilities": {u"server-v9000": {}}}),
+                    json.dumps(
+                        {
+                            "shares-needed": "1",
+                            "shares-total": "1",
+                            "shares-happy": "1",
+                            "nickname": "foo",
+                            "introducer": "pb://fooblam",
+                        }
+                    ),
+                ]
+            )
             w.create = mock.Mock(return_value=fake_wh)
 
             rc, out, err = yield run_cli(
                 "create-client",
-                "--join", "1-alarmist-tuba",
+                "--join",
+                "1-alarmist-tuba",
                 "foo",
             )
             self.assertNotEqual(rc, 0)
@@ -318,22 +354,27 @@ class Invite(GridTestMixin, CLITestMixin, unittest.TestCase):
         with open(join(priv_dir, "introducer.furl"), "w") as f:
             f.write("pb://fooblam\n")
 
-        with mock.patch('allmydata.scripts.create_node.wormhole') as w:
-            fake_wh = _create_fake_wormhole([
-                json.dumps({}),
-                json.dumps({
-                    "shares-needed": "1",
-                    "shares-total": "1",
-                    "shares-happy": "1",
-                    "nickname": "bar",
-                    "introducer": "pb://fooblam",
-                }),
-            ])
+        with mock.patch("allmydata.scripts.create_node.wormhole") as w:
+            fake_wh = _create_fake_wormhole(
+                [
+                    json.dumps({}),
+                    json.dumps(
+                        {
+                            "shares-needed": "1",
+                            "shares-total": "1",
+                            "shares-happy": "1",
+                            "nickname": "bar",
+                            "introducer": "pb://fooblam",
+                        }
+                    ),
+                ]
+            )
             w.create = mock.Mock(return_value=fake_wh)
 
             rc, out, err = yield run_cli(
                 "create-client",
-                "--join", "1-alarmist-tuba",
+                "--join",
+                "1-alarmist-tuba",
                 "bar",
             )
             self.assertNotEqual(rc, 0)
@@ -346,13 +387,17 @@ class Invite(GridTestMixin, CLITestMixin, unittest.TestCase):
         """
         intro_dir = os.path.join(self.basedir, "introducer")
 
-        with mock.patch('allmydata.scripts.tahoe_invite.wormhole'):
+        with mock.patch("allmydata.scripts.tahoe_invite.wormhole"):
             rc, out, err = yield run_cli(
-                "-d", intro_dir,
+                "-d",
+                intro_dir,
                 "invite",
-                "--shares-needed", "1",
-                "--shares-happy", "1",
-                "--shares-total", "1",
+                "--shares-needed",
+                "1",
+                "--shares-happy",
+                "1",
+                "--shares-total",
+                "1",
             )
             self.assertTrue(rc)
             self.assertIn(u"Provide a single argument", out + err)

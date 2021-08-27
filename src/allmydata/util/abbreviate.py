@@ -9,24 +9,48 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import re
 from datetime import timedelta
 
 HOUR = 3600
-DAY = 24*3600
-WEEK = 7*DAY
-MONTH = 30*DAY
-YEAR = 365*DAY
+DAY = 24 * 3600
+WEEK = 7 * DAY
+MONTH = 30 * DAY
+YEAR = 365 * DAY
+
 
 def abbreviate_time(s):
     """
     Given time in seconds (float or int) or timedelta, summarize as English by
     returning unicode string.
     """
-    postfix = ''
+    postfix = ""
     if isinstance(s, timedelta):
         # this feels counter-intuitive that positive numbers in a
         # time-delta are "the past"; but if you "do math" on two
@@ -38,28 +62,31 @@ def abbreviate_time(s):
         # print(b - a)  # 0:00:01.001203
         s = s.total_seconds()
         if s >= 0.0:
-            postfix = ' ago'
+            postfix = " ago"
         else:
-            postfix = ' in the future'
+            postfix = " in the future"
             s = -s
+
     def _plural(count, unit):
         count = int(count)
         if count == 1:
             return "%d %s%s" % (count, unit, postfix)
         return "%d %ss%s" % (count, unit, postfix)
+
     if s is None:
         return "unknown"
     if s < 120:
         return _plural(s, "second")
-    if s < 3*HOUR:
+    if s < 3 * HOUR:
         return _plural(s / 60, "minute")
-    if s < 2*DAY:
+    if s < 2 * DAY:
         return _plural(s / HOUR, "hour")
-    if s < 2*MONTH:
+    if s < 2 * MONTH:
         return _plural(s / DAY, "day")
-    if s < 4*YEAR:
+    if s < 4 * YEAR:
         return _plural(s / MONTH, "month")
     return _plural(s / YEAR, "year")
+
 
 def abbreviate_space(s, SI=True):
     """
@@ -73,26 +100,28 @@ def abbreviate_space(s, SI=True):
     else:
         U = 1024.0
         isuffix = "iB"
+
     def r(count, suffix):
         return "%.2f %s%s" % (count, suffix, isuffix)
 
-    if s < 1024: # 1000-1023 get emitted as bytes, even in SI mode
+    if s < 1024:  # 1000-1023 get emitted as bytes, even in SI mode
         return "%d B" % s
-    if s < U*U:
-        return r(s/U, "k")
-    if s < U*U*U:
-        return r(s/(U*U), "M")
-    if s < U*U*U*U:
-        return r(s/(U*U*U), "G")
-    if s < U*U*U*U*U:
-        return r(s/(U*U*U*U), "T")
-    if s < U*U*U*U*U*U:
-        return r(s/(U*U*U*U*U), "P")
-    return r(s/(U*U*U*U*U*U), "E")
+    if s < U * U:
+        return r(s / U, "k")
+    if s < U * U * U:
+        return r(s / (U * U), "M")
+    if s < U * U * U * U:
+        return r(s / (U * U * U), "G")
+    if s < U * U * U * U * U:
+        return r(s / (U * U * U * U), "T")
+    if s < U * U * U * U * U * U:
+        return r(s / (U * U * U * U * U), "P")
+    return r(s / (U * U * U * U * U * U), "E")
+
 
 def abbreviate_space_both(s):
-    return "(%s, %s)" % (abbreviate_space(s, True),
-                         abbreviate_space(s, False))
+    return "(%s, %s)" % (abbreviate_space(s, True), abbreviate_space(s, False))
+
 
 def parse_abbreviated_size(s):
     if s is None or s == "":
@@ -103,19 +132,20 @@ def parse_abbreviated_size(s):
     number, suffix = m.groups()
     if suffix.endswith("B"):
         suffix = suffix[:-1]
-    multiplier = {"":   1,
-                  "I":  1,
-                  "K":  1000,
-                  "M":  1000 * 1000,
-                  "G":  1000 * 1000 * 1000,
-                  "T":  1000 * 1000 * 1000 * 1000,
-                  "P":  1000 * 1000 * 1000 * 1000 * 1000,
-                  "E":  1000 * 1000 * 1000 * 1000 * 1000 * 1000,
-                  "KI": 1024,
-                  "MI": 1024 * 1024,
-                  "GI": 1024 * 1024 * 1024,
-                  "TI": 1024 * 1024 * 1024 * 1024,
-                  "PI": 1024 * 1024 * 1024 * 1024 * 1024,
-                  "EI": 1024 * 1024 * 1024 * 1024 * 1024 * 1024,
-                  }[suffix]
+    multiplier = {
+        "": 1,
+        "I": 1,
+        "K": 1000,
+        "M": 1000 * 1000,
+        "G": 1000 * 1000 * 1000,
+        "T": 1000 * 1000 * 1000 * 1000,
+        "P": 1000 * 1000 * 1000 * 1000 * 1000,
+        "E": 1000 * 1000 * 1000 * 1000 * 1000 * 1000,
+        "KI": 1024,
+        "MI": 1024 * 1024,
+        "GI": 1024 * 1024 * 1024,
+        "TI": 1024 * 1024 * 1024 * 1024,
+        "PI": 1024 * 1024 * 1024 * 1024 * 1024,
+        "EI": 1024 * 1024 * 1024 * 1024 * 1024 * 1024,
+    }[suffix]
     return int(number) * multiplier

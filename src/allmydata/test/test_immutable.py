@@ -7,8 +7,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import random
 
@@ -32,9 +55,11 @@ from .no_network import (
     NoNetworkServer,
 )
 
+
 class MockShareHashTree(object):
     def needed_hashes(self):
         return False
+
 
 class MockNode(object):
     def __init__(self, check_reneging, check_fetch_failed):
@@ -45,41 +70,58 @@ class MockNode(object):
         self._no_more_shares = False
         self.check_reneging = check_reneging
         self.check_fetch_failed = check_fetch_failed
-        self._si_prefix='aa'
+        self._si_prefix = "aa"
         self.have_UEB = True
         self.share_hash_tree = MockShareHashTree()
         self.on_want_more_shares = None
 
     def when_finished(self):
         return self.finished_d
+
     def get_num_segments(self):
         return (5, True)
+
     def _calculate_sizes(self, guessed_segment_size):
-        return {'block_size': 4, 'num_segments': 5}
+        return {"block_size": 4, "num_segments": 5}
+
     def no_more_shares(self):
         self._no_more_shares = True
+
     def got_shares(self, shares):
         if self.check_reneging:
             if self._no_more_shares:
-                self.finished_d.errback(unittest.FailTest("The node was told by the share finder that it is destined to remain hungry, then was given another share."))
+                self.finished_d.errback(
+                    unittest.FailTest(
+                        "The node was told by the share finder that it is destined to remain hungry, then was given another share."
+                    )
+                )
                 return
         self.got += len(shares)
         log.msg("yyy 3 %s.got_shares(%s) got: %s" % (self, shares, self.got))
         if self.got == 3:
             self.finished_d.callback(True)
+
     def get_desired_ciphertext_hashes(self, *args, **kwargs):
         return iter([])
+
     def fetch_failed(self, *args, **kwargs):
         if self.check_fetch_failed:
             if self.finished_d:
-                self.finished_d.errback(unittest.FailTest("The node was told by the segment fetcher that the download failed."))
+                self.finished_d.errback(
+                    unittest.FailTest(
+                        "The node was told by the segment fetcher that the download failed."
+                    )
+                )
                 self.finished_d = None
+
     def want_more_shares(self):
         if self.on_want_more_shares:
             self.on_want_more_shares()
+
     def process_blocks(self, *args, **kwargs):
         if self.finished_d:
             self.finished_d.callback(None)
+
 
 class TestShareFinder(unittest.TestCase):
     def test_no_reneging_on_no_more_shares_ever(self):
@@ -91,7 +133,7 @@ class TestShareFinder(unittest.TestCase):
         # ever", and then immediately tell them "oh, and here's
         # another share", then you lose.
 
-        rcap = uri.CHKFileURI(b'a'*32, b'a'*32, 3, 99, 100)
+        rcap = uri.CHKFileURI(b"a" * 32, b"a" * 32, 3, 99, 100)
         vcap = rcap.get_verify_cap()
 
         class MockBuckets(object):
@@ -100,13 +142,14 @@ class TestShareFinder(unittest.TestCase):
         class MockServer(object):
             def __init__(self, buckets):
                 self.version = {
-                    b'http://allmydata.org/tahoe/protocols/storage/v1': {
+                    b"http://allmydata.org/tahoe/protocols/storage/v1": {
                         b"tolerates-immutable-read-overrun": True
-                        }
                     }
+                }
                 self.buckets = buckets
                 self.d = defer.Deferred()
                 self.s = None
+
             def callRemote(self, methname, *args, **kwargs):
                 d = defer.Deferred()
 
@@ -118,12 +161,14 @@ class TestShareFinder(unittest.TestCase):
                 def _give_buckets_and_hunger_again():
                     d.callback(self.buckets)
                     self.s.hungry()
+
                 eventually(_give_buckets_and_hunger_again)
                 return d
 
         class MockStorageBroker(object):
             def __init__(self, servers):
                 self.servers = servers
+
             def get_servers_for_psi(self, si):
                 return self.servers
 
@@ -138,9 +183,11 @@ class TestShareFinder(unittest.TestCase):
         mockserver1 = MockServer({1: MockBuckets(), 2: MockBuckets()})
         mockserver2 = MockServer({})
         mockserver3 = MockServer({3: MockBuckets()})
-        servers = [ NoNetworkServer(b"ms1", mockserver1),
-                    NoNetworkServer(b"ms2", mockserver2),
-                    NoNetworkServer(b"ms3", mockserver3), ]
+        servers = [
+            NoNetworkServer(b"ms1", mockserver1),
+            NoNetworkServer(b"ms2", mockserver2),
+            NoNetworkServer(b"ms3", mockserver3),
+        ]
         mockstoragebroker = MockStorageBroker(servers)
         mockdownloadstatus = MockDownloadStatus()
         mocknode = MockNode(check_reneging=True, check_fetch_failed=True)
@@ -163,15 +210,17 @@ class Test(GridTestMixin, unittest.TestCase, common.ShouldFailMixin):
         c1 = self.g.clients[1]
         # We need multiple segments to test crypttext hash trees that are
         # non-trivial (i.e. they have more than just one hash in them).
-        c1.encoding_params['max_segment_size'] = 12
+        c1.encoding_params["max_segment_size"] = 12
         # Tests that need to test servers of happiness using this should
         # set their own value for happy -- the default (7) breaks stuff.
-        c1.encoding_params['happy'] = 1
+        c1.encoding_params["happy"] = 1
         d = c1.upload(Data(TEST_DATA, convergence=b""))
+
         def _after_upload(ur):
             self.uri = ur.get_uri()
             self.filenode = self.g.clients[0].create_node_from_uri(ur.get_uri())
             return self.uri
+
         d.addCallback(_after_upload)
         return d
 
@@ -181,9 +230,11 @@ class Test(GridTestMixin, unittest.TestCase, common.ShouldFailMixin):
     def _download_and_check_plaintext(self, ign=None):
         num_reads = self._count_reads()
         d = download_to_data(self.filenode)
+
         def _after_download(result):
             self.failUnlessEqual(result, TEST_DATA)
             return self._count_reads() - num_reads
+
         d.addCallback(_after_download)
         return d
 
@@ -193,17 +244,30 @@ class Test(GridTestMixin, unittest.TestCase, common.ShouldFailMixin):
         return shnums[:num_shnums]
 
     def _count_reads(self):
-        return sum([s.stats_provider.get_stats() ['counters'].get('storage_server.read', 0)
-                    for s in self.g.servers_by_number.values()])
-
+        return sum(
+            [
+                s.stats_provider.get_stats()["counters"].get("storage_server.read", 0)
+                for s in self.g.servers_by_number.values()
+            ]
+        )
 
     def _count_allocates(self):
-        return sum([s.stats_provider.get_stats() ['counters'].get('storage_server.allocate', 0)
-                    for s in self.g.servers_by_number.values()])
+        return sum(
+            [
+                s.stats_provider.get_stats()["counters"].get(
+                    "storage_server.allocate", 0
+                )
+                for s in self.g.servers_by_number.values()
+            ]
+        )
 
     def _count_writes(self):
-        return sum([s.stats_provider.get_stats() ['counters'].get('storage_server.write', 0)
-                    for s in self.g.servers_by_number.values()])
+        return sum(
+            [
+                s.stats_provider.get_stats()["counters"].get("storage_server.write", 0)
+                for s in self.g.servers_by_number.values()
+            ]
+        )
 
     def test_test_code(self):
         # The following process of stashing the shares, running
@@ -220,61 +284,76 @@ class Test(GridTestMixin, unittest.TestCase, common.ShouldFailMixin):
         def _then_delete_8(ign):
             self.restore_all_shares(self.shares)
             self.delete_shares_numbered(self.uri, range(8))
+
         d.addCallback(_then_delete_8)
-        d.addCallback(lambda ign:
-                      self.shouldFail(NotEnoughSharesError, "download-2",
-                                      "ran out of shares",
-                                      download_to_data, self.filenode))
+        d.addCallback(
+            lambda ign: self.shouldFail(
+                NotEnoughSharesError,
+                "download-2",
+                "ran out of shares",
+                download_to_data,
+                self.filenode,
+            )
+        )
         return d
 
     def test_download(self):
-        """ Basic download. (This functionality is more or less already
+        """Basic download. (This functionality is more or less already
         tested by test code in other modules, but this module is also going
         to test some more specific things about immutable download.)
         """
         d = self.startup("immutable/Test/download")
         d.addCallback(self._download_and_check_plaintext)
+
         def _after_download(ign):
             num_reads = self._count_reads()
-            #print(num_reads)
+            # print(num_reads)
             self.failIf(num_reads > 41, num_reads)
+
         d.addCallback(_after_download)
         return d
 
     def test_download_from_only_3_remaining_shares(self):
-        """ Test download after 7 random shares (of the 10) have been
+        """Test download after 7 random shares (of the 10) have been
         removed."""
         d = self.startup("immutable/Test/download_from_only_3_remaining_shares")
-        d.addCallback(lambda ign:
-                      self.delete_shares_numbered(self.uri, range(7)))
+        d.addCallback(lambda ign: self.delete_shares_numbered(self.uri, range(7)))
         d.addCallback(self._download_and_check_plaintext)
+
         def _after_download(num_reads):
-            #print(num_reads)
+            # print(num_reads)
             self.failIf(num_reads > 41, num_reads)
+
         d.addCallback(_after_download)
         return d
 
     def test_download_from_only_3_shares_with_good_crypttext_hash(self):
-        """ Test download after 7 random shares (of the 10) have had their
+        """Test download after 7 random shares (of the 10) have had their
         crypttext hash tree corrupted."""
         d = self.startup("download_from_only_3_shares_with_good_crypttext_hash")
+
         def _corrupt_7(ign):
             c = common._corrupt_offset_of_block_hashes_to_truncate_crypttext_hashes
             self.corrupt_shares_numbered(self.uri, self._shuffled(7), c)
+
         d.addCallback(_corrupt_7)
         d.addCallback(self._download_and_check_plaintext)
         return d
 
     def test_download_abort_if_too_many_missing_shares(self):
-        """ Test that download gives up quickly when it realizes there aren't
+        """Test that download gives up quickly when it realizes there aren't
         enough shares out there."""
         d = self.startup("download_abort_if_too_many_missing_shares")
-        d.addCallback(lambda ign:
-                      self.delete_shares_numbered(self.uri, range(8)))
-        d.addCallback(lambda ign:
-                      self.shouldFail(NotEnoughSharesError, "delete 8",
-                                      "Last failure: None",
-                                      download_to_data, self.filenode))
+        d.addCallback(lambda ign: self.delete_shares_numbered(self.uri, range(8)))
+        d.addCallback(
+            lambda ign: self.shouldFail(
+                NotEnoughSharesError,
+                "delete 8",
+                "Last failure: None",
+                download_to_data,
+                self.filenode,
+            )
+        )
         # the new downloader pipelines a bunch of read requests in parallel,
         # so don't bother asserting anything about the number of reads
         return d
@@ -285,18 +364,26 @@ class Test(GridTestMixin, unittest.TestCase, common.ShouldFailMixin):
         because the corruption occurs in the sharedata version number, which
         it checks first."""
         d = self.startup("download_abort_if_too_many_corrupted_shares")
+
         def _corrupt_8(ign):
             c = common._corrupt_sharedata_version_number
             self.corrupt_shares_numbered(self.uri, self._shuffled(8), c)
+
         d.addCallback(_corrupt_8)
+
         def _try_download(ign):
             start_reads = self._count_reads()
-            d2 = self.shouldFail(NotEnoughSharesError, "corrupt 8",
-                                 "LayoutInvalid",
-                                 download_to_data, self.filenode)
+            d2 = self.shouldFail(
+                NotEnoughSharesError,
+                "corrupt 8",
+                "LayoutInvalid",
+                download_to_data,
+                self.filenode,
+            )
+
             def _check_numreads(ign):
                 num_reads = self._count_reads() - start_reads
-                #print(num_reads)
+                # print(num_reads)
 
                 # To pass this test, you are required to give up before
                 # reading all of the share data. Actually, we could give up
@@ -305,39 +392,35 @@ class Test(GridTestMixin, unittest.TestCase, common.ShouldFailMixin):
                 # regression detector" -- if you change download code so that
                 # it takes *more* reads, then this test will fail.
                 self.failIf(num_reads > 45, num_reads)
+
             d2.addCallback(_check_numreads)
             return d2
+
         d.addCallback(_try_download)
         return d
 
     def test_download_to_data(self):
         d = self.startup("download_to_data")
         d.addCallback(lambda ign: self.filenode.download_to_data())
-        d.addCallback(lambda data:
-            self.failUnlessEqual(data, common.TEST_DATA))
+        d.addCallback(lambda data: self.failUnlessEqual(data, common.TEST_DATA))
         return d
-
 
     def test_download_best_version(self):
         d = self.startup("download_best_version")
         d.addCallback(lambda ign: self.filenode.download_best_version())
-        d.addCallback(lambda data:
-            self.failUnlessEqual(data, common.TEST_DATA))
+        d.addCallback(lambda data: self.failUnlessEqual(data, common.TEST_DATA))
         return d
-
 
     def test_get_best_readable_version(self):
         d = self.startup("get_best_readable_version")
         d.addCallback(lambda ign: self.filenode.get_best_readable_version())
-        d.addCallback(lambda n2:
-            self.failUnlessEqual(n2, self.filenode))
+        d.addCallback(lambda n2: self.failUnlessEqual(n2, self.filenode))
         return d
 
     def test_get_size_of_best_version(self):
         d = self.startup("get_size_of_best_version")
         d.addCallback(lambda ign: self.filenode.get_size_of_best_version())
-        d.addCallback(lambda size:
-            self.failUnlessEqual(size, len(common.TEST_DATA)))
+        d.addCallback(lambda size: self.failUnlessEqual(size, len(common.TEST_DATA)))
         return d
 
 

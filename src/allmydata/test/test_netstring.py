@@ -9,8 +9,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 from twisted.trial import unittest
 
@@ -29,21 +52,29 @@ class Netstring(unittest.TestCase):
         for s in split_netstring(a, 2)[0]:
             self.assertIsInstance(s, bytes)
         self.failUnlessEqual(split_netstring(a, 2), ([b"hello", b"world"], len(a)))
-        self.failUnlessEqual(split_netstring(a, 2, required_trailer=b""), ([b"hello", b"world"], len(a)))
+        self.failUnlessEqual(
+            split_netstring(a, 2, required_trailer=b""), ([b"hello", b"world"], len(a))
+        )
         self.failUnlessRaises(ValueError, split_netstring, a, 3)
-        self.failUnlessRaises(ValueError, split_netstring, a+b" extra", 2, required_trailer=b"")
-        self.failUnlessEqual(split_netstring(a+b" extra", 2), ([b"hello", b"world"], len(a)))
-        self.failUnlessEqual(split_netstring(a+b"++", 2, required_trailer=b"++"),
-                             ([b"hello", b"world"], len(a)+2))
-        self.failUnlessRaises(ValueError,
-                              split_netstring, a+b"+", 2, required_trailer=b"not")
+        self.failUnlessRaises(
+            ValueError, split_netstring, a + b" extra", 2, required_trailer=b""
+        )
+        self.failUnlessEqual(
+            split_netstring(a + b" extra", 2), ([b"hello", b"world"], len(a))
+        )
+        self.failUnlessEqual(
+            split_netstring(a + b"++", 2, required_trailer=b"++"),
+            ([b"hello", b"world"], len(a) + 2),
+        )
+        self.failUnlessRaises(
+            ValueError, split_netstring, a + b"+", 2, required_trailer=b"not"
+        )
 
     def test_extra(self):
         a = netstring(b"hello")
         self.failUnlessEqual(split_netstring(a, 1), ([b"hello"], len(a)))
         b = netstring(b"hello") + b"extra stuff"
-        self.failUnlessEqual(split_netstring(b, 1),
-                             ([b"hello"], len(a)))
+        self.failUnlessEqual(split_netstring(b, 1), ([b"hello"], len(a)))
 
     def test_nested(self):
         a = netstring(b"hello") + netstring(b"world") + b"extra stuff"
@@ -56,4 +87,7 @@ class Netstring(unittest.TestCase):
         self.failUnlessEqual(top[3], b".")
         self.failUnlessRaises(ValueError, split_netstring, a, 2, required_trailer=b"")
         bottom = split_netstring(a, 2)
-        self.failUnlessEqual(bottom, ([b"hello", b"world"], len(netstring(b"hello")+netstring(b"world"))))
+        self.failUnlessEqual(
+            bottom,
+            ([b"hello", b"world"], len(netstring(b"hello") + netstring(b"world"))),
+        )

@@ -65,8 +65,7 @@ def create_introducer_webish(reactor, port_assigner, basedir):
     with open(join(basedir, "tahoe.cfg"), "w") as f:
         f.write(
             "[node]\n"
-            "tub.location = 127.0.0.1:1\n" +
-            "web.port = {}\n".format(port_endpoint)
+            "tub.location = 127.0.0.1:1\n" + "web.port = {}\n".format(port_endpoint)
         )
 
     intro_node = yield create_introducer(basedir)
@@ -82,6 +81,7 @@ class IntroducerWeb(unittest.TestCase):
     """
     Tests for web-facing functionality of an introducer node.
     """
+
     def setUp(self):
         self.node = None
         self.port_assigner = SameProcessStreamEndpointAssigner()
@@ -102,11 +102,11 @@ class IntroducerWeb(unittest.TestCase):
 
         url = "http://localhost:%d/" % (ws.getPortnum(),)
         res = yield do_http("get", url)
-        soup = BeautifulSoup(res, 'html5lib')
-        assert_soup_has_text(self, soup, u'Welcome to the Tahoe-LAFS Introducer')
+        soup = BeautifulSoup(res, "html5lib")
+        assert_soup_has_text(self, soup, u"Welcome to the Tahoe-LAFS Introducer")
         assert_soup_has_favicon(self, soup)
-        assert_soup_has_text(self, soup, u'Page rendered at')
-        assert_soup_has_text(self, soup, u'Tahoe-LAFS code imported from:')
+        assert_soup_has_text(self, soup, u"Page rendered at")
+        assert_soup_has_text(self, soup, u"Tahoe-LAFS code imported from:")
 
     @defer.inlineCallbacks
     def test_basic_information(self):
@@ -123,7 +123,7 @@ class IntroducerWeb(unittest.TestCase):
 
         url = "http://localhost:%d/" % (ws.getPortnum(),)
         res = yield do_http("get", url)
-        soup = BeautifulSoup(res, 'html5lib')
+        soup = BeautifulSoup(res, "html5lib")
         assert_soup_has_text(
             self,
             soup,
@@ -179,6 +179,7 @@ class IntroducerRootTests(unittest.TestCase):
     """
     Tests for ``IntroducerRoot``.
     """
+
     def test_json(self):
         """
         The JSON response includes totals for the number of subscriptions and

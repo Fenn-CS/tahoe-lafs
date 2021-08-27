@@ -47,7 +47,6 @@ class RIDummy(RemoteInterface):
         """
 
 
-
 @implementer(IFoolscapStoragePlugin)
 @attr.s
 class DummyStorage(object):
@@ -99,7 +98,9 @@ class GetCounter(Resource, object):
 
     :ivar int value: The number of ``GET`` requests rendered so far.
     """
+
     value = 0
+
     def render_GET(self, request):
         self.value += 1
         return native_str_to_bytes(dumps({"value": self.value}))

@@ -1,21 +1,25 @@
 from __future__ import print_function
 
 import os, time
-from allmydata.scripts.common import get_alias, DEFAULT_ALIAS, escape_path, \
-                                     UnknownAliasError
+from allmydata.scripts.common import (
+    get_alias,
+    DEFAULT_ALIAS,
+    escape_path,
+    UnknownAliasError,
+)
 from allmydata.scripts.common_http import do_http, format_http_error
 from allmydata.util import base32
 from allmydata.util.encodingutil import quote_output, is_printable_ascii
 import urllib
 import json
 
-class SlowOperationRunner(object):
 
+class SlowOperationRunner(object):
     def run(self, options):
         stderr = options.stderr
         self.options = options
         self.ophandle = ophandle = base32.b2a(os.urandom(16))
-        nodeurl = options['node-url']
+        nodeurl = options["node-url"]
         if not nodeurl.endswith("/"):
             nodeurl += "/"
         self.nodeurl = nodeurl
@@ -25,8 +29,8 @@ class SlowOperationRunner(object):
         except UnknownAliasError as e:
             e.display(stderr)
             return 1
-        if path == '/':
-            path = ''
+        if path == "/":
+            path = ""
         url = nodeurl + "uri/%s" % urllib.quote(rootcap)
         if path:
             url += "/" + escape_path(path)
@@ -44,7 +48,7 @@ class SlowOperationRunner(object):
         return self.wait_for_results()
 
     def poll_times(self):
-        for i in (1,5,10,30,60,90):
+        for i in (1, 5, 10, 30, 60, 90):
             yield i
         i = 120
         while True:
@@ -77,8 +81,11 @@ class SlowOperationRunner(object):
             if is_printable_ascii(jdata):
                 print(jdata, file=stdout)
             else:
-                print("The JSON response contained unprintable characters:\n%s" % quote_output(jdata), file=stderr)
+                print(
+                    "The JSON response contained unprintable characters:\n%s"
+                    % quote_output(jdata),
+                    file=stderr,
+                )
             return True
         self.write_results(data)
         return True
-

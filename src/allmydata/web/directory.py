@@ -1,4 +1,3 @@
-
 import json
 import urllib
 from datetime import timedelta
@@ -32,9 +31,18 @@ from allmydata.uri import (
     WriteableSSKFileURI,
     ReadonlySSKFileURI,
 )
-from allmydata.interfaces import IDirectoryNode, IFileNode, IFilesystemNode, \
-     IImmutableFileNode, IMutableFileNode, ExistingChildError, \
-     NoSuchChildError, EmptyPathnameComponentError, SDMF_VERSION, MDMF_VERSION
+from allmydata.interfaces import (
+    IDirectoryNode,
+    IFileNode,
+    IFilesystemNode,
+    IImmutableFileNode,
+    IMutableFileNode,
+    ExistingChildError,
+    NoSuchChildError,
+    EmptyPathnameComponentError,
+    SDMF_VERSION,
+    MDMF_VERSION,
+)
 from allmydata.blacklist import ProhibitedNode
 from allmydata.monitor import Monitor, OperationCancelledError
 from allmydata import dirnode
@@ -60,15 +68,24 @@ from allmydata.web.common import (
     render_exception,
     handle_when_done,
 )
-from allmydata.web.filenode import ReplaceMeMixin, \
-     FileNodeHandler, PlaceHolderNodeHandler
-from allmydata.web.check_results import CheckResultsRenderer, \
-     CheckAndRepairResultsRenderer, DeepCheckResultsRenderer, \
-     DeepCheckAndRepairResultsRenderer, LiteralCheckResultsRenderer
+from allmydata.web.filenode import (
+    ReplaceMeMixin,
+    FileNodeHandler,
+    PlaceHolderNodeHandler,
+)
+from allmydata.web.check_results import (
+    CheckResultsRenderer,
+    CheckAndRepairResultsRenderer,
+    DeepCheckResultsRenderer,
+    DeepCheckAndRepairResultsRenderer,
+    LiteralCheckResultsRenderer,
+)
 from allmydata.web.info import MoreInfo
 from allmydata.web.operations import ReloadMixin
-from allmydata.web.check_results import json_check_results, \
-     json_check_and_repair_results
+from allmydata.web.check_results import (
+    json_check_results,
+    json_check_and_repair_results,
+)
 
 
 class BlockingFileError(Exception):
@@ -88,7 +105,6 @@ def make_handler_for(node, client, parentnode=None, name=None):
 
 
 class DirectoryNodeHandler(ReplaceMeMixin, Resource, object):
-
     def __init__(self, client, node, parentnode=None, name=None):
         super(DirectoryNodeHandler, self).__init__()
         self.client = client
@@ -108,8 +124,8 @@ class DirectoryNodeHandler(ReplaceMeMixin, Resource, object):
         # "/uri/URI%3ADIR2%3Aj...vq/" (that is, with a trailing slash
         # or no further children) renders "this" page.  We also need
         # to reject "/uri/URI:DIR2:..//", so we look at postpath.
-        name = name.decode('utf8')
-        if not name and req.postpath != ['']:
+        name = name.decode("utf8")
+        if not name and req.postpath != [""]:
             return self
 
         # Rejecting URIs that contain empty path pieces (for example:
@@ -132,8 +148,8 @@ class DirectoryNodeHandler(ReplaceMeMixin, Resource, object):
         the rest of the work of the Twisted API getChild(): returning
         a suitable child resource to Twisted Web.
         """
-        terminal = (req.prepath + req.postpath)[-1].decode('utf8') == name
-        nonterminal = not terminal  #len(req.postpath) > 0
+        terminal = (req.prepath + req.postpath)[-1].decode("utf8") == name
+        nonterminal = not terminal  # len(req.postpath) > 0
 
         t = get_arg(req, "t", "").strip()
         if isinstance(node_or_failure, Failure):
@@ -144,8 +160,7 @@ class DirectoryNodeHandler(ReplaceMeMixin, Resource, object):
                 if should_create_intermediate_directories(req):
                     # create intermediate directories
                     d = self.node.create_subdirectory(name)
-                    d.addCallback(make_handler_for,
-                                  self.client, self.node, name)
+                    d.addCallback(make_handler_for, self.client, self.node, name)
                     return d
             else:
                 # terminal node
@@ -153,7 +168,7 @@ class DirectoryNodeHandler(ReplaceMeMixin, Resource, object):
                     ("POST", "mkdir"),
                     ("PUT", "mkdir"),
                     ("POST", "mkdir-with-children"),
-                    ("POST", "mkdir-immutable")
+                    ("POST", "mkdir-immutable"),
                 )
                 if (req.method, t) in terminal_requests:
                     # final directory
@@ -172,18 +187,21 @@ class DirectoryNodeHandler(ReplaceMeMixin, Resource, object):
                         mutable = False
 
                     d = self.node.create_subdirectory(
-                        name, kids,
+                        name,
+                        kids,
                         mutable=mutable,
                         mutable_version=mt,
                     )
                     d.addCallback(
                         make_handler_for,
-                        self.client, self.node, name,
+                        self.client,
+                        self.node,
+                        name,
                     )
                     return d
                 leaf_requests = (
-                    ("PUT",""),
-                    ("PUT","uri"),
+                    ("PUT", ""),
+                    ("PUT", "uri"),
                 )
                 if (req.method, t) in leaf_requests:
                     # we were trying to find the leaf filenode (to put a new
@@ -202,7 +220,8 @@ class DirectoryNodeHandler(ReplaceMeMixin, Resource, object):
                 # file in the way.
                 return ErrorPage(
                     http.CONFLICT,
-                    "Unable to create directory %s: a file was in the way" % quote_output(name),
+                    "Unable to create directory %s: a file was in the way"
+                    % quote_output(name),
                     "no details",
                 )
         return make_handler_for(node, self.client, self.node, name)
@@ -221,10 +240,10 @@ class DirectoryNodeHandler(ReplaceMeMixin, Resource, object):
 
         # t=info contains variable ophandles, t=rename-form contains the name
         # of the child being renamed. Neither is allowed an ETag.
-        FIXED_OUTPUT_TYPES =  ["", "json", "uri", "readonly-uri"]
+        FIXED_OUTPUT_TYPES = ["", "json", "uri", "readonly-uri"]
         if not self.node.is_mutable() and t in FIXED_OUTPUT_TYPES:
             si = self.node.get_storage_index()
-            if si and req.setETag('DIR:%s-%s' % (base32.b2a(si), t or "")):
+            if si and req.setETag("DIR:%s-%s" % (base32.b2a(si), t or "")):
                 return ""
 
         if not t:
@@ -234,7 +253,7 @@ class DirectoryNodeHandler(ReplaceMeMixin, Resource, object):
                 DirectoryAsHTML(
                     self.node,
                     self.client.mutable_file_default,
-                )
+                ),
             )
 
         if t == "json":
@@ -245,7 +264,7 @@ class DirectoryNodeHandler(ReplaceMeMixin, Resource, object):
             return _directory_uri(req, self.node)
         if t == "readonly-uri":
             return _directory_readonly_uri(req, self.node)
-        if t == 'rename-form':
+        if t == "rename-form":
             return renderElement(
                 req,
                 RenameForm(self.node),
@@ -261,7 +280,7 @@ class DirectoryNodeHandler(ReplaceMeMixin, Resource, object):
         if t == "mkdir":
             # our job was done by the traversal/create-intermediate-directory
             # process that got us here.
-            return text_plain(self.node.get_uri(), req) # TODO: urlencode
+            return text_plain(self.node.get_uri(), req)  # TODO: urlencode
         if t == "uri":
             if not replace:
                 # they're trying to set_uri and that name is already occupied
@@ -284,7 +303,7 @@ class DirectoryNodeHandler(ReplaceMeMixin, Resource, object):
         elif t == "mkdir-immutable":
             d = self._POST_mkdir_immutable(req)
         elif t == "upload":
-            d = self._POST_upload(req) # this one needs the context
+            d = self._POST_upload(req)  # this one needs the context
         elif t == "uri":
             d = self._POST_uri(req)
         elif t == "delete" or t == "unlink":
@@ -319,14 +338,15 @@ class DirectoryNodeHandler(ReplaceMeMixin, Resource, object):
         if not name:
             # our job is done, it was handled by the code in got_child
             # which created the final directory (i.e. us)
-            return defer.succeed(self.node.get_uri()) # TODO: urlencode
+            return defer.succeed(self.node.get_uri())  # TODO: urlencode
         name = name.decode("utf-8")
         replace = boolean_of_arg(get_arg(req, "replace", "true"))
         kids = {}
         mt = get_mutable_type(get_format(req, None))
-        d = self.node.create_subdirectory(name, kids, overwrite=replace,
-                                          mutable_version=mt)
-        d.addCallback(lambda child: child.get_uri()) # TODO: urlencode
+        d = self.node.create_subdirectory(
+            name, kids, overwrite=replace, mutable_version=mt
+        )
+        d.addCallback(lambda child: child.get_uri())  # TODO: urlencode
         return d
 
     def _POST_mkdir_with_children(self, req):
@@ -334,17 +354,18 @@ class DirectoryNodeHandler(ReplaceMeMixin, Resource, object):
         if not name:
             # our job is done, it was handled by the code in got_child
             # which created the final directory (i.e. us)
-            return defer.succeed(self.node.get_uri()) # TODO: urlencode
+            return defer.succeed(self.node.get_uri())  # TODO: urlencode
         name = name.decode("utf-8")
         # TODO: decide on replace= behavior, see #903
-        #replace = boolean_of_arg(get_arg(req, "replace", "false"))
+        # replace = boolean_of_arg(get_arg(req, "replace", "false"))
         req.content.seek(0)
         kids_json = req.content.read()
         kids = convert_children_json(self.client.nodemaker, kids_json)
         mt = get_mutable_type(get_format(req, None))
-        d = self.node.create_subdirectory(name, kids, overwrite=False,
-                                          mutable_version=mt)
-        d.addCallback(lambda child: child.get_uri()) # TODO: urlencode
+        d = self.node.create_subdirectory(
+            name, kids, overwrite=False, mutable_version=mt
+        )
+        d.addCallback(lambda child: child.get_uri())  # TODO: urlencode
         return d
 
     def _POST_mkdir_immutable(self, req):
@@ -352,15 +373,15 @@ class DirectoryNodeHandler(ReplaceMeMixin, Resource, object):
         if not name:
             # our job is done, it was handled by the code in got_child
             # which created the final directory (i.e. us)
-            return defer.succeed(self.node.get_uri()) # TODO: urlencode
+            return defer.succeed(self.node.get_uri())  # TODO: urlencode
         name = name.decode("utf-8")
         # TODO: decide on replace= behavior, see #903
-        #replace = boolean_of_arg(get_arg(req, "replace", "false"))
+        # replace = boolean_of_arg(get_arg(req, "replace", "false"))
         req.content.seek(0)
         kids_json = req.content.read()
         kids = convert_children_json(self.client.nodemaker, kids_json)
         d = self.node.create_subdirectory(name, kids, overwrite=False, mutable=False)
-        d.addCallback(lambda child: child.get_uri()) # TODO: urlencode
+        d.addCallback(lambda child: child.get_uri())  # TODO: urlencode
         return d
 
     def _POST_upload(self, req):
@@ -386,6 +407,7 @@ class DirectoryNodeHandler(ReplaceMeMixin, Resource, object):
         # them, though, so we don't do: d = self.childFactory(req, name)
 
         d = self.node.get(name)
+
         def _maybe_got_node(node_or_failure):
             if isinstance(node_or_failure, Failure):
                 f = node_or_failure
@@ -395,6 +417,7 @@ class DirectoryNodeHandler(ReplaceMeMixin, Resource, object):
             else:
                 node = node_or_failure
                 return make_handler_for(node, self.client, self.node, name)
+
         d.addBoth(_maybe_got_node)
         # now we have a placeholder or a filenodehandler, and we can just
         # delegate to it. We could return the resource back out of
@@ -403,6 +426,7 @@ class DirectoryNodeHandler(ReplaceMeMixin, Resource, object):
         def render_child(child):
             req.dont_apply_extra_processing = True
             return child.render(req)
+
         d.addCallback(render_child)
         return d
 
@@ -436,7 +460,7 @@ class DirectoryNodeHandler(ReplaceMeMixin, Resource, object):
             # a slightly confusing error message if someone does a POST
             # without a name= field. For our own HTML this isn't a big
             # deal, because we create the 'unlink' POST buttons ourselves.
-            name = ''
+            name = ""
         charset = get_arg(req, "_charset", "utf-8")
         name = name.decode(charset)
         d = self.node.delete(name)
@@ -475,11 +499,9 @@ class DirectoryNodeHandler(ReplaceMeMixin, Resource, object):
         # Disallow slashes in both from_name and to_name, that would only
         # cause confusion.
         if "/" in from_name:
-            raise WebError("from_name= may not contain a slash",
-                           http.BAD_REQUEST)
+            raise WebError("from_name= may not contain a slash", http.BAD_REQUEST)
         if "/" in to_name:
-            raise WebError("to_name= may not contain a slash",
-                           http.BAD_REQUEST)
+            raise WebError("to_name= may not contain a slash", http.BAD_REQUEST)
 
         to_dir = get_arg(req, "to_dir")
         if to_dir is not None and to_dir != self.node.get_write_uri():
@@ -498,8 +520,8 @@ class DirectoryNodeHandler(ReplaceMeMixin, Resource, object):
             if not IDirectoryNode.providedBy(new_parent):
                 raise WebError("to_dir is not a directory", http.BAD_REQUEST)
 
-            return self.node.move_child_to(from_name, new_parent,
-                                           to_name, replace)
+            return self.node.move_child_to(from_name, new_parent, to_name, replace)
+
         d.addCallback(_got_new_parent)
         d.addCallback(lambda res: "thing moved")
         return d
@@ -551,20 +573,28 @@ class DirectoryNodeHandler(ReplaceMeMixin, Resource, object):
         # register to hear stopProducing. The walker ignores pauseProducing.
         req.registerProducer(walker, True)
         d = monitor.when_done()
+
         def _done(res):
             req.unregisterProducer()
             return res
+
         d.addBoth(_done)
+
         def _cancelled(f):
             f.trap(OperationCancelledError)
             return "Operation Cancelled"
+
         d.addErrback(_cancelled)
+
         def _error(f):
             # signal the error as a non-JSON "ERROR:" line, plus exception
-            msg = "ERROR: %s(%s)\n" % (f.value.__class__.__name__,
-                                       ", ".join([str(a) for a in f.value.args]))
+            msg = "ERROR: %s(%s)\n" % (
+                f.value.__class__.__name__,
+                ", ".join([str(a) for a in f.value.args]),
+            )
             msg += str(f)
             return msg
+
         d.addErrback(_error)
         return d
 
@@ -596,20 +626,28 @@ class DirectoryNodeHandler(ReplaceMeMixin, Resource, object):
         # register to hear stopProducing. The walker ignores pauseProducing.
         req.registerProducer(walker, True)
         d = monitor.when_done()
+
         def _done(res):
             req.unregisterProducer()
             return res
+
         d.addBoth(_done)
+
         def _cancelled(f):
             f.trap(OperationCancelledError)
             return "Operation Cancelled"
+
         d.addErrback(_cancelled)
+
         def _error(f):
             # signal the error as a non-JSON "ERROR:" line, plus exception
-            msg = "ERROR: %s(%s)\n" % (f.value.__class__.__name__,
-                                       ", ".join([str(a) for a in f.value.args]))
+            msg = "ERROR: %s(%s)\n" % (
+                f.value.__class__.__name__,
+                ", ".join([str(a) for a in f.value.args]),
+            )
             msg += str(f)
             return msg
+
         d.addErrback(_error)
         return d
 
@@ -625,24 +663,27 @@ class DirectoryNodeHandler(ReplaceMeMixin, Resource, object):
             raise
         cs = {}
         for name, (file_or_dir, mddict) in children.iteritems():
-            name = unicode(name) # json returns str *or* unicode
-            writecap = mddict.get('rw_uri')
+            name = unicode(name)  # json returns str *or* unicode
+            writecap = mddict.get("rw_uri")
             if writecap is not None:
                 writecap = str(writecap)
-            readcap = mddict.get('ro_uri')
+            readcap = mddict.get("ro_uri")
             if readcap is not None:
                 readcap = str(readcap)
-            cs[name] = (writecap, readcap, mddict.get('metadata'))
+            cs[name] = (writecap, readcap, mddict.get("metadata"))
         d = self.node.set_children(cs, replace)
         d.addCallback(lambda res: "Okay so I did it.")
         # TODO: results
         return d
 
+
 def abbreviated_dirnode(dirnode):
     u = from_string_dirnode(dirnode.get_uri())
     return u.abbrev_si()
 
-SPACE = u"\u00A0"*2
+
+SPACE = u"\u00A0" * 2
+
 
 class DirectoryAsHTML(Element):
     # The remainder of this class is to render the directory into
@@ -692,7 +733,7 @@ class DirectoryAsHTML(Element):
             [
                 self._child_slots(req, fname, data[0], data[1])
                 for fname, data in self.dirnode_children.items()
-            ]
+            ],
         )
 
     @renderer
@@ -754,7 +795,7 @@ class DirectoryAsHTML(Element):
             called by the 'children' renderer)
         """
         name = name.encode("utf-8")
-        nameurl = urllib.quote(name, safe="") # encode any slashes too
+        nameurl = urllib.quote(name, safe="")  # encode any slashes too
 
         root = get_root(req)
         here = "{}/uri/{}/".format(root, urllib.quote(self.node.get_uri()))
@@ -767,21 +808,30 @@ class DirectoryAsHTML(Element):
             # browser back to this directory
             unlink = tags.form(
                 [
-                    tags.input(type='hidden', name='t', value='unlink'),
-                    tags.input(type='hidden', name='name', value=name),
-                    tags.input(type='hidden', name='when_done', value="."),
-                    tags.input(type='submit', class_='btn', value='unlink', name="unlink"),
+                    tags.input(type="hidden", name="t", value="unlink"),
+                    tags.input(type="hidden", name="name", value=name),
+                    tags.input(type="hidden", name="when_done", value="."),
+                    tags.input(
+                        type="submit", class_="btn", value="unlink", name="unlink"
+                    ),
                 ],
-                action=here, method="post"
+                action=here,
+                method="post",
             )
             rename = tags.form(
                 [
-                    tags.input(type='hidden', name='t', value='rename-form'),
-                    tags.input(type='hidden', name='name', value=name),
-                    tags.input(type='hidden', name='when_done', value="."),
-                    tags.input(type='submit', class_='btn', value='rename/relink', name="rename"),
+                    tags.input(type="hidden", name="t", value="rename-form"),
+                    tags.input(type="hidden", name="name", value=name),
+                    tags.input(type="hidden", name="when_done", value="."),
+                    tags.input(
+                        type="submit",
+                        class_="btn",
+                        value="rename/relink",
+                        name="rename",
+                    ),
                 ],
-                action=here, method="get",
+                action=here,
+                method="get",
             )
 
         slots = {
@@ -790,7 +840,7 @@ class DirectoryAsHTML(Element):
         }
 
         times = []
-        linkcrtime = metadata.get('tahoe', {}).get("linkcrtime")
+        linkcrtime = metadata.get("tahoe", {}).get("linkcrtime")
         if linkcrtime is not None:
             times.append("lcr: " + render_time(linkcrtime))
         else:
@@ -798,7 +848,7 @@ class DirectoryAsHTML(Element):
             if "ctime" in metadata:
                 ctime = render_time(metadata["ctime"])
                 times.append("c: " + ctime)
-        linkmotime = metadata.get('tahoe', {}).get("linkmotime")
+        linkmotime = metadata.get("tahoe", {}).get("linkmotime")
         if linkmotime is not None:
             if times:
                 times.append(tags.br())
@@ -814,7 +864,7 @@ class DirectoryAsHTML(Element):
 
         assert IFilesystemNode.providedBy(target), target
         target_uri = target.get_uri() or ""
-        quoted_uri = urllib.quote(target_uri, safe="") # escape slashes too
+        quoted_uri = urllib.quote(target_uri, safe="")  # escape slashes too
 
         if IMutableFileNode.providedBy(target):
             # to prevent javascript in displayed .html files from stealing a
@@ -896,40 +946,56 @@ class DirectoryAsHTML(Element):
             return tags.div("No upload forms: directory is unreadable")
 
         mkdir_sdmf = tags.input(
-            type='radio',
-            name='format',
-            value='sdmf',
-            id='mkdir-sdmf',
-            checked='checked',
+            type="radio",
+            name="format",
+            value="sdmf",
+            id="mkdir-sdmf",
+            checked="checked",
         )
         mkdir_mdmf = tags.input(
-            type='radio',
-            name='format',
-            value='mdmf',
-            id='mkdir-mdmf',
+            type="radio",
+            name="format",
+            value="mdmf",
+            id="mkdir-mdmf",
         )
 
         mkdir_form = tags.form(
             [
-                tags.fieldset([
-                    tags.input(type="hidden", name="t", value="mkdir"),
-                    tags.input(type="hidden", name="when_done", value="."),
-                    tags.legend("Create a new directory in this directory", class_="freeform-form-label"),
-                    "New directory name:"+SPACE, tags.br,
-                    tags.input(type="text", name="name"), SPACE,
-                    tags.div(
-                        [
-                            mkdir_sdmf, tags.label(SPACE, "SDMF", for_='mutable-directory-sdmf'), SPACE*2,
-                            mkdir_mdmf, tags.label(SPACE, "MDMF (experimental)", for_='mutable-directory-mdmf'),
-                        ],
-                        class_="form-inline",
-                    ),
-                    tags.input(
-                        type="submit",
-                        class_="btn",
-                        value="Create",
-                    ),
-                ])
+                tags.fieldset(
+                    [
+                        tags.input(type="hidden", name="t", value="mkdir"),
+                        tags.input(type="hidden", name="when_done", value="."),
+                        tags.legend(
+                            "Create a new directory in this directory",
+                            class_="freeform-form-label",
+                        ),
+                        "New directory name:" + SPACE,
+                        tags.br,
+                        tags.input(type="text", name="name"),
+                        SPACE,
+                        tags.div(
+                            [
+                                mkdir_sdmf,
+                                tags.label(
+                                    SPACE, "SDMF", for_="mutable-directory-sdmf"
+                                ),
+                                SPACE * 2,
+                                mkdir_mdmf,
+                                tags.label(
+                                    SPACE,
+                                    "MDMF (experimental)",
+                                    for_="mutable-directory-mdmf",
+                                ),
+                            ],
+                            class_="form-inline",
+                        ),
+                        tags.input(
+                            type="submit",
+                            class_="btn",
+                            value="Create",
+                        ),
+                    ]
+                )
             ],
             action=here,
             method="post",
@@ -938,39 +1004,55 @@ class DirectoryAsHTML(Element):
         forms.append(tags.div(mkdir_form, class_="freeform-form"))
 
         upload_chk = tags.input(
-            type='radio',
-            name='format',
-            value='chk',
-            id='upload-chk',
-            checked='checked',
+            type="radio",
+            name="format",
+            value="chk",
+            id="upload-chk",
+            checked="checked",
         )
         upload_sdmf = tags.input(
-            type='radio',
-            name='format',
-            value='sdmf',
-            id='upload-sdmf',
+            type="radio",
+            name="format",
+            value="sdmf",
+            id="upload-sdmf",
         )
         upload_mdmf = tags.input(
-            type='radio',
-            name='format',
-            value='mdmf',
-            id='upload-mdmf',
+            type="radio",
+            name="format",
+            value="mdmf",
+            id="upload-mdmf",
         )
 
         upload_form = tags.form(
-            tags.fieldset([
-                tags.input(type="hidden", name="t", value="upload"),
-                tags.input(type="hidden", name="when_done", value=req.uri),
-                tags.legend("Upload a file to this directory", class_="freeform-form-label"),
-                "Choose a file to upload:"+SPACE,
-                tags.input(type="file", name="file", class_="freeform-input-file"), SPACE,
-                tags.div([
-                    upload_chk,  tags.label(SPACE, "Immutable", for_="upload-chk"), SPACE*2,
-                    upload_sdmf, tags.label(SPACE, "SDMF", for_="upload-sdmf"), SPACE*2,
-                    upload_mdmf, tags.label(SPACE, "MDMF (experimental)", for_="upload-mdmf"),
-                ], class_="form-inline"),
-                tags.input(type="submit", class_="btn", value="Upload"),             SPACE*2,
-            ]),
+            tags.fieldset(
+                [
+                    tags.input(type="hidden", name="t", value="upload"),
+                    tags.input(type="hidden", name="when_done", value=req.uri),
+                    tags.legend(
+                        "Upload a file to this directory", class_="freeform-form-label"
+                    ),
+                    "Choose a file to upload:" + SPACE,
+                    tags.input(type="file", name="file", class_="freeform-input-file"),
+                    SPACE,
+                    tags.div(
+                        [
+                            upload_chk,
+                            tags.label(SPACE, "Immutable", for_="upload-chk"),
+                            SPACE * 2,
+                            upload_sdmf,
+                            tags.label(SPACE, "SDMF", for_="upload-sdmf"),
+                            SPACE * 2,
+                            upload_mdmf,
+                            tags.label(
+                                SPACE, "MDMF (experimental)", for_="upload-mdmf"
+                            ),
+                        ],
+                        class_="form-inline",
+                    ),
+                    tags.input(type="submit", class_="btn", value="Upload"),
+                    SPACE * 2,
+                ]
+            ),
             action=req.uri,
             method="post",
             enctype="multipart/form-data",
@@ -979,16 +1061,25 @@ class DirectoryAsHTML(Element):
 
         attach_form = tags.form(
             tags.fieldset(
-                tags.div([
-                    tags.input(type="hidden", name="t", value="uri"),
-                    tags.input(type="hidden", name="when_done", value="."),
-                    tags.legend("Add a link to a file or directory which is already in Tahoe-LAFS.", class_="freeform-form-label"),
-                    "New child name:"+SPACE,
-                    tags.input(type="text", name="name"), SPACE*2, tags.br,
-                    "URI of new child:"+SPACE,
-                    tags.input(type="text", name="uri"), SPACE,
-                    tags.input(type="submit", class_="btn", value="Attach"),
-                    ], class_="form-inline"),
+                tags.div(
+                    [
+                        tags.input(type="hidden", name="t", value="uri"),
+                        tags.input(type="hidden", name="when_done", value="."),
+                        tags.legend(
+                            "Add a link to a file or directory which is already in Tahoe-LAFS.",
+                            class_="freeform-form-label",
+                        ),
+                        "New child name:" + SPACE,
+                        tags.input(type="text", name="name"),
+                        SPACE * 2,
+                        tags.br,
+                        "URI of new child:" + SPACE,
+                        tags.input(type="text", name="uri"),
+                        SPACE,
+                        tags.input(type="submit", class_="btn", value="Attach"),
+                    ],
+                    class_="form-inline",
+                ),
             ),
             action=here,
             method="post",
@@ -1001,8 +1092,10 @@ class DirectoryAsHTML(Element):
     def results(self, req, tag):
         return get_arg(req, "results", "")
 
+
 def _directory_json_metadata(req, dirnode):
     d = dirnode.list()
+
     def _got(children):
         kids = {}
         for name, (childnode, metadata) in children.iteritems():
@@ -1012,7 +1105,7 @@ def _directory_json_metadata(req, dirnode):
             if IFileNode.providedBy(childnode):
                 kiddata = ("filenode", get_filenode_metadata(childnode))
             elif IDirectoryNode.providedBy(childnode):
-                kiddata = ("dirnode", {'mutable': childnode.is_mutable()})
+                kiddata = ("dirnode", {"mutable": childnode.is_mutable()})
             else:
                 kiddata = ("unknown", {})
 
@@ -1023,32 +1116,36 @@ def _directory_json_metadata(req, dirnode):
                 kiddata[1]["ro_uri"] = ro_uri
             verifycap = childnode.get_verify_cap()
             if verifycap:
-                kiddata[1]['verify_uri'] = verifycap.to_string()
+                kiddata[1]["verify_uri"] = verifycap.to_string()
 
             kids[name] = kiddata
 
         drw_uri = dirnode.get_write_uri()
         dro_uri = dirnode.get_readonly_uri()
-        contents = { 'children': kids }
+        contents = {"children": kids}
         if dro_uri:
-            contents['ro_uri'] = dro_uri
+            contents["ro_uri"] = dro_uri
         if drw_uri:
-            contents['rw_uri'] = drw_uri
+            contents["rw_uri"] = drw_uri
         verifycap = dirnode.get_verify_cap()
         if verifycap:
-            contents['verify_uri'] = verifycap.to_string()
-        contents['mutable'] = dirnode.is_mutable()
+            contents["verify_uri"] = verifycap.to_string()
+        contents["mutable"] = dirnode.is_mutable()
         data = ("dirnode", contents)
         return json.dumps(data, indent=1) + "\n"
+
     d.addCallback(_got)
     d.addCallback(text_plain, req)
 
     def error(f):
         message, code = humanize_failure(f)
         req.setResponseCode(code)
-        return json.dumps({
-            "error": message,
-        })
+        return json.dumps(
+            {
+                "error": message,
+            }
+        )
+
     d.addErrback(error)
     return d
 
@@ -1056,8 +1153,10 @@ def _directory_json_metadata(req, dirnode):
 def _directory_uri(req, dirnode):
     return text_plain(dirnode.get_uri(), req)
 
+
 def _directory_readonly_uri(req, dirnode):
     return text_plain(dirnode.get_readonly_uri(), req)
+
 
 class RenameForm(Element, object):
 
@@ -1074,8 +1173,7 @@ class RenameForm(Element, object):
     @renderer
     def header(self, req, tag):
         header = [
-            "Rename "
-            "in directory SI=%s" % abbreviated_dirnode(self.original),
+            "Rename " "in directory SI=%s" % abbreviated_dirnode(self.original),
         ]
 
         if self.original.is_readonly():
@@ -1090,7 +1188,7 @@ class RenameForm(Element, object):
     @renderer
     def get_name(self, req, tag):
         name = get_arg(req, "name", "")
-        tag.attributes['value'] = name
+        tag.attributes["value"] = name
         return tag
 
 
@@ -1100,6 +1198,7 @@ class ReloadableMonitorElement(Element):
     provides renderers for "reload" and "refesh" and a self.monitor
     attribute (which is an instance of IMonitor)
     """
+
     refresh_time = timedelta(seconds=60)
 
     def __init__(self, monitor):
@@ -1128,14 +1227,18 @@ class ReloadableMonitorElement(Element):
             enctype=u"multipart/form-data",
         )
 
-        return tag([
-            u"Operation still running: ",
-            tags.a(
-                u"Reload",
-                href=reload_url.replace(query={u"output": u"html"}).to_uri().to_text(),
-            ),
-            cancel_button,
-        ])
+        return tag(
+            [
+                u"Operation still running: ",
+                tags.a(
+                    u"Reload",
+                    href=reload_url.replace(query={u"output": u"html"})
+                    .to_uri()
+                    .to_text(),
+                ),
+                cancel_button,
+            ]
+        )
 
 
 def _slashify_path(path):
@@ -1190,15 +1293,11 @@ class ManifestElement(ReloadableMonitorElement):
 
     @renderer
     def title(self, req, tag):
-        return tag(
-            "Manifest of SI={}".format(self._si_abbrev())
-        )
+        return tag("Manifest of SI={}".format(self._si_abbrev()))
 
     @renderer
     def header(self, req, tag):
-        return tag(
-            "Manifest of SI={}".format(self._si_abbrev())
-        )
+        return tag("Manifest of SI={}".format(self._si_abbrev()))
 
     @renderer
     def items(self, req, tag):
@@ -1225,10 +1324,7 @@ class ManifestResults(MultiFormatResource, ReloadMixin):
         self.monitor = monitor
 
     def render_HTML(self, req):
-        return renderElement(
-            req,
-            ManifestElement(self.monitor)
-        )
+        return renderElement(req, ManifestElement(self.monitor))
 
     def render_TEXT(self, req):
         req.setHeader("content-type", "text/plain")
@@ -1248,10 +1344,11 @@ class ManifestResults(MultiFormatResource, ReloadMixin):
             origin_base32 = base32.b2a(m.origin_si)
         else:
             origin_base32 = ""
-        status = { "stats": s["stats"],
-                   "finished": m.is_finished(),
-                   "origin": origin_base32,
-                   }
+        status = {
+            "stats": s["stats"],
+            "finished": m.is_finished(),
+            "origin": origin_base32,
+        }
         if m.is_finished():
             # don't return manifest/verifycaps/SIs unless the operation is
             # done, to save on CPU/memory (both here and in the HTTP client
@@ -1260,10 +1357,13 @@ class ManifestResults(MultiFormatResource, ReloadMixin):
             # requires about 503 bytes per item, and some internal overhead
             # (perhaps transport-layer buffers in twisted.web?) requires an
             # additional 1047 bytes per item.
-            status.update({ "manifest": s["manifest"],
-                            "verifycaps": [i for i in s["verifycaps"]],
-                            "storage-index": [i for i in s["storage-index"]],
-                            })
+            status.update(
+                {
+                    "manifest": s["manifest"],
+                    "verifycaps": [i for i in s["verifycaps"]],
+                    "storage-index": [i for i in s["storage-index"]],
+                }
+            )
             # simplejson doesn't know how to serialize a set. We use a
             # generator that walks the set rather than list(setofthing) to
             # save a small amount of memory (4B*len) and a moderate amount of
@@ -1286,18 +1386,22 @@ class DeepSizeResults(MultiFormatResource):
         output = "finished: " + {True: "yes", False: "no"}[is_finished] + "\n"
         if is_finished:
             stats = self.monitor.get_status()
-            total = (stats.get("size-immutable-files", 0)
-                     + stats.get("size-mutable-files", 0)
-                     + stats.get("size-directories", 0))
+            total = (
+                stats.get("size-immutable-files", 0)
+                + stats.get("size-mutable-files", 0)
+                + stats.get("size-directories", 0)
+            )
             output += "size: %d\n" % total
         return output
+
     render_TEXT = render_HTML
 
     def render_JSON(self, req):
         req.setHeader("content-type", "text/plain")
-        status = {"finished": self.monitor.is_finished(),
-                  "size": self.monitor.get_status(),
-                  }
+        status = {
+            "finished": self.monitor.is_finished(),
+            "size": self.monitor.get_status(),
+        }
         return json.dumps(status)
 
 
@@ -1306,6 +1410,7 @@ class DeepStatsResults(Resource, object):
     Renders the results of a 'deep-stats' operation on a directory
     capability.
     """
+
     def __init__(self, client, monitor):
         self.client = client
         self.monitor = monitor
@@ -1320,24 +1425,25 @@ class DeepStatsResults(Resource, object):
 
 @implementer(IPushProducer)
 class ManifestStreamer(dirnode.DeepStats):
-
     def __init__(self, req, origin):
         dirnode.DeepStats.__init__(self, origin)
         self.req = req
 
     def setMonitor(self, monitor):
         self.monitor = monitor
+
     def pauseProducing(self):
         pass
+
     def resumeProducing(self):
         pass
+
     def stopProducing(self):
         self.monitor.cancel()
 
     def add_node(self, node, path):
         dirnode.DeepStats.add_node(self, node, path)
-        d = {"path": path,
-             "cap": node.get_uri()}
+        d = {"path": path, "cap": node.get_uri()}
 
         if IDirectoryNode.providedBy(node):
             d["type"] = "directory"
@@ -1363,21 +1469,22 @@ class ManifestStreamer(dirnode.DeepStats):
 
         j = json.dumps(d, ensure_ascii=True)
         assert "\n" not in j
-        self.req.write(j+"\n")
+        self.req.write(j + "\n")
 
     def finish(self):
         stats = dirnode.DeepStats.get_results(self)
-        d = {"type": "stats",
-             "stats": stats,
-             }
+        d = {
+            "type": "stats",
+            "stats": stats,
+        }
         j = json.dumps(d, ensure_ascii=True)
         assert "\n" not in j
-        self.req.write(j+"\n")
+        self.req.write(j + "\n")
         return ""
+
 
 @implementer(IPushProducer)
 class DeepCheckStreamer(dirnode.DeepStats):
-
     def __init__(self, req, origin, verify, repair, add_lease):
         dirnode.DeepStats.__init__(self, origin)
         self.req = req
@@ -1387,17 +1494,19 @@ class DeepCheckStreamer(dirnode.DeepStats):
 
     def setMonitor(self, monitor):
         self.monitor = monitor
+
     def pauseProducing(self):
         pass
+
     def resumeProducing(self):
         pass
+
     def stopProducing(self):
         self.monitor.cancel()
 
     def add_node(self, node, path):
         dirnode.DeepStats.add_node(self, node, path)
-        data = {"path": path,
-                "cap": node.get_uri()}
+        data = {"path": path, "cap": node.get_uri()}
 
         if IDirectoryNode.providedBy(node):
             data["type"] = "directory"
@@ -1441,16 +1550,17 @@ class DeepCheckStreamer(dirnode.DeepStats):
     def write_line(self, data):
         j = json.dumps(data, ensure_ascii=True)
         assert "\n" not in j
-        self.req.write(j+"\n")
+        self.req.write(j + "\n")
 
     def finish(self):
         stats = dirnode.DeepStats.get_results(self)
-        d = {"type": "stats",
-             "stats": stats,
-             }
+        d = {
+            "type": "stats",
+            "stats": stats,
+        }
         j = json.dumps(d, ensure_ascii=True)
         assert "\n" not in j
-        self.req.write(j+"\n")
+        self.req.write(j + "\n")
         return ""
 
 
@@ -1468,30 +1578,39 @@ class UnknownNodeHandler(Resource, object):
         if t == "info":
             return MoreInfo(self.node)
         if t == "json":
-            is_parent_known_immutable = self.parentnode and not self.parentnode.is_mutable()
+            is_parent_known_immutable = (
+                self.parentnode and not self.parentnode.is_mutable()
+            )
             if self.parentnode and self.name:
                 d = self.parentnode.get_metadata_for(self.name)
             else:
                 d = defer.succeed(None)
-            d.addCallback(lambda md: UnknownJSONMetadata(req, self.node, md, is_parent_known_immutable))
+            d.addCallback(
+                lambda md: UnknownJSONMetadata(
+                    req, self.node, md, is_parent_known_immutable
+                )
+            )
             return d
-        raise WebError("GET unknown URI type: can only do t=info and t=json, not t=%s.\n"
-                       "Using a webapi server that supports a later version of Tahoe "
-                       "may help." % t)
+        raise WebError(
+            "GET unknown URI type: can only do t=info and t=json, not t=%s.\n"
+            "Using a webapi server that supports a later version of Tahoe "
+            "may help." % t
+        )
+
 
 def UnknownJSONMetadata(req, node, edge_metadata, is_parent_known_immutable):
     rw_uri = node.get_write_uri()
     ro_uri = node.get_readonly_uri()
     data = ("unknown", {})
     if ro_uri:
-        data[1]['ro_uri'] = ro_uri
+        data[1]["ro_uri"] = ro_uri
     if rw_uri:
-        data[1]['rw_uri'] = rw_uri
-        data[1]['mutable'] = True
+        data[1]["rw_uri"] = rw_uri
+        data[1]["mutable"] = True
     elif is_parent_known_immutable or node.is_alleged_immutable():
-        data[1]['mutable'] = False
+        data[1]["mutable"] = False
     # else we don't know whether it is mutable.
 
     if edge_metadata is not None:
-        data[1]['metadata'] = edge_metadata
+        data[1]["metadata"] = edge_metadata
     return text_plain(json.dumps(data, indent=1) + "\n", req)

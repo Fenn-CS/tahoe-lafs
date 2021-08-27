@@ -24,6 +24,7 @@ def get_pidfile(basedir):
     """
     return os.path.join(basedir, u"twistd.pid")
 
+
 def get_pid_from_pidfile(pidfile):
     """
     Tries to read and return the PID stored in the node's PID file
@@ -45,12 +46,13 @@ def get_pid_from_pidfile(pidfile):
 
     return pid
 
+
 def identify_node_type(basedir):
     """
     :return unicode: None or one of: 'client', 'introducer',
         'key-generator' or 'stats-gatherer'
     """
-    tac = u''
+    tac = u""
     try:
         for fn in listdir_unicode(basedir):
             if fn.endswith(u".tac"):
@@ -67,11 +69,15 @@ def identify_node_type(basedir):
 
 class RunOptions(BasedirOptions):
     optParameters = [
-        ("basedir", "C", None,
-         "Specify which Tahoe base directory should be used."
-         " This has the same effect as the global --node-directory option."
-         " [default: %s]" % quote_local_unicode_path(_default_nodedir)),
-        ]
+        (
+            "basedir",
+            "C",
+            None,
+            "Specify which Tahoe base directory should be used."
+            " This has the same effect as the global --node-directory option."
+            " [default: %s]" % quote_local_unicode_path(_default_nodedir),
+        ),
+    ]
 
     def parseArgs(self, basedir=None, *twistd_args):
         # This can't handle e.g. 'tahoe start --nodaemon', since '--nodaemon'
@@ -84,9 +90,10 @@ class RunOptions(BasedirOptions):
         self.twistd_args = twistd_args
 
     def getSynopsis(self):
-        return ("Usage:  %s [global-options] %s [options]"
-                " [NODEDIR [twistd-options]]"
-                % (self.command_name, self.subcommand_name))
+        return (
+            "Usage:  %s [global-options] %s [options]"
+            " [NODEDIR [twistd-options]]" % (self.command_name, self.subcommand_name)
+        )
 
     def getUsage(self, width=None):
         t = BasedirOptions.getUsage(self, width) + "\n"
@@ -114,6 +121,7 @@ class DaemonizeTheRealService(Service, HookMixin):
     - 'running': triggered when startup has completed; it triggers
         with None of successful or a Failure otherwise.
     """
+
     stderr = sys.stderr
 
     def __init__(self, nodetype, basedir, options):
@@ -127,15 +135,24 @@ class DaemonizeTheRealService(Service, HookMixin):
         self.stderr = options.parent.stderr
 
     def startService(self):
-
         def key_generator_removed():
             return fail(ValueError("key-generator support removed, see #2783"))
 
         def start():
             node_to_instance = {
-                u"client": lambda: maybeDeferred(namedAny("allmydata.client.create_client"), self.basedir),
-                u"introducer": lambda: maybeDeferred(namedAny("allmydata.introducer.server.create_introducer"), self.basedir),
-                u"stats-gatherer": lambda: maybeDeferred(namedAny("allmydata.stats.StatsGathererService"), read_config(self.basedir, None), self.basedir, verbose=True),
+                u"client": lambda: maybeDeferred(
+                    namedAny("allmydata.client.create_client"), self.basedir
+                ),
+                u"introducer": lambda: maybeDeferred(
+                    namedAny("allmydata.introducer.server.create_introducer"),
+                    self.basedir,
+                ),
+                u"stats-gatherer": lambda: maybeDeferred(
+                    namedAny("allmydata.stats.StatsGathererService"),
+                    read_config(self.basedir, None),
+                    self.basedir,
+                    verbose=True,
+                ),
                 u"key-generator": key_generator_removed,
             }
 
@@ -146,7 +163,9 @@ class DaemonizeTheRealService(Service, HookMixin):
 
             def handle_config_error(fail):
                 if fail.check(UnknownConfigError):
-                    self.stderr.write("\nConfiguration error:\n{}\n\n".format(fail.value))
+                    self.stderr.write(
+                        "\nConfiguration error:\n{}\n\n".format(fail.value)
+                    )
                 else:
                     self.stderr.write("\nUnknown error\n")
                     fail.printTraceback(self.stderr)
@@ -156,17 +175,20 @@ class DaemonizeTheRealService(Service, HookMixin):
 
             def created(srv):
                 srv.setServiceParent(self.parent)
+
             d.addCallback(created)
             d.addErrback(handle_config_error)
-            d.addBoth(self._call_hook, 'running')
+            d.addBoth(self._call_hook, "running")
             return d
 
         from twisted.internet import reactor
+
         reactor.callWhenRunning(start)
 
 
 class DaemonizeTahoeNodePlugin(object):
     tapname = "tahoenode"
+
     def __init__(self, nodetype, basedir):
         self.nodetype = nodetype
         self.basedir = basedir
@@ -185,7 +207,7 @@ def run(config):
     """
     out = config.stdout
     err = config.stderr
-    basedir = config['basedir']
+    basedir = config["basedir"]
     quoted_basedir = quote_local_unicode_path(basedir)
     print("'tahoe {}' in {}".format(config.subcommand_name, quoted_basedir), file=out)
     if not os.path.isdir(basedir):
@@ -199,14 +221,16 @@ def run(config):
     # of no return.
     os.chdir(basedir)
     twistd_args = []
-    if (nodetype in (u"client", u"introducer")
+    if (
+        nodetype in (u"client", u"introducer")
         and "--nodaemon" not in config.twistd_args
         and "--syslog" not in config.twistd_args
-        and "--logfile" not in config.twistd_args):
+        and "--logfile" not in config.twistd_args
+    ):
         fileutil.make_dirs(os.path.join(basedir, u"logs"))
         twistd_args.extend(["--logfile", os.path.join("logs", "twistd.log")])
     twistd_args.extend(config.twistd_args)
-    twistd_args.append("DaemonizeTahoeNode") # point at our DaemonizeTahoeNodePlugin
+    twistd_args.append("DaemonizeTahoeNode")  # point at our DaemonizeTahoeNodePlugin
 
     twistd_config = MyTwistdConfig()
     twistd_config.stdout = out
@@ -216,9 +240,14 @@ def run(config):
     except usage.error as ue:
         # these arguments were unsuitable for 'twistd'
         print(config, file=err)
-        print("tahoe %s: usage error from twistd: %s\n" % (config.subcommand_name, ue), file=err)
+        print(
+            "tahoe %s: usage error from twistd: %s\n" % (config.subcommand_name, ue),
+            file=err,
+        )
         return 1
-    twistd_config.loadedPlugins = {"DaemonizeTahoeNode": DaemonizeTahoeNodePlugin(nodetype, basedir)}
+    twistd_config.loadedPlugins = {
+        "DaemonizeTahoeNode": DaemonizeTahoeNodePlugin(nodetype, basedir)
+    }
 
     # handle invalid PID file (twistd might not start otherwise)
     pidfile = get_pidfile(basedir)

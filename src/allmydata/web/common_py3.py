@@ -46,6 +46,7 @@ class MultiFormatResource(resource.Resource, object):
     formats but ``json`` is a pretty common one.  ``html`` is the default
     format if nothing else is given as the ``formatDefault``.
     """
+
     formatArgument = "t"
     formatDefault = None
 
@@ -104,7 +105,7 @@ def abbreviate_time(data):
     if s >= 1.0:
         return "%.2fs" % s
     if s >= 0.01:
-        return "%.0fms" % (1000*s)
+        return "%.0fms" % (1000 * s)
     if s >= 0.001:
-        return "%.1fms" % (1000*s)
-    return "%.0fus" % (1000000*s)
+        return "%.1fms" % (1000 * s)
+    return "%.0fus" % (1000000 * s)

@@ -39,6 +39,7 @@ import urllib, json, random, time, urlparse
 
 # Python 2 compatibility
 from future.utils import PY2
+
 if PY2:
     from future.builtins import str  # noqa: F401
 
@@ -61,8 +62,7 @@ if sys.argv[1] == "--stats":
                 stats[name] += float(value)
         del name
         if last_stats:
-            delta = dict( [ (n,stats[n]-last_stats[n])
-                            for n in stats ] )
+            delta = dict([(n, stats[n] - last_stats[n]) for n in stats])
             print("THIS SAMPLE:")
             for name in sorted(delta.keys()):
                 avg = float(delta[name]) / float(DELAY)
@@ -75,7 +75,7 @@ if sys.argv[1] == "--stats":
             print()
             print("MOVING WINDOW AVERAGE:")
             for name in sorted(delta.keys()):
-                avg = sum([ s[name] for s in totals]) / (DELAY*len(totals))
+                avg = sum([s[name] for s in totals]) / (DELAY * len(totals))
                 print("%20s %0.2f per second" % (name, avg))
 
         last_stats = stats
@@ -92,8 +92,9 @@ for url in open("server-URLs", "r").readlines():
         server_urls.append(url)
 root = open("root.cap", "r").read().strip()
 delay = float(open("delay", "r").read().strip())
-readfreq, writefreq = (
-    [int(x) for x in open("operation-mix", "r").read().strip().split("/")])
+readfreq, writefreq = [
+    int(x) for x in open("operation-mix", "r").read().strip().split("/")
+]
 
 
 files_uploaded = 0
@@ -102,6 +103,7 @@ bytes_uploaded = 0
 bytes_downloaded = 0
 directories_read = 0
 directories_written = 0
+
 
 def listdir(nodeurl, root, remote_pathname):
     if nodeurl[-1] != "/":
@@ -121,9 +123,7 @@ def listdir(nodeurl, root, remote_pathname):
     assert nodetype == "dirnode"
     global directories_read
     directories_read += 1
-    children = dict( [(str(name),value)
-                      for (name,value)
-                      in d["children"].iteritems()] )
+    children = dict([(str(name), value) for (name, value) in d["children"].iteritems()])
     return children
 
 
@@ -138,6 +138,7 @@ def choose_random_descendant(server_url, root, pathname=""):
     if child[0] == "filenode":
         return new_pathname
     return choose_random_descendant(server_url, root, new_pathname)
+
 
 def read_and_discard(nodeurl, root, pathname):
     if nodeurl[-1] != "/":
@@ -173,7 +174,8 @@ directories = [
     "hazing/disassociate/mob",
     "hazing/disassociate/nihilistic",
     "hazing/disassociate/bilbo",
-    ]
+]
+
 
 def create_random_directory():
     d = random.choice(directories)
@@ -181,33 +183,37 @@ def create_random_directory():
     numsegs = random.randint(1, len(pieces))
     return "/".join(pieces[0:numsegs])
 
+
 def generate_filename():
     fn = binascii.hexlify(os.urandom(4))
     return fn
+
 
 def choose_size():
     mean = 10e3
     size = random.expovariate(1.0 / mean)
     return int(min(size, 100e6))
 
+
 # copied from twisted/web/client.py
 def parse_url(url, defaultPort=None):
     url = url.strip()
     parsed = urlparse.urlparse(url)
     scheme = parsed[0]
-    path = urlparse.urlunparse(('','')+parsed[2:])
+    path = urlparse.urlunparse(("", "") + parsed[2:])
     if defaultPort is None:
-        if scheme == 'https':
+        if scheme == "https":
             defaultPort = 443
         else:
             defaultPort = 80
     host, port = parsed[1], defaultPort
-    if ':' in host:
-        host, port = host.split(':')
+    if ":" in host:
+        host, port = host.split(":")
         port = int(port)
     if path == "":
         path = "/"
     return scheme, host, port, path
+
 
 def generate_and_put(nodeurl, root, remote_filename, size):
     if nodeurl[-1] != "/":
@@ -241,7 +247,7 @@ current_writedir = ""
 
 while True:
     time.sleep(delay)
-    if random.uniform(0, readfreq+writefreq) < readfreq:
+    if random.uniform(0, readfreq + writefreq) < readfreq:
         op = "read"
     else:
         op = "write"
@@ -266,7 +272,7 @@ while True:
         generate_and_put(server, root, pathname, size)
         files_uploaded += 1
 
-    f = open(stats_out+".tmp", "w")
+    f = open(stats_out + ".tmp", "w")
     f.write("files-uploaded: %d\n" % files_uploaded)
     f.write("files-downloaded: %d\n" % files_downloaded)
     f.write("bytes-uploaded: %d\n" % bytes_uploaded)
@@ -274,4 +280,4 @@ while True:
     f.write("directories-read: %d\n" % directories_read)
     f.write("directories-written: %d\n" % directories_written)
     f.close()
-    os.rename(stats_out+".tmp", stats_out)
+    os.rename(stats_out + ".tmp", stats_out)

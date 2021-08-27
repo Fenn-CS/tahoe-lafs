@@ -11,8 +11,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 # On Python 2 we use the backport package; that means we always get unicode
 # out.
@@ -62,6 +85,7 @@ def set_config(config, section, option, value):
     config.set(section, option, value)
     assert config.get(section, option) == value
 
+
 def write_config(tahoe_cfg, config):
     """
     Write a configuration to a file.
@@ -82,6 +106,7 @@ def write_config(tahoe_cfg, config):
     if platform.isWindows():
         tahoe_cfg.remove()
     tmp.moveTo(tahoe_cfg)
+
 
 def validate_config(fname, cfg, valid_config):
     """
@@ -123,9 +148,8 @@ class ValidConfiguration(object):
         an item name as bytes and returns True if that section, item pair is
         valid, False otherwise.
     """
-    _static_valid_sections = attr.ib(
-        validator=attr.validators.instance_of(dict)
-    )
+
+    _static_valid_sections = attr.ib(validator=attr.validators.instance_of(dict))
     _is_valid_section = attr.ib(default=lambda section_name: False)
     _is_valid_item = attr.ib(default=lambda section_name, item_name: False)
 
@@ -155,9 +179,8 @@ class ValidConfiguration(object):
         """
         :return: True if the given section name is valid, False otherwise.
         """
-        return (
-            section_name in self._static_valid_sections or
-            self._is_valid_section(section_name)
+        return section_name in self._static_valid_sections or self._is_valid_section(
+            section_name
         )
 
     def is_valid_item(self, section_name, item_name):
@@ -168,11 +191,7 @@ class ValidConfiguration(object):
         valid_items = self._static_valid_sections.get(section_name, ())
         if valid_items is None:
             return True
-        return (
-            item_name in valid_items or
-            self._is_valid_item(section_name, item_name)
-        )
-
+        return item_name in valid_items or self._is_valid_item(section_name, item_name)
 
     def update(self, valid_config):
         static_valid_sections = self._static_valid_sections.copy()

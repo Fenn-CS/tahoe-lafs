@@ -7,20 +7,43 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import os
 from io import BytesIO
 from twisted.trial import unittest
 from allmydata.mutable.publish import MutableFileHandle
 
+
 class FileHandle(unittest.TestCase):
     def setUp(self):
         self.test_data = b"Test Data" * 50000
         self.sio = BytesIO(self.test_data)
         self.uploadable = MutableFileHandle(self.sio)
-
 
     def test_filehandle_read(self):
         self.basedir = "mutable/FileHandle/test_filehandle_read"
@@ -32,13 +55,11 @@ class FileHandle(unittest.TestCase):
             end = i + chunk_size
             self.failUnlessEqual(data, self.test_data[start:end])
 
-
     def test_filehandle_get_size(self):
         self.basedir = "mutable/FileHandle/test_filehandle_get_size"
         actual_size = len(self.test_data)
         size = self.uploadable.get_size()
         self.failUnlessEqual(size, actual_size)
-
 
     def test_filehandle_get_size_out_of_order(self):
         # We should be able to call get_size whenever we want without
@@ -56,7 +77,6 @@ class FileHandle(unittest.TestCase):
         start = chunk_size
         end = chunk_size * 2
         self.failUnlessEqual(b"".join(more_data), self.test_data[start:end])
-
 
     def test_filehandle_file(self):
         # Make sure that the MutableFileHandle works on a file as well
@@ -77,7 +97,6 @@ class FileHandle(unittest.TestCase):
         self.failUnlessEqual(b"".join(data), self.test_data)
         size = uploadable.get_size()
         self.failUnlessEqual(size, len(self.test_data))
-
 
     def test_close(self):
         # Make sure that the MutableFileHandle closes its handle when

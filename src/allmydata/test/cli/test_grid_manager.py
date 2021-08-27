@@ -1,4 +1,3 @@
-
 import os
 import json
 
@@ -41,7 +40,9 @@ class GridManagerCommandLine(SyncTestCase):
             result = self.runner.invoke(grid_manager, ["--config", "foo", "create"])
             self.assertEqual(["foo"], os.listdir("."))
             self.assertEqual(["config.json"], os.listdir("./foo"))
-            result = self.runner.invoke(grid_manager, ["--config", "foo", "public-identity"])
+            result = self.runner.invoke(
+                grid_manager, ["--config", "foo", "public-identity"]
+            )
             self.assertTrue(result.output.startswith("pub-v0-"))
 
     def test_create_already(self):
@@ -78,11 +79,15 @@ class GridManagerCommandLine(SyncTestCase):
         pubkey = "pub-v0-cbq6hcf3pxcz6ouoafrbktmkixkeuywpcpbcomzd3lqbkq4nmfga"
         with self.runner.isolated_filesystem():
             self.runner.invoke(grid_manager, ["--config", "foo", "create"])
-            self.runner.invoke(grid_manager, ["--config", "foo", "add", "storage0", pubkey])
-            result = self.runner.invoke(grid_manager, ["--config", "foo", "sign", "storage0", "10"])
+            self.runner.invoke(
+                grid_manager, ["--config", "foo", "add", "storage0", pubkey]
+            )
+            result = self.runner.invoke(
+                grid_manager, ["--config", "foo", "sign", "storage0", "10"]
+            )
             sigcert = json.loads(result.output)
             self.assertEqual({"certificate", "signature"}, set(sigcert.keys()))
-            cert = json.loads(sigcert['certificate'])
+            cert = json.loads(sigcert["certificate"])
             self.assertEqual(cert["public_key"], pubkey)
 
     def test_add_list_remove(self):
@@ -92,13 +97,17 @@ class GridManagerCommandLine(SyncTestCase):
         pubkey = "pub-v0-cbq6hcf3pxcz6ouoafrbktmkixkeuywpcpbcomzd3lqbkq4nmfga"
         with self.runner.isolated_filesystem():
             self.runner.invoke(grid_manager, ["--config", "foo", "create"])
-            self.runner.invoke(grid_manager, ["--config", "foo", "add", "storage0", pubkey])
-            self.runner.invoke(grid_manager, ["--config", "foo", "sign", "storage0", "1"])
+            self.runner.invoke(
+                grid_manager, ["--config", "foo", "add", "storage0", pubkey]
+            )
+            self.runner.invoke(
+                grid_manager, ["--config", "foo", "sign", "storage0", "1"]
+            )
 
             result = self.runner.invoke(grid_manager, ["--config", "foo", "list"])
             names = [
-                line.split(':')[0]
-                for line in result.output.strip().split('\n')
+                line.split(":")[0]
+                for line in result.output.strip().split("\n")
                 if not line.startswith("  ")  # "cert" lines start with whitespace
             ]
             self.assertEqual(names, ["storage0"])
@@ -129,13 +138,13 @@ class TahoeAddGridManagerCert(AsyncTestCase):
         error to miss --name option
         """
         code, out, err = yield run_cli(
-            "admin", "add-grid-manager-cert", "--filename", "-",
+            "admin",
+            "add-grid-manager-cert",
+            "--filename",
+            "-",
             stdin="the cert",
         )
-        self.assertIn(
-            "Must provide --name",
-            out
-        )
+        self.assertIn("Must provide --name", out)
 
     @inlineCallbacks
     def test_no_filename(self):
@@ -143,13 +152,13 @@ class TahoeAddGridManagerCert(AsyncTestCase):
         error to miss --name option
         """
         code, out, err = yield run_cli(
-            "admin", "add-grid-manager-cert", "--name", "foo",
+            "admin",
+            "add-grid-manager-cert",
+            "--name",
+            "foo",
             stdin="the cert",
         )
-        self.assertIn(
-            "Must provide --filename",
-            out
-        )
+        self.assertIn("Must provide --filename", out)
 
     @inlineCallbacks
     def test_add_one(self):
@@ -160,8 +169,14 @@ class TahoeAddGridManagerCert(AsyncTestCase):
         fake_cert = """{"certificate": "", "signature": ""}"""
 
         code, out, err = yield run_cli(
-            "--node-directory", nodedir,
-            "admin", "add-grid-manager-cert", "-f", "-", "--name", "foo",
+            "--node-directory",
+            nodedir,
+            "admin",
+            "add-grid-manager-cert",
+            "-f",
+            "-",
+            "--name",
+            "foo",
             stdin=fake_cert,
             ignore_stderr=True,
         )
@@ -176,7 +191,4 @@ class TahoeAddGridManagerCert(AsyncTestCase):
         )
         self.assertIn("foo.cert", nodepath.listdir())
         with nodepath.child("foo.cert").open("r") as f:
-            self.assertEqual(
-                json.load(f),
-                json.loads(fake_cert)
-            )
+            self.assertEqual(json.load(f), json.loads(fake_cert))

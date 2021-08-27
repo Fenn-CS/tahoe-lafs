@@ -1,4 +1,3 @@
-
 from __future__ import (
     print_function,
     unicode_literals,
@@ -55,6 +54,7 @@ from .logs import (
 )
 
 SCHEME = b"tahoe-lafs"
+
 
 class IToken(ICredentials):
     def check(auth_token):

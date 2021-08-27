@@ -17,11 +17,15 @@ from .run_common import MyTwistdConfig, identify_node_type
 class StartOptions(BasedirOptions):
     subcommand_name = "start"
     optParameters = [
-        ("basedir", "C", None,
-         "Specify which Tahoe base directory should be used."
-         " This has the same effect as the global --node-directory option."
-         " [default: %s]" % quote_local_unicode_path(_default_nodedir)),
-        ]
+        (
+            "basedir",
+            "C",
+            None,
+            "Specify which Tahoe base directory should be used."
+            " This has the same effect as the global --node-directory option."
+            " [default: %s]" % quote_local_unicode_path(_default_nodedir),
+        ),
+    ]
 
     def parseArgs(self, basedir=None, *twistd_args):
         # This can't handle e.g. 'tahoe start --nodaemon', since '--nodaemon'
@@ -34,9 +38,10 @@ class StartOptions(BasedirOptions):
         self.twistd_args = twistd_args
 
     def getSynopsis(self):
-        return ("Usage:  %s [global-options] %s [options]"
-                " [NODEDIR [twistd-options]]"
-                % (self.command_name, self.subcommand_name))
+        return (
+            "Usage:  %s [global-options] %s [options]"
+            " [NODEDIR [twistd-options]]" % (self.command_name, self.subcommand_name)
+        )
 
     def getUsage(self, width=None):
         t = BasedirOptions.getUsage(self, width) + "\n"
@@ -63,7 +68,7 @@ def start(config):
     print("'tahoe start' is deprecated; see 'tahoe run'")
     out = config.stdout
     err = config.stderr
-    basedir = config['basedir']
+    basedir = config["basedir"]
     quoted_basedir = quote_local_unicode_path(basedir)
     print("STARTING", quoted_basedir, file=out)
     if not os.path.isdir(basedir):
@@ -78,17 +83,22 @@ def start(config):
     # startup -- but we can't always do that.
 
     can_monitor_logs = False
-    if (nodetype in (u"client", u"introducer")
+    if (
+        nodetype in (u"client", u"introducer")
         and "--nodaemon" not in config.twistd_args
         and "--syslog" not in config.twistd_args
-        and "--logfile" not in config.twistd_args):
+        and "--logfile" not in config.twistd_args
+    ):
         can_monitor_logs = True
 
     if "--help" in config.twistd_args:
         return 0
 
     if not can_monitor_logs:
-        print("Custom logging options; can't monitor logs for proper startup messages", file=out)
+        print(
+            "Custom logging options; can't monitor logs for proper startup messages",
+            file=out,
+        )
         return 1
 
     # before we spawn tahoe, we check if "the log file" exists or not,
@@ -96,9 +106,9 @@ def start(config):
     # "tail -f" to see what "this" incarnation of "tahoe daemonize"
     # spews forth.
     starting_offset = 0
-    log_fname = join(basedir, 'logs', 'twistd.log')
+    log_fname = join(basedir, "logs", "twistd.log")
     if exists(log_fname):
-        with open(log_fname, 'r') as f:
+        with open(log_fname, "r") as f:
             f.seek(0, 2)
             starting_offset = f.tell()
 
@@ -106,10 +116,10 @@ def start(config):
     # "pretty fast" and with a zero return-code, or else something
     # Very Bad has happened.
     try:
-        args = [sys.executable] if not getattr(sys, 'frozen', False) else []
+        args = [sys.executable] if not getattr(sys, "frozen", False) else []
         for i, arg in enumerate(sys.argv):
-            if arg in ['start', 'restart']:
-                args.append('daemonize')
+            if arg in ["start", "restart"]:
+                args.append("daemonize")
             else:
                 args.append(arg)
         subprocess.check_call(args)
@@ -120,30 +130,36 @@ def start(config):
     # successfully or not. so, we start sucking up log files and
     # looking for "the magic string", which depends on the node type.
 
-    magic_string = u'{} running'.format(nodetype)
-    with io.open(log_fname, 'r') as f:
+    magic_string = u"{} running".format(nodetype)
+    with io.open(log_fname, "r") as f:
         f.seek(starting_offset)
 
-        collected = u''
+        collected = u""
         overall_start = time.time()
         while time.time() - overall_start < 60:
             this_start = time.time()
             while time.time() - this_start < 5:
                 collected += f.read()
                 if magic_string in collected:
-                    if not config.parent['quiet']:
+                    if not config.parent["quiet"]:
                         print("Node has started successfully", file=out)
                     return 0
-                if 'Traceback ' in collected:
-                    print("Error starting node; see '{}' for more:\n\n{}".format(
-                        log_fname,
-                        collected,
-                    ), file=err)
+                if "Traceback " in collected:
+                    print(
+                        "Error starting node; see '{}' for more:\n\n{}".format(
+                            log_fname,
+                            collected,
+                        ),
+                        file=err,
+                    )
                     return 1
                 time.sleep(0.1)
-            print("Still waiting up to {}s for node startup".format(
-                60 - int(time.time() - overall_start)
-            ), file=out)
+            print(
+                "Still waiting up to {}s for node startup".format(
+                    60 - int(time.time() - overall_start)
+                ),
+                file=out,
+            )
 
         print("Something has gone wrong starting the node.", file=out)
         print("Logs are available in '{}'".format(log_fname), file=out)

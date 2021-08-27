@@ -12,8 +12,8 @@ from ..common_util import skip_if_cannot_represent_argv
 
 # see also test_create_alias
 
-class ListAlias(GridTestMixin, CLITestMixin, unittest.TestCase):
 
+class ListAlias(GridTestMixin, CLITestMixin, unittest.TestCase):
     @inlineCallbacks
     def test_list(self):
         self.basedir = "cli/ListAlias/test_list"

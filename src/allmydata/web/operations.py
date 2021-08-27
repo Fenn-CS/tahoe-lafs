@@ -1,4 +1,3 @@
-
 import time
 from hyperlink import (
     DecodedURL,
@@ -25,23 +24,24 @@ from allmydata.web.common import (
 )
 
 MINUTE = 60
-HOUR = 60*MINUTE
-DAY = 24*HOUR
+HOUR = 60 * MINUTE
+DAY = 24 * HOUR
 
 (MONITOR, RENDERER, WHEN_ADDED) = range(3)
+
 
 class OphandleTable(resource.Resource, service.Service):
     """Renders /operations/%d."""
 
     name = "operations"
 
-    UNCOLLECTED_HANDLE_LIFETIME = 4*DAY
-    COLLECTED_HANDLE_LIFETIME = 1*DAY
+    UNCOLLECTED_HANDLE_LIFETIME = 4 * DAY
+    COLLECTED_HANDLE_LIFETIME = 1 * DAY
 
     def __init__(self, clock=None):
         super(OphandleTable, self).__init__()
         # both of these are indexed by ophandle
-        self.handles = {} # tuple of (monitor, renderer, when_added)
+        self.handles = {}  # tuple of (monitor, renderer, when_added)
         self.timers = {}
         # The tests will provide a deterministic clock
         # (twisted.internet.task.Clock) that they can control so that
@@ -53,7 +53,7 @@ class OphandleTable(resource.Resource, service.Service):
         for t in self.timers.values():
             if t.active():
                 t.cancel()
-        del self.handles # this is not restartable
+        del self.handles  # this is not restartable
         del self.timers
         return service.Service.stopService(self)
 
@@ -101,8 +101,7 @@ class OphandleTable(resource.Resource, service.Service):
     def getChild(self, name, req):
         ophandle = name
         if ophandle not in self.handles:
-            raise WebError("unknown/expired handle '%s'" % escape(ophandle),
-                           NOT_FOUND)
+            raise WebError("unknown/expired handle '%s'" % escape(ophandle), NOT_FOUND)
         (monitor, renderer, when_added) = self.handles[ophandle]
 
         t = get_arg(req, "t", "status")
@@ -146,7 +145,7 @@ class OphandleTable(resource.Resource, service.Service):
 
 
 class ReloadMixin(object):
-    REFRESH_TIME = 1*MINUTE
+    REFRESH_TIME = 1 * MINUTE
 
     @renderer
     def refresh(self, req, tag):
@@ -165,12 +164,17 @@ class ReloadMixin(object):
         ophandle = req.prepath[-1]
         reload_target = ophandle + b"?output=html"
         cancel_target = ophandle + b"?t=cancel"
-        cancel_button = T.form(T.input(type="submit", value="Cancel"),
-                               action=cancel_target,
-                               method="POST",
-                               enctype="multipart/form-data",)
+        cancel_button = T.form(
+            T.input(type="submit", value="Cancel"),
+            action=cancel_target,
+            method="POST",
+            enctype="multipart/form-data",
+        )
 
-        return (T.h2("Operation still running: ",
-                     T.a("Reload", href=reload_target),
-                     ),
-                cancel_button,)
+        return (
+            T.h2(
+                "Operation still running: ",
+                T.a("Reload", href=reload_target),
+            ),
+            cancel_button,
+        )

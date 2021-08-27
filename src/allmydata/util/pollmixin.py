@@ -10,17 +10,43 @@ from __future__ import division
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import time
 from twisted.internet import task
 
+
 class TimeoutError(Exception):
     pass
 
+
 class PollComplete(Exception):
     pass
+
 
 class PollMixin(object):
     _poll_should_ignore_these_errors = []
@@ -37,9 +63,11 @@ class PollMixin(object):
             cutoff = time.time() + timeout
         lc = task.LoopingCall(self._poll, check_f, cutoff)
         d = lc.start(pollinterval)
+
         def _convert_done(f):
             f.trap(PollComplete)
             return None
+
         d.addErrback(_convert_done)
         return d
 
@@ -61,4 +89,3 @@ class PollMixin(object):
             if errs:
                 print(errs)
                 self.fail("Errors snooped, terminating early")
-

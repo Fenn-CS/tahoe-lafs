@@ -9,8 +9,31 @@ from __future__ import division
 from __future__ import print_function
 
 from future.utils import PY2, native_str
+
 if PY2:
-    from builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 from twisted.python.modules import (
     getModule,
@@ -23,7 +46,6 @@ from allmydata.util._python3 import PORTED_MODULES, PORTED_TEST_MODULES
 
 
 class Python3PortingEffortTests(SynchronousTestCase):
-
     def test_finished_porting(self):
         """
         Tahoe-LAFS has been ported to Python 3.
@@ -44,6 +66,7 @@ class Python3PortingEffortTests(SynchronousTestCase):
                 ),
             ),
         )
+
     test_finished_porting.todo = native_str(
         "https://tahoe-lafs.org/trac/tahoe-lafs/milestone/Support%20Python%203 should be completed",
     )
@@ -104,11 +127,12 @@ def unported_report(tahoe_lafs_module_names, ported_names):
 Ported files: {} / {}
 Ported lines: {} / {}
 """.format(
-    len(ported_names),
-    len(tahoe_lafs_module_names),
-    sum(map(count_lines, ported_names)),
-    sum(map(count_lines, tahoe_lafs_module_names)),
-)
+        len(ported_names),
+        len(tahoe_lafs_module_names),
+        sum(map(count_lines, ported_names)),
+        sum(map(count_lines, tahoe_lafs_module_names)),
+    )
+
 
 def count_lines(module_name):
     module = getModule(module_name)

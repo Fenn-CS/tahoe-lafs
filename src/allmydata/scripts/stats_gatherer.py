@@ -4,6 +4,7 @@ import os
 
 # Python 2 compatibility
 from future.utils import PY2
+
 if PY2:
     from future.builtins import str  # noqa: F401
 
@@ -22,14 +23,17 @@ class CreateStatsGathererOptions(NoDefaultBasedirOptions):
         ("hostname", None, None, "Hostname of this machine, used to build location"),
         ("location", None, None, "FURL connection hints, e.g. 'tcp:HOSTNAME:PORT'"),
         ("port", None, None, "listening endpoint, e.g. 'tcp:PORT'"),
-        ]
+    ]
+
     def postOptions(self):
         if self["hostname"] and (not self["location"]) and (not self["port"]):
             pass
         elif (not self["hostname"]) and self["location"] and self["port"]:
             pass
         else:
-            raise usage.UsageError("You must provide --hostname, or --location and --port.")
+            raise usage.UsageError(
+                "You must provide --hostname, or --location and --port."
+            )
 
     description = """
     Create a "stats-gatherer" service, which is a standalone process that
@@ -67,13 +71,15 @@ class CreateStatsGathererOptions(NoDefaultBasedirOptions):
 
 def create_stats_gatherer(config):
     err = config.stderr
-    basedir = config['basedir']
+    basedir = config["basedir"]
     # This should always be called with an absolute Unicode basedir.
     precondition(isinstance(basedir, str), basedir)
 
     if os.path.exists(basedir):
         if listdir_unicode(basedir):
-            print("The base directory %s is not empty." % quote_output(basedir), file=err)
+            print(
+                "The base directory %s is not empty." % quote_output(basedir), file=err
+            )
             print("To avoid clobbering anything, I am going to quit now.", file=err)
             print("Please use a different directory, or empty this one.", file=err)
             return -1
@@ -88,16 +94,20 @@ def create_stats_gatherer(config):
     else:
         location = config["location"]
         port = config["port"]
-    fileutil.write(os.path.join(basedir, "location"), location+"\n")
-    fileutil.write(os.path.join(basedir, "port"), port+"\n")
+    fileutil.write(os.path.join(basedir, "location"), location + "\n")
+    fileutil.write(os.path.join(basedir, "port"), port + "\n")
     return 0
 
+
 subCommands = [
-    ["create-stats-gatherer", None, CreateStatsGathererOptions, "Create a stats-gatherer service."],
+    [
+        "create-stats-gatherer",
+        None,
+        CreateStatsGathererOptions,
+        "Create a stats-gatherer service.",
+    ],
 ]
 
 dispatch = {
     "create-stats-gatherer": create_stats_gatherer,
-    }
-
-
+}

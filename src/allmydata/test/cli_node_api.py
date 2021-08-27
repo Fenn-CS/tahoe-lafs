@@ -1,4 +1,3 @@
-
 __all__ = [
     "CLINodeAPI",
     "Expect",
@@ -48,6 +47,7 @@ from ..scripts.tahoe_stop import (
 from ..util.eliotutil import (
     inline_callbacks,
 )
+
 
 class Expect(Protocol, object):
     def __init__(self):
@@ -106,11 +106,14 @@ class _ProcessProtocolAdapter(ProcessProtocol, object):
 def on_stdout(protocol):
     return _ProcessProtocolAdapter({1: protocol})
 
+
 def on_stdout_and_stderr(protocol):
     return _ProcessProtocolAdapter({1: protocol, 2: protocol})
 
+
 def on_different(fd_mapping):
     return _ProcessProtocolAdapter(fd_mapping)
+
 
 @attr.s
 class CLINodeAPI(object):

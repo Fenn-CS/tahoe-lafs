@@ -9,8 +9,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 from six import ensure_str
 
 from pyutil import nummedobj
@@ -18,14 +41,14 @@ from pyutil import nummedobj
 from foolscap.logging import log
 from twisted.python import log as tw_log
 
-NOISY = log.NOISY # 10
-OPERATIONAL = log.OPERATIONAL # 20
-UNUSUAL = log.UNUSUAL # 23
-INFREQUENT = log.INFREQUENT # 25
-CURIOUS = log.CURIOUS # 28
-WEIRD = log.WEIRD # 30
-SCARY = log.SCARY # 35
-BAD = log.BAD # 40
+NOISY = log.NOISY  # 10
+OPERATIONAL = log.OPERATIONAL  # 20
+UNUSUAL = log.UNUSUAL  # 23
+INFREQUENT = log.INFREQUENT  # 25
+CURIOUS = log.CURIOUS  # 28
+WEIRD = log.WEIRD  # 30
+SCARY = log.SCARY  # 35
+BAD = log.BAD  # 40
 
 
 msg = log.msg
@@ -35,14 +58,17 @@ msg = log.msg
 # thing happens that is nevertheless handled, use log.msg(failure=f,
 # level=WEIRD) instead.
 
+
 def err(failure=None, _why=None, **kwargs):
     tw_log.err(failure, _why, **kwargs)
-    if 'level' not in kwargs:
-        kwargs['level'] = log.UNUSUAL
+    if "level" not in kwargs:
+        kwargs["level"] = log.UNUSUAL
     return log.err(failure, _why, **kwargs)
 
+
 class LogMixin(object):
-    """ I remember a msg id and a facility and pass them to log.msg() """
+    """I remember a msg id and a facility and pass them to log.msg()"""
+
     def __init__(self, facility=None, grandparentmsgid=None):
         self._facility = facility
         self._grandparentmsgid = grandparentmsgid
@@ -62,10 +88,12 @@ class LogMixin(object):
             self._parentmsgid = msgid
         return msgid
 
+
 class PrefixingLogMixin(nummedobj.NummedObj, LogMixin):
-    """ I prepend a prefix to each msg, which includes my class and instance number as well as
-    a prefix supplied by my subclass. """
-    def __init__(self, facility=None, grandparentmsgid=None, prefix=''):
+    """I prepend a prefix to each msg, which includes my class and instance number as well as
+    a prefix supplied by my subclass."""
+
+    def __init__(self, facility=None, grandparentmsgid=None, prefix=""):
         nummedobj.NummedObj.__init__(self)
         LogMixin.__init__(self, facility, grandparentmsgid)
 

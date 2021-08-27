@@ -1,10 +1,14 @@
-
-from allmydata.scripts.common import get_alias, DEFAULT_ALIAS, escape_path, \
-                                     UnknownAliasError
+from allmydata.scripts.common import (
+    get_alias,
+    DEFAULT_ALIAS,
+    escape_path,
+    UnknownAliasError,
+)
 import urllib
 
+
 def webopen(options, opener=None):
-    nodeurl = options['node-url']
+    nodeurl = options["node-url"]
     stderr = options.stderr
     if not nodeurl.endswith("/"):
         nodeurl += "/"
@@ -15,18 +19,18 @@ def webopen(options, opener=None):
         except UnknownAliasError as e:
             e.display(stderr)
             return 1
-        if path == '/':
-            path = ''
+        if path == "/":
+            path = ""
         url = nodeurl + "uri/%s" % urllib.quote(rootcap)
         if path:
             url += "/" + escape_path(path)
     else:
         url = nodeurl
-    if options['info']:
+    if options["info"]:
         url += "?t=info"
     if not opener:
         import webbrowser
+
         opener = webbrowser.open
     opener(url)
     return 0
-

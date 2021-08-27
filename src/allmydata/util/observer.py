@@ -10,8 +10,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import weakref
 from twisted.internet import defer
@@ -23,8 +46,10 @@ something happens.  The way this is typically implemented is that the observed
 has an ObserverList whose when_fired method is called in the observed's
 'when_something'."""
 
+
 class OneShotObserverList(object):
     """A one-shot event distributor."""
+
     def __init__(self):
         self._fired = False
         self._result = None
@@ -38,10 +63,10 @@ class OneShotObserverList(object):
         return self._unfired_repr()
 
     def _unfired_repr(self):
-        return "<OneShotObserverList [%s]>" % (self._watchers, )
+        return "<OneShotObserverList [%s]>" % (self._watchers,)
 
     def _fired_repr(self):
-        return "<OneShotObserverList -> %s>" % (self._result, )
+        return "<OneShotObserverList -> %s>" % (self._result,)
 
     def _get_result(self):
         return self._result
@@ -69,12 +94,14 @@ class OneShotObserverList(object):
         if not self._fired:
             self.fire(result)
 
+
 class LazyOneShotObserverList(OneShotObserverList):
     """
     a variant of OneShotObserverList which does not retain
     the result it handles, but rather retains a callable()
     through which is retrieves the data if and when needed.
     """
+
     def __init__(self):
         OneShotObserverList.__init__(self)
 
@@ -93,8 +120,9 @@ class LazyOneShotObserverList(OneShotObserverList):
         assert not self._fired
         self._fired = True
         self._result_producer = result_producer
-        if self._watchers: # if not, don't call result_producer
+        if self._watchers:  # if not, don't call result_producer
             self._fire(self._get_result())
+
 
 class ObserverList(object):
     """A simple class to distribute events to a number of subscribers."""
@@ -112,9 +140,11 @@ class ObserverList(object):
         for o in self._watchers:
             eventually(o, *args, **kwargs)
 
+
 class EventStreamObserver(object):
     """A simple class to distribute multiple events to a single subscriber.
     It accepts arbitrary kwargs, but no posargs."""
+
     def __init__(self):
         self._watcher = None
         self._undelivered_results = []
@@ -151,7 +181,7 @@ class EventStreamObserver(object):
         eventually(o, **kwargs)
 
     def cancel(self):
-        wr,methname = self._canceler
+        wr, methname = self._canceler
         o = wr()
         if o:
-            getattr(o,methname)(self)
+            getattr(o, methname)(self)

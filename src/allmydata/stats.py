@@ -8,6 +8,7 @@ from collections import deque
 
 # Python 2 compatibility
 from future.utils import PY2
+
 if PY2:
     from future.builtins import str  # noqa: F401
 
@@ -20,6 +21,7 @@ from foolscap.api import eventually, DeadReferenceError, Referenceable, Tub
 from allmydata.util import log
 from allmydata.util.encodingutil import quote_local_unicode_path
 from allmydata.interfaces import RIStatsProvider, RIStatsGatherer, IStatsProducer
+
 
 @implementer(IStatsProducer)
 class LoadMonitor(service.MultiService):
@@ -57,8 +59,11 @@ class LoadMonitor(service.MultiService):
         if self.last is not None:
             delay = now - self.last - self.loop_interval
             if delay > self.warn_if_delay_exceeds:
-                log.msg(format='excessive reactor delay (%ss)', args=(delay,),
-                        level=log.UNUSUAL)
+                log.msg(
+                    format="excessive reactor delay (%ss)",
+                    args=(delay,),
+                    level=log.UNUSUAL,
+                )
             self.stats.append(delay)
             while len(self.stats) > self.num_samples:
                 self.stats.popleft()
@@ -72,8 +77,11 @@ class LoadMonitor(service.MultiService):
             m_x = max(self.stats)
         else:
             avg = m_x = 0
-        return { 'load_monitor.avg_load': avg,
-                 'load_monitor.max_load': m_x, }
+        return {
+            "load_monitor.avg_load": avg,
+            "load_monitor.max_load": m_x,
+        }
+
 
 @implementer(IStatsProducer)
 class CPUUsageMonitor(service.MultiService):
@@ -87,7 +95,7 @@ class CPUUsageMonitor(service.MultiService):
         # rest of the program will be run by the child process, after twistd
         # forks. Instead, set self.initial_cpu as soon as the reactor starts
         # up.
-        self.initial_cpu = 0.0 # just in case
+        self.initial_cpu = 0.0  # just in case
         eventually(self._set_initial_cpu)
         self.samples = []
         # we provide 1min, 5min, and 15min moving averages
@@ -99,14 +107,14 @@ class CPUUsageMonitor(service.MultiService):
     def check(self):
         now_wall = time.time()
         now_cpu = time.clock()
-        self.samples.append( (now_wall, now_cpu) )
-        while len(self.samples) > self.HISTORY_LENGTH+1:
+        self.samples.append((now_wall, now_cpu))
+        while len(self.samples) > self.HISTORY_LENGTH + 1:
             self.samples.pop(0)
 
     def _average_N_minutes(self, size):
-        if len(self.samples) < size+1:
+        if len(self.samples) < size + 1:
             return None
-        first = -size-1
+        first = -size - 1
         elapsed_wall = self.samples[-1][0] - self.samples[first][0]
         elapsed_cpu = self.samples[-1][1] - self.samples[first][1]
         fraction = elapsed_cpu / elapsed_wall
@@ -130,11 +138,10 @@ class CPUUsageMonitor(service.MultiService):
 
 @implementer(RIStatsProvider)
 class StatsProvider(Referenceable, service.MultiService):
-
     def __init__(self, node, gatherer_furl):
         service.MultiService.__init__(self)
         self.node = node
-        self.gatherer_furl = gatherer_furl # might be None
+        self.gatherer_furl = gatherer_furl  # might be None
 
         self.counters = {}
         self.stats_producers = []
@@ -155,8 +162,7 @@ class StatsProvider(Referenceable, service.MultiService):
     def startService(self):
         if self.node and self.gatherer_furl:
             nickname_utf8 = self.node.nickname.encode("utf-8")
-            self.node.tub.connectTo(self.gatherer_furl,
-                                    self._connected, nickname_utf8)
+            self.node.tub.connectTo(self.gatherer_furl, self._connected, nickname_utf8)
         service.MultiService.startService(self)
 
     def count(self, name, delta=1):
@@ -172,8 +178,8 @@ class StatsProvider(Referenceable, service.MultiService):
         stats = {}
         for sp in self.stats_producers:
             stats.update(sp.get_stats())
-        ret = { 'counters': self.counters, 'stats': stats }
-        log.msg(format='get_stats() -> %(stats)s', stats=ret, level=log.NOISY)
+        ret = {"counters": self.counters, "stats": stats}
+        log.msg(format="get_stats() -> %(stats)s", stats=ret, level=log.NOISY)
         return ret
 
     def remote_get_stats(self):
@@ -187,11 +193,13 @@ class StatsProvider(Referenceable, service.MultiService):
             return result
 
         stats = self.get_stats()
-        return {b"counters": to_bytes(stats["counters"]),
-                b"stats": to_bytes(stats["stats"])}
+        return {
+            b"counters": to_bytes(stats["counters"]),
+            b"stats": to_bytes(stats["stats"]),
+        }
 
     def _connected(self, gatherer, nickname):
-        gatherer.callRemoteOnly('provide', self, nickname or '')
+        gatherer.callRemoteOnly("provide", self, nickname or "")
 
 
 @implementer(RIStatsGatherer)
@@ -214,7 +222,7 @@ class StatsGatherer(Referenceable, service.MultiService):
 
     def remote_provide(self, provider, nickname):
         tubid = self.get_tubid(provider)
-        if tubid == '<unauth>':
+        if tubid == "<unauth>":
             print("WARNING: failed to get tubid for %s (%s)" % (provider, nickname))
             # don't add to clients to poll (polluting data) don't care about disconnect
             return
@@ -222,12 +230,15 @@ class StatsGatherer(Referenceable, service.MultiService):
         self.nicknames[tubid] = nickname
 
     def poll(self):
-        for tubid,client in self.clients.items():
+        for tubid, client in self.clients.items():
             nickname = self.nicknames.get(tubid)
-            d = client.callRemote('get_stats')
-            d.addCallbacks(self.got_stats, self.lost_client,
-                           callbackArgs=(tubid, nickname),
-                           errbackArgs=(tubid,))
+            d = client.callRemote("get_stats")
+            d.addCallbacks(
+                self.got_stats,
+                self.lost_client,
+                callbackArgs=(tubid, nickname),
+                errbackArgs=(tubid,),
+            )
             d.addErrback(self.log_client_error, tubid)
 
     def lost_client(self, f, tubid):
@@ -237,14 +248,19 @@ class StatsGatherer(Referenceable, service.MultiService):
         f.trap(DeadReferenceError)
 
     def log_client_error(self, f, tubid):
-        log.msg("StatsGatherer: error in get_stats(), peerid=%s" % tubid,
-                level=log.UNUSUAL, failure=f)
+        log.msg(
+            "StatsGatherer: error in get_stats(), peerid=%s" % tubid,
+            level=log.UNUSUAL,
+            failure=f,
+        )
 
     def got_stats(self, stats, tubid, nickname):
         raise NotImplementedError()
 
+
 class StdOutStatsGatherer(StatsGatherer):
     verbose = True
+
     def remote_provide(self, provider, nickname):
         tubid = self.get_tubid(provider)
         if self.verbose:
@@ -259,6 +275,7 @@ class StdOutStatsGatherer(StatsGatherer):
         print('"%s" [%s]:' % (nickname, tubid))
         pprint.pprint(stats)
 
+
 class JSONStatsGatherer(StdOutStatsGatherer):
     # inherit from StdOutStatsGatherer for connect/disconnect notifications
 
@@ -269,31 +286,34 @@ class JSONStatsGatherer(StdOutStatsGatherer):
 
         if os.path.exists(self.jsonfile):
             try:
-                with open(self.jsonfile, 'rb') as f:
+                with open(self.jsonfile, "rb") as f:
                     self.gathered_stats = json.load(f)
             except Exception:
-                print("Error while attempting to load stats file %s.\n"
-                      "You may need to restore this file from a backup,"
-                      " or delete it if no backup is available.\n" %
-                      quote_local_unicode_path(self.jsonfile))
+                print(
+                    "Error while attempting to load stats file %s.\n"
+                    "You may need to restore this file from a backup,"
+                    " or delete it if no backup is available.\n"
+                    % quote_local_unicode_path(self.jsonfile)
+                )
                 raise
         else:
             self.gathered_stats = {}
 
     def got_stats(self, stats, tubid, nickname):
         s = self.gathered_stats.setdefault(tubid, {})
-        s['timestamp'] = time.time()
-        s['nickname'] = nickname
-        s['stats'] = stats
+        s["timestamp"] = time.time()
+        s["nickname"] = nickname
+        s["stats"] = stats
         self.dump_json()
 
     def dump_json(self):
         tmp = "%s.tmp" % (self.jsonfile,)
-        with open(tmp, 'wb') as f:
+        with open(tmp, "wb") as f:
             json.dump(self.gathered_stats, f)
         if os.path.exists(self.jsonfile):
             os.unlink(self.jsonfile)
         os.rename(tmp, self.jsonfile)
+
 
 class StatsGathererService(service.MultiService):
     furl_file = "stats_gatherer.furl"
@@ -301,8 +321,7 @@ class StatsGathererService(service.MultiService):
     def __init__(self, basedir=".", verbose=False):
         service.MultiService.__init__(self)
         self.basedir = basedir
-        self.tub = Tub(certFile=os.path.join(self.basedir,
-                                             "stats_gatherer.pem"))
+        self.tub = Tub(certFile=os.path.join(self.basedir, "stats_gatherer.pem"))
         self.tub.setServiceParent(self)
         self.tub.setOption("logLocalFailures", True)
         self.tub.setOption("logRemoteFailures", True)
@@ -315,15 +334,20 @@ class StatsGathererService(service.MultiService):
             with open(os.path.join(self.basedir, "location")) as f:
                 location = f.read().strip()
         except EnvironmentError:
-            raise ValueError("Unable to find 'location' in BASEDIR, please rebuild your stats-gatherer")
+            raise ValueError(
+                "Unable to find 'location' in BASEDIR, please rebuild your stats-gatherer"
+            )
         try:
             with open(os.path.join(self.basedir, "port")) as f:
                 port = f.read().strip()
         except EnvironmentError:
-            raise ValueError("Unable to find 'port' in BASEDIR, please rebuild your stats-gatherer")
+            raise ValueError(
+                "Unable to find 'port' in BASEDIR, please rebuild your stats-gatherer"
+            )
 
         self.tub.listenOn(port)
         self.tub.setLocation(location)
         ff = os.path.join(self.basedir, self.furl_file)
-        self.gatherer_furl = self.tub.registerReference(self.stats_gatherer,
-                                                        furlFile=ff)
+        self.gatherer_furl = self.tub.registerReference(
+            self.stats_gatherer, furlFile=ff
+        )

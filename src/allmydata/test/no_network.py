@@ -21,8 +21,31 @@ from __future__ import unicode_literals
 # control.furl .
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 from past.builtins import unicode
 
 import os
@@ -62,10 +85,13 @@ from .common import (
 class IntentionalError(Exception):
     pass
 
+
 class Marker(object):
     pass
 
+
 fireNow = partial(defer.succeed, None)
+
 
 @implementer(IRemoteReference)
 class LocalWrapper(object):
@@ -73,6 +99,7 @@ class LocalWrapper(object):
     A ``LocalWrapper`` presents the remote reference interface to a local
     object which implements a ``RemoteInterface``.
     """
+
     def __init__(self, original, fireEventually=fireEventually):
         """
         :param Callable[[], Deferred[None]] fireEventually: Get a Deferred
@@ -94,7 +121,7 @@ class LocalWrapper(object):
 
     def callRemoteOnly(self, methname, *args, **kwargs):
         d = self.callRemote(methname, *args, **kwargs)
-        del d # explicitly ignored
+        del d  # explicitly ignored
         return None
 
     def callRemote(self, methname, *args, **kwargs):
@@ -106,36 +133,44 @@ class LocalWrapper(object):
                 return self._wrap(a)
             else:
                 return a
+
         args = tuple([wrap(a) for a in args])
-        kwargs = dict([(k,wrap(kwargs[k])) for k in kwargs])
+        kwargs = dict([(k, wrap(kwargs[k])) for k in kwargs])
 
         def _really_call():
-            def incr(d, k): d[k] = d.setdefault(k, 0) + 1
+            def incr(d, k):
+                d[k] = d.setdefault(k, 0) + 1
+
             incr(self.counter_by_methname, methname)
             meth = getattr(self.original, "remote_" + methname)
             return meth(*args, **kwargs)
 
         def _call():
             if self.broken:
-                if self.broken is not True: # a counter, not boolean
+                if self.broken is not True:  # a counter, not boolean
                     self.broken -= 1
                 raise IntentionalError("I was asked to break")
             if self.hung_until:
                 d2 = defer.Deferred()
                 self.hung_until.addCallback(lambda ign: _really_call())
                 self.hung_until.addCallback(lambda res: d2.callback(res))
+
                 def _err(res):
                     d2.errback(res)
                     return res
+
                 self.hung_until.addErrback(_err)
                 return d2
             return _really_call()
 
         d = self._fireEventually()
         d.addCallback(lambda res: _call())
+
         def _wrap_exception(f):
             return Failure(RemoteException(f))
+
         d.addErrback(_wrap_exception)
+
         def _return_membrane(res):
             # rather than complete the difficult task of building a
             # fully-general Membrane (which would locate all Referenceable
@@ -150,6 +185,7 @@ class LocalWrapper(object):
                 for shnum in res:
                     res[shnum] = self._wrap(res[shnum])
             return res
+
         d.addCallback(_return_membrane)
         if self.post_call_notifier:
             d.addCallback(self.post_call_notifier, self, methname)
@@ -159,6 +195,7 @@ class LocalWrapper(object):
         m = Marker()
         self.disconnectors[m] = (f, args, kwargs)
         return m
+
     def dontNotifyOnDisconnect(self, marker):
         del self.disconnectors[marker]
 
@@ -175,18 +212,22 @@ def wrap_storage_server(original):
     wrapper.version = original.remote_get_version()
     return wrapper
 
+
 @implementer(IServer)
 class NoNetworkServer(object):
     def __init__(self, serverid, rref):
         self.serverid = serverid
         self.rref = rref
+
     def __repr__(self):
         return "<NoNetworkServer for %s>" % self.get_name()
+
     # Special method used by copy.copy() and copy.deepcopy(). When those are
     # used in allmydata.immutable.filenode to copy CheckResults during
     # repair, we want it to treat the IServer instances as singletons.
     def __copy__(self):
         return self
+
     def __deepcopy__(self, memodict):
         return self
 
@@ -195,27 +236,36 @@ class NoNetworkServer(object):
 
     def get_serverid(self):
         return self.serverid
+
     def get_permutation_seed(self):
         return self.serverid
+
     def get_lease_seed(self):
         return self.serverid
+
     def get_foolscap_write_enabler_seed(self):
         return self.serverid
 
     def get_name(self):
         return idlib.shortnodeid_b2a(self.serverid)
+
     def get_longname(self):
         return idlib.nodeid_b2a(self.serverid)
+
     def get_nickname(self):
         return "nickname"
+
     def get_rref(self):
         return self.rref
+
     def get_storage_server(self):
         if self.rref is None:
             return None
         return _StorageServer(lambda: self.rref)
+
     def get_version(self):
         return self.rref.version
+
 
 @implementer(IStorageBroker)
 class NoNetworkStorageBroker(object):
@@ -223,15 +273,21 @@ class NoNetworkStorageBroker(object):
         def _permuted(server):
             seed = server.get_permutation_seed()
             return permute_server_hash(peer_selection_index, seed)
+
         return sorted(self.get_connected_servers(), key=_permuted)
+
     def get_connected_servers(self):
         return self.client._servers
+
     def get_nickname_for_serverid(self, serverid):
         return None
+
     def when_connected_enough(self, threshold):
         return defer.Deferred()
+
     def get_all_serverids(self):
         return []  # FIXME?
+
     def get_known_servers(self):
         return []  # FIXME?
 
@@ -245,7 +301,8 @@ def create_no_network_client(basedir):
     fileutil.make_dirs(os.path.join(basedir, "private"), 0o700)
 
     from allmydata.client import read_config
-    config = read_config(basedir, u'client.port')
+
+    config = read_config(basedir, "client.port")
     storage_broker = NoNetworkStorageBroker()
     client = _NoNetworkClient(
         config,
@@ -269,34 +326,48 @@ class _NoNetworkClient(_Client):
 
     def init_connections(self):
         pass
+
     def create_main_tub(self):
         pass
+
     def init_introducer_client(self):
         pass
+
     def create_control_tub(self):
         pass
+
     def create_log_tub(self):
         pass
+
     def setup_logging(self):
         pass
+
     def startService(self):
         service.MultiService.startService(self)
+
     def stopService(self):
         return service.MultiService.stopService(self)
+
     def init_control(self):
         pass
+
     def init_helper(self):
         pass
+
     def init_key_gen(self):
         pass
+
     def init_storage(self):
         pass
+
     def init_client_storage_broker(self):
         self.storage_broker = NoNetworkStorageBroker()
         self.storage_broker.client = self
+
     def init_stub_client(self):
         pass
-    #._servers will be set by the NoNetworkGrid which creates us
+
+    # ._servers will be set by the NoNetworkGrid which creates us
 
 
 class SimpleStats(object):
@@ -315,12 +386,14 @@ class SimpleStats(object):
         stats = {}
         for sp in self.stats_producers:
             stats.update(sp.get_stats())
-        ret = { 'counters': self.counters, 'stats': stats }
+        ret = {"counters": self.counters, "stats": stats}
         return ret
 
+
 class NoNetworkGrid(service.MultiService):
-    def __init__(self, basedir, num_clients, num_servers,
-                 client_config_hooks, port_assigner):
+    def __init__(
+        self, basedir, num_clients, num_servers, client_config_hooks, port_assigner
+    ):
         service.MultiService.__init__(self)
 
         # We really need to get rid of this pattern here (and
@@ -333,10 +406,10 @@ class NoNetworkGrid(service.MultiService):
         self.basedir = basedir
         fileutil.make_dirs(basedir)
 
-        self.servers_by_number = {} # maps to StorageServer instance
-        self.wrappers_by_id = {} # maps to wrapped StorageServer instance
-        self.proxies_by_id = {} # maps to IServer on which .rref is a wrapped
-                                # StorageServer
+        self.servers_by_number = {}  # maps to StorageServer instance
+        self.wrappers_by_id = {}  # maps to wrapped StorageServer instance
+        self.proxies_by_id = {}  # maps to IServer on which .rref is a wrapped
+        # StorageServer
         self.clients = []
         self.client_config_hooks = client_config_hooks
 
@@ -351,6 +424,7 @@ class NoNetworkGrid(service.MultiService):
 
             def _bad(f):
                 self._setup_errors.append(f)
+
             d.addErrback(_bad)
 
     def _check_clients(self):
@@ -366,13 +440,15 @@ class NoNetworkGrid(service.MultiService):
     @defer.inlineCallbacks
     def make_client(self, i, write_config=True):
         clientid = hashutil.tagged_hash(b"clientid", b"%d" % i)[:20]
-        clientdir = os.path.join(self.basedir, "clients",
-                                 idlib.shortnodeid_b2a(clientid))
+        clientdir = os.path.join(
+            self.basedir, "clients", idlib.shortnodeid_b2a(clientid)
+        )
         fileutil.make_dirs(clientdir)
 
         tahoe_cfg_path = os.path.join(clientdir, "tahoe.cfg")
         if write_config:
             from twisted.internet import reactor
+
             _, port_endpoint = self.port_assigner.assign(reactor)
             with open(tahoe_cfg_path, "w") as f:
                 f.write("[node]\n")
@@ -395,17 +471,19 @@ class NoNetworkGrid(service.MultiService):
 
         c.nodeid = clientid
         c.short_nodeid = b32encode(clientid).lower()[:8]
-        c._servers = self.all_servers # can be updated later
+        c._servers = self.all_servers  # can be updated later
         c.setServiceParent(self)
         defer.returnValue(c)
 
     def make_server(self, i, readonly=False):
         serverid = hashutil.tagged_hash(b"serverid", b"%d" % i)[:20]
-        serverdir = os.path.join(self.basedir, "servers",
-                                 idlib.shortnodeid_b2a(serverid), "storage")
+        serverdir = os.path.join(
+            self.basedir, "servers", idlib.shortnodeid_b2a(serverid), "storage"
+        )
         fileutil.make_dirs(serverdir)
-        ss = StorageServer(serverdir, serverid, stats_provider=SimpleStats(),
-                           readonly_storage=readonly)
+        ss = StorageServer(
+            serverdir, serverid, stats_provider=SimpleStats(), readonly_storage=readonly
+        )
         ss._no_network_server_number = i
         return ss
 
@@ -434,7 +512,7 @@ class NoNetworkGrid(service.MultiService):
     def remove_server(self, serverid):
         # it's enough to remove the server from c._servers (we don't actually
         # have to detach and stopService it)
-        for i,ss in list(self.servers_by_number.items()):
+        for i, ss in list(self.servers_by_number.items()):
             if ss.my_nodeid == serverid:
                 del self.servers_by_number[i]
                 break
@@ -463,10 +541,10 @@ class NoNetworkGrid(service.MultiService):
         ss.hung_until = None
 
     def nuke_from_orbit(self):
-        """ Empty all share directories in this grid. It's the only way to be sure ;-) """
+        """Empty all share directories in this grid. It's the only way to be sure ;-)"""
         for server in list(self.servers_by_number.values()):
             for prefixdir in os.listdir(server.sharedir):
-                if prefixdir != 'incoming':
+                if prefixdir != "incoming":
                     fileutil.rm_dir(os.path.join(server.sharedir, prefixdir))
 
 
@@ -477,22 +555,26 @@ class GridTestMixin(object):
         return super(GridTestMixin, self).setUp()
 
     def tearDown(self):
-        return defer.gatherResults([
-            self.s.stopService(),
-            defer.maybeDeferred(super(GridTestMixin, self).tearDown),
-        ])
+        return defer.gatherResults(
+            [
+                self.s.stopService(),
+                defer.maybeDeferred(super(GridTestMixin, self).tearDown),
+            ]
+        )
 
-    def set_up_grid(self, num_clients=1, num_servers=10,
-                    client_config_hooks={}, oneshare=False):
+    def set_up_grid(
+        self, num_clients=1, num_servers=10, client_config_hooks={}, oneshare=False
+    ):
         # self.basedir must be set
         port_assigner = SameProcessStreamEndpointAssigner()
         port_assigner.setUp()
         self.addCleanup(port_assigner.tearDown)
-        self.g = NoNetworkGrid(self.basedir,
-                               num_clients=num_clients,
-                               num_servers=num_servers,
-                               client_config_hooks=client_config_hooks,
-                               port_assigner=port_assigner,
+        self.g = NoNetworkGrid(
+            self.basedir,
+            num_clients=num_clients,
+            num_servers=num_servers,
+            client_config_hooks=client_config_hooks,
+            port_assigner=port_assigner,
         )
         self.g.setServiceParent(self.s)
         if oneshare:
@@ -504,10 +586,12 @@ class GridTestMixin(object):
 
     def _record_webports_and_baseurls(self):
         self.g._check_clients()
-        self.client_webports = [c.getServiceNamed("webish").getPortnum()
-                                for c in self.g.clients]
-        self.client_baseurls = [c.getServiceNamed("webish").getURL()
-                                for c in self.g.clients]
+        self.client_webports = [
+            c.getServiceNamed("webish").getPortnum() for c in self.g.clients
+        ]
+        self.client_baseurls = [
+            c.getServiceNamed("webish").getURL() for c in self.g.clients
+        ]
 
     def get_client_config(self, i=0):
         self.g._check_clients()
@@ -533,6 +617,7 @@ class GridTestMixin(object):
             c = yield self.g.make_client(i, write_config=False)
             self.g.clients[i] = c
             self._record_webports_and_baseurls()
+
         d.addCallback(_make_client)
         return d
 
@@ -548,7 +633,7 @@ class GridTestMixin(object):
         si = tahoe_uri.from_string(uri).get_storage_index()
         prefixdir = storage_index_to_dir(si)
         shares = []
-        for i,ss in list(self.g.servers_by_number.items()):
+        for i, ss in list(self.g.servers_by_number.items()):
             serverid = ss.my_nodeid
             basedir = os.path.join(ss.sharedir, prefixdir)
             if not os.path.exists(basedir):
@@ -585,7 +670,7 @@ class GridTestMixin(object):
     def delete_all_shares(self, serverdir):
         sharedir = os.path.join(serverdir, "shares")
         for prefixdir in os.listdir(sharedir):
-            if prefixdir != 'incoming':
+            if prefixdir != "incoming":
                 fileutil.rm_dir(os.path.join(sharedir, prefixdir))
 
     def corrupt_share(self, sharenum_and_serverid_and_sharefile, corruptor_function):
@@ -614,16 +699,23 @@ class GridTestMixin(object):
                 f.write(corruptdata)
 
     @defer.inlineCallbacks
-    def GET(self, urlpath, followRedirect=False, return_response=False,
-            method="GET", clientnum=0, **kwargs):
+    def GET(
+        self,
+        urlpath,
+        followRedirect=False,
+        return_response=False,
+        method="GET",
+        clientnum=0,
+        **kwargs
+    ):
         # if return_response=True, this fires with (data, statuscode,
         # respheaders) instead of just data.
         assert not isinstance(urlpath, unicode)
         url = self.client_baseurls[clientnum] + urlpath
 
-        response = yield treq.request(method, url, persistent=False,
-                                      allow_redirects=followRedirect,
-                                      **kwargs)
+        response = yield treq.request(
+            method, url, persistent=False, allow_redirects=followRedirect, **kwargs
+        )
         data = yield response.content()
         if return_response:
             # we emulate the old HTTPClientGetFactory-based response, which
@@ -631,7 +723,7 @@ class GridTestMixin(object):
             # code like "200" or "404", and a
             # twisted.web.http_headers.Headers instance). Fortunately treq's
             # response.headers has one.
-            defer.returnValue( (data, str(response.code), response.headers) )
+            defer.returnValue((data, str(response.code), response.headers))
         if 400 <= response.code < 600:
             raise Error(response.code, response=data)
         defer.returnValue(data)

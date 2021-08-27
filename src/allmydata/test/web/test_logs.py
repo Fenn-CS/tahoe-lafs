@@ -39,14 +39,16 @@ from ...web.logs import (
     create_log_resources,
 )
 
+
 class StreamingEliotLogsTests(SyncTestCase):
     """
     Tests for the log streaming resources created by ``create_log_resources``.
     """
+
     def setUp(self):
         self.resource = create_log_resources()
         self.agent = RequestTraversalAgent(self.resource)
-        self.client =  HTTPClient(self.agent)
+        self.client = HTTPClient(self.agent)
         return super(StreamingEliotLogsTests, self).setUp()
 
     def test_v1(self):

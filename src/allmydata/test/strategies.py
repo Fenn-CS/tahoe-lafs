@@ -15,16 +15,19 @@ from ..uri import (
     MDMFDirectoryURI,
 )
 
+
 def write_capabilities():
     """
     Build ``IURI`` providers representing all kinds of write capabilities.
     """
-    return one_of([
-        ssk_capabilities(),
-        mdmf_capabilities(),
-        dir2_capabilities(),
-        dir2_mdmf_capabilities(),
-    ])
+    return one_of(
+        [
+            ssk_capabilities(),
+            mdmf_capabilities(),
+            dir2_capabilities(),
+            dir2_mdmf_capabilities(),
+        ]
+    )
 
 
 def ssk_capabilities():

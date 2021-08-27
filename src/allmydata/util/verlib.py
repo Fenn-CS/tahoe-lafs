@@ -10,15 +10,40 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import re
 
 
 class IrrationalVersionError(Exception):
     """This is an irrational version."""
+
     pass
+
 
 class HugeMajorVersionNumError(IrrationalVersionError):
     """An irrational version because the major version number is huge
@@ -27,7 +52,9 @@ class HugeMajorVersionNumError(IrrationalVersionError):
     See `error_on_huge_major_num` option in `NormalizedVersion` for details.
     This guard can be disabled by setting that option False.
     """
+
     pass
+
 
 # A marker used in the second and third parts of the `parts` tuple, for
 # versions that don't have those segments, to sort properly. An example
@@ -44,9 +71,10 @@ class HugeMajorVersionNumError(IrrationalVersionError):
 #                                                              |
 #   'dev' < 'f' ----------------------------------------------/
 # Other letters would do, but 'f' for 'final' is kind of nice.
-FINAL_MARKER = ('f',)
+FINAL_MARKER = ("f",)
 
-VERSION_RE = re.compile(r'''
+VERSION_RE = re.compile(
+    r"""
     ^
     (?P<version>\d+\.\d+)          # minimum 'N.N'
     (?P<extraversion>(?:\.\d+)*)   # any number of extra '.N' segments
@@ -56,7 +84,10 @@ VERSION_RE = re.compile(r'''
         (?P<prerelversion>\d+(?:\.\d+)*)
     )?
     (?P<postdev>(\.post(?P<post>\d+))?(\.dev(?P<dev>\d+))?)?
-    $''', re.VERBOSE)
+    $""",
+    re.VERBOSE,
+)
+
 
 class NormalizedVersion(object):
     """A rational version.
@@ -76,6 +107,7 @@ class NormalizedVersion(object):
         1.2a        # release level must have a release serial
         1.2.3b
     """
+
     def __init__(self, s, error_on_huge_major_num=True):
         """Create a NormalizedVersion instance from a version string.
 
@@ -96,8 +128,7 @@ class NormalizedVersion(object):
         self._parse(s, error_on_huge_major_num)
 
     @classmethod
-    def from_parts(cls, version, prerelease=FINAL_MARKER,
-                   devpost=FINAL_MARKER):
+    def from_parts(cls, version, prerelease=FINAL_MARKER, devpost=FINAL_MARKER):
         return cls(cls.parts_to_str((version, prerelease, devpost)))
 
     def _parse(self, s, error_on_huge_major_num=True):
@@ -110,43 +141,47 @@ class NormalizedVersion(object):
         parts = []
 
         # main version
-        block = self._parse_numdots(groups['version'], s, False, 2)
-        extraversion = groups.get('extraversion')
-        if extraversion not in ('', None):
+        block = self._parse_numdots(groups["version"], s, False, 2)
+        extraversion = groups.get("extraversion")
+        if extraversion not in ("", None):
             block += self._parse_numdots(extraversion[1:], s)
         parts.append(tuple(block))
 
         # prerelease
-        prerel = groups.get('prerel')
+        prerel = groups.get("prerel")
         if prerel is not None:
             block = [prerel]
-            block += self._parse_numdots(groups.get('prerelversion'), s,
-                                         pad_zeros_length=1)
+            block += self._parse_numdots(
+                groups.get("prerelversion"), s, pad_zeros_length=1
+            )
             parts.append(tuple(block))
         else:
             parts.append(FINAL_MARKER)
 
         # postdev
-        if groups.get('postdev'):
-            post = groups.get('post')
-            dev = groups.get('dev')
+        if groups.get("postdev"):
+            post = groups.get("post")
+            dev = groups.get("dev")
             postdev = []
             if post is not None:
-                postdev.extend([FINAL_MARKER[0], 'post', int(post)])
+                postdev.extend([FINAL_MARKER[0], "post", int(post)])
                 if dev is None:
                     postdev.append(FINAL_MARKER[0])
             if dev is not None:
-                postdev.extend(['dev', int(dev)])
+                postdev.extend(["dev", int(dev)])
             parts.append(tuple(postdev))
         else:
             parts.append(FINAL_MARKER)
         self.parts = tuple(parts)
         if error_on_huge_major_num and self.parts[0][0] > 1980:
-            raise HugeMajorVersionNumError("huge major version number, %r, "
-                "which might cause future problems: %r" % (self.parts[0][0], s))
+            raise HugeMajorVersionNumError(
+                "huge major version number, %r, "
+                "which might cause future problems: %r" % (self.parts[0][0], s)
+            )
 
-    def _parse_numdots(self, s, full_ver_str, drop_trailing_zeros=True,
-                       pad_zeros_length=0):
+    def _parse_numdots(
+        self, s, full_ver_str, drop_trailing_zeros=True, pad_zeros_length=0
+    ):
         """Parse 'N.N.N' sequences, return a list of ints.
 
         @param s {str} 'N.N.N...' sequence to be parsed
@@ -159,9 +194,11 @@ class NormalizedVersion(object):
         """
         nums = []
         for n in s.split("."):
-            if len(n) > 1 and n[0] == '0':
-                raise IrrationalVersionError("cannot have leading zero in "
-                    "version number segment: '%s' in %r" % (n, full_ver_str))
+            if len(n) > 1 and n[0] == "0":
+                raise IrrationalVersionError(
+                    "cannot have leading zero in "
+                    "version number segment: '%s' in %r" % (n, full_ver_str)
+                )
             nums.append(int(n))
         if drop_trailing_zeros:
             while nums and nums[-1] == 0:
@@ -179,17 +216,17 @@ class NormalizedVersion(object):
         representation."""
         # XXX This doesn't check for invalid tuples
         main, prerel, postdev = parts
-        s = '.'.join(str(v) for v in main)
+        s = ".".join(str(v) for v in main)
         if prerel is not FINAL_MARKER:
             s += prerel[0]
-            s += '.'.join(str(v) for v in prerel[1:])
+            s += ".".join(str(v) for v in prerel[1:])
         if postdev and postdev is not FINAL_MARKER:
-            if postdev[0] == 'f':
+            if postdev[0] == "f":
                 postdev = postdev[1:]
             i = 0
             while i < len(postdev):
                 if i % 2 == 0:
-                    s += '.'
+                    s += "."
                 s += str(postdev[i])
                 i += 1
         return s
@@ -198,8 +235,9 @@ class NormalizedVersion(object):
         return "%s('%s')" % (self.__class__.__name__, self)
 
     def _cannot_compare(self, other):
-        raise TypeError("cannot compare %s and %s"
-                % (type(self).__name__, type(other).__name__))
+        raise TypeError(
+            "cannot compare %s and %s" % (type(self).__name__, type(other).__name__)
+        )
 
     def __eq__(self, other):
         if not isinstance(other, NormalizedVersion):
@@ -223,6 +261,7 @@ class NormalizedVersion(object):
     def __ge__(self, other):
         return self.__eq__(other) or self.__gt__(other)
 
+
 def suggest_normalized_version(s):
     """Suggest a normalized version close to the given version string.
 
@@ -242,19 +281,30 @@ def suggest_normalized_version(s):
     """
     try:
         NormalizedVersion(s)
-        return s   # already rational
+        return s  # already rational
     except IrrationalVersionError:
         pass
 
     rs = s.lower()
 
     # part of this could use maketrans
-    for orig, repl in (('-alpha', 'a'), ('-beta', 'b'), ('alpha', 'a'),
-                       ('beta', 'b'), ('rc', 'c'), ('-final', ''),
-                       ('-pre', 'c'),
-                       ('-release', ''), ('.release', ''), ('-stable', ''),
-                       ('+', '.'), ('_', '.'), (' ', ''), ('.final', ''),
-                       ('final', '')):
+    for orig, repl in (
+        ("-alpha", "a"),
+        ("-beta", "b"),
+        ("alpha", "a"),
+        ("beta", "b"),
+        ("rc", "c"),
+        ("-final", ""),
+        ("-pre", "c"),
+        ("-release", ""),
+        (".release", ""),
+        ("-stable", ""),
+        ("+", "."),
+        ("_", "."),
+        (" ", ""),
+        (".final", ""),
+        ("final", ""),
+    ):
         rs = rs.replace(orig, repl)
 
     # if something ends with dev or pre, we add a 0
@@ -274,11 +324,11 @@ def suggest_normalized_version(s):
     rs = re.sub(r"[.~]?([abc])\.?", r"\1", rs)
 
     # Clean: v0.3, v1.0
-    if rs.startswith('v'):
+    if rs.startswith("v"):
         rs = rs[1:]
 
     # Clean leading '0's on numbers.
-    #TODO: unintended side-effect on, e.g., "2003.05.09"
+    # TODO: unintended side-effect on, e.g., "2003.05.09"
     # PyPI stats: 77 (~2%) better
     rs = re.sub(r"\b0+(\d+)(?!\d)", r"\1", rs)
 
@@ -324,13 +374,12 @@ def suggest_normalized_version(s):
     # PyPI stats: ~21 (0.62%) better
     rs = re.sub(r"\.?(pre|preview|-c)(\d+)$", r"c\g<2>", rs)
 
-
     # Tcl/Tk uses "px" for their post release markers
     rs = re.sub(r"p(\d+)$", r".post\1", rs)
 
     try:
         NormalizedVersion(rs)
-        return rs   # already rational
+        return rs  # already rational
     except IrrationalVersionError:
         pass
     return None

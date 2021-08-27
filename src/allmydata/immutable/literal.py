@@ -8,8 +8,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 from io import BytesIO
 
@@ -19,9 +42,9 @@ from twisted.protocols import basic
 from allmydata.interfaces import IImmutableFileNode, ICheckable
 from allmydata.uri import LiteralFileURI
 
+
 @implementer(IImmutableFileNode, ICheckable)
 class _ImmutableFileNodeBase(object):
-
     def get_write_uri(self):
         return None
 
@@ -57,22 +80,25 @@ class _ImmutableFileNodeBase(object):
 
 
 class LiteralFileNode(_ImmutableFileNodeBase):
-
     def __init__(self, filecap):
         assert isinstance(filecap, LiteralFileURI)
         self.u = filecap
 
     def get_size(self):
         return len(self.u.data)
+
     def get_current_size(self):
         return defer.succeed(self.get_size())
 
     def get_cap(self):
         return self.u
+
     def get_readcap(self):
         return self.u
+
     def get_verify_cap(self):
         return None
+
     def get_repair_cap(self):
         return None
 
@@ -92,7 +118,7 @@ class LiteralFileNode(_ImmutableFileNodeBase):
         if size is None:
             data = self.u.data[offset:]
         else:
-            data = self.u.data[offset:offset+size]
+            data = self.u.data[offset : offset + size]
 
         # We use twisted.protocols.basic.FileSender, which only does
         # non-streaming, i.e. PullProducer, where the receiver/consumer must
@@ -111,13 +137,11 @@ class LiteralFileNode(_ImmutableFileNodeBase):
     def get_best_readable_version(self):
         return defer.succeed(self)
 
-
     def download_best_version(self, progress=None):
         if progress is not None:
             progress.set_progress_total(len(self.u.data))
             progress.set_progress(len(self.u.data))
         return defer.succeed(self.u.data)
-
 
     download_to_data = download_best_version
     get_size_of_best_version = get_current_size

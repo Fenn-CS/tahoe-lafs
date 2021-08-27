@@ -11,8 +11,31 @@ from __future__ import division
 from __future__ import print_function
 
 from future.utils import PY2
+
 if PY2:
-    from builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 from twisted.python.reflect import (
     namedModule,
@@ -28,10 +51,9 @@ from allmydata.util._python3 import (
     PORTED_TEST_MODULES,
 )
 
+
 def testSuite():
     loader = TestLoader()
-    return TestSuite(list(
-        loader.loadModule(namedModule(module))
-        for module
-        in PORTED_TEST_MODULES
-    ))
+    return TestSuite(
+        list(loader.loadModule(namedModule(module)) for module in PORTED_TEST_MODULES)
+    )

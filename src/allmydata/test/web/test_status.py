@@ -26,7 +26,6 @@ from .test_web import FakeHistory
 
 # Test that status.StatusElement can render HTML.
 class StatusTests(TrialTestCase):
-
     def _render_status_page(self, active, recent):
         elem = StatusElement(active, recent)
         d = flattenString(None, elem)
@@ -35,58 +34,39 @@ class StatusTests(TrialTestCase):
     def test_status_page(self):
         status = Status(FakeHistory())
         doc = self._render_status_page(
-            status._get_active_operations(),
-            status._get_recent_operations()
+            status._get_active_operations(), status._get_recent_operations()
         )
-        soup = BeautifulSoup(doc, 'html5lib')
+        soup = BeautifulSoup(doc, "html5lib")
 
         assert_soup_has_favicon(self, soup)
 
         assert_soup_has_tag_with_content(
-            self, soup, u"title",
-            u"Tahoe-LAFS - Recent and Active Operations"
+            self, soup, u"title", u"Tahoe-LAFS - Recent and Active Operations"
         )
 
-        assert_soup_has_tag_with_content(
-            self, soup, u"h2",
-            u"Active Operations:"
-        )
+        assert_soup_has_tag_with_content(self, soup, u"h2", u"Active Operations:")
 
-        assert_soup_has_tag_with_content(
-            self, soup, u"td",
-            u"retrieve"
-        )
+        assert_soup_has_tag_with_content(self, soup, u"td", u"retrieve")
 
-        assert_soup_has_tag_with_content(
-            self, soup, u"td",
-            u"publish"
-        )
+        assert_soup_has_tag_with_content(self, soup, u"td", u"publish")
 
-        assert_soup_has_tag_with_content(
-            self, soup, u"td",
-            u"download"
-        )
+        assert_soup_has_tag_with_content(self, soup, u"td", u"download")
 
-        assert_soup_has_tag_with_content(
-            self, soup, u"td",
-            u"upload"
-        )
+        assert_soup_has_tag_with_content(self, soup, u"td", u"upload")
 
-        assert_soup_has_tag_with_content(
-            self, soup, u"h2",
-            "Recent Operations:"
-        )
+        assert_soup_has_tag_with_content(self, soup, u"h2", "Recent Operations:")
 
 
 @implementer(IDownloadResults)
 class FakeDownloadResults(object):
-
-    def __init__(self,
-                 file_size=0,
-                 servers_used=None,
-                 server_problems=None,
-                 servermap=None,
-                 timings=None):
+    def __init__(
+        self,
+        file_size=0,
+        servers_used=None,
+        server_problems=None,
+        servermap=None,
+        timings=None,
+    ):
         """
         See IDownloadResults for parameters.
         """
@@ -98,14 +78,15 @@ class FakeDownloadResults(object):
 
 
 class FakeDownloadStatus(DownloadStatus):
-
-    def __init__(self,
-                 storage_index = None,
-                 file_size = 0,
-                 servers_used = None,
-                 server_problems = None,
-                 servermap = None,
-                 timings = None):
+    def __init__(
+        self,
+        storage_index=None,
+        file_size=0,
+        servers_used=None,
+        server_problems=None,
+        servermap=None,
+        timings=None,
+    ):
         """
         See IDownloadStatus and IDownloadResults for parameters.
         """
@@ -117,11 +98,13 @@ class FakeDownloadStatus(DownloadStatus):
         self.timings = timings
 
     def get_results(self):
-        return FakeDownloadResults(self.size,
-                                   self.servers_used,
-                                   self.server_problems,
-                                   self.servermap,
-                                   self.timings)
+        return FakeDownloadResults(
+            self.size,
+            self.servers_used,
+            self.server_problems,
+            self.servermap,
+            self.timings,
+        )
 
 
 class DownloadStatusElementTests(TrialTestCase):
@@ -143,16 +126,16 @@ class DownloadStatusElementTests(TrialTestCase):
         See if we can render the page almost fully.
         """
         status = FakeDownloadStatus(
-            "si-1", 123,
+            "si-1",
+            123,
             ["s-1", "s-2", "s-3"],
             {"s-1": "unknown problem"},
-            {"s-1": [1], "s-2": [1,2], "s-3": [2,3]},
-            {"fetch_per_server":
-             {"s-1": [1], "s-2": [2,3], "s-3": [3,2]}}
+            {"s-1": [1], "s-2": [1, 2], "s-3": [2, 3]},
+            {"fetch_per_server": {"s-1": [1], "s-2": [2, 3], "s-3": [3, 2]}},
         )
 
         result = self._render_download_status_element(status)
-        soup = BeautifulSoup(result, 'html5lib')
+        soup = BeautifulSoup(result, "html5lib")
 
         assert_soup_has_favicon(self, soup)
 
@@ -160,30 +143,20 @@ class DownloadStatusElementTests(TrialTestCase):
             self, soup, u"title", u"Tahoe-LAFS - File Download Status"
         )
 
-        assert_soup_has_tag_with_content(
-            self, soup, u"li", u"File Size: 123 bytes"
-        )
-        assert_soup_has_tag_with_content(
-            self, soup, u"li", u"Progress: 0.0%"
-        )
+        assert_soup_has_tag_with_content(self, soup, u"li", u"File Size: 123 bytes")
+        assert_soup_has_tag_with_content(self, soup, u"li", u"Progress: 0.0%")
 
         assert_soup_has_tag_with_content(
             self, soup, u"li", u"Servers Used: [omwtc], [omwte], [omwtg]"
         )
 
-        assert_soup_has_tag_with_content(
-            self, soup, u"li", u"Server Problems:"
-        )
+        assert_soup_has_tag_with_content(self, soup, u"li", u"Server Problems:")
 
-        assert_soup_has_tag_with_content(
-            self, soup, u"li", u"[omwtc]: unknown problem"
-        )
+        assert_soup_has_tag_with_content(self, soup, u"li", u"[omwtc]: unknown problem")
 
         assert_soup_has_tag_with_content(self, soup, u"li", u"Servermap:")
 
-        assert_soup_has_tag_with_content(
-            self, soup, u"li", u"[omwtc] has share: #1"
-        )
+        assert_soup_has_tag_with_content(self, soup, u"li", u"[omwtc] has share: #1")
 
         assert_soup_has_tag_with_content(
             self, soup, u"li", u"[omwte] has shares: #1,#2"
@@ -197,17 +170,11 @@ class DownloadStatusElementTests(TrialTestCase):
             self, soup, u"li", u"Per-Server Segment Fetch Response Times:"
         )
 
-        assert_soup_has_tag_with_content(
-            self, soup, u"li", u"[omwtc]: 1.00s"
-        )
+        assert_soup_has_tag_with_content(self, soup, u"li", u"[omwtc]: 1.00s")
 
-        assert_soup_has_tag_with_content(
-            self, soup, u"li", u"[omwte]: 2.00s, 3.00s"
-        )
+        assert_soup_has_tag_with_content(self, soup, u"li", u"[omwte]: 2.00s, 3.00s")
 
-        assert_soup_has_tag_with_content(
-            self, soup, u"li", u"[omwtg]: 3.00s, 2.00s"
-        )
+        assert_soup_has_tag_with_content(self, soup, u"li", u"[omwtg]: 3.00s, 2.00s")
 
     def test_download_status_element_partial(self):
         """
@@ -215,16 +182,10 @@ class DownloadStatusElementTests(TrialTestCase):
         """
         status = FakeDownloadStatus()
         result = self._render_download_status_element(status)
-        soup = BeautifulSoup(result, 'html5lib')
+        soup = BeautifulSoup(result, "html5lib")
 
-        assert_soup_has_tag_with_content(
-            self, soup, u"li", u"Servermap: None"
-        )
+        assert_soup_has_tag_with_content(self, soup, u"li", u"Servermap: None")
 
-        assert_soup_has_tag_with_content(
-            self, soup, u"li", u"File Size: 0 bytes"
-        )
+        assert_soup_has_tag_with_content(self, soup, u"li", u"File Size: 0 bytes")
 
-        assert_soup_has_tag_with_content(
-            self, soup, u"li", u"Total: None (None)"
-        )
+        assert_soup_has_tag_with_content(self, soup, u"li", u"Total: None (None)")

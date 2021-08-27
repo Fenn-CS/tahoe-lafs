@@ -54,12 +54,14 @@ from .common import (
     assert_soup_has_tag_with_attributes,
 )
 
+
 class StaticResource(Resource, object):
     """
     ``StaticResource`` is a resource that returns whatever Python object it is
     given from its render method.  This is useful for testing
     ``render_exception``\\ 's handling of different render results.
     """
+
     def __init__(self, response):
         Resource.__init__(self)
         self._response = response
@@ -75,11 +77,13 @@ class RenderExceptionTests(SyncTestCase):
     """
     Tests for ``render_exception`` (including the private helper ``_finish``).
     """
+
     def test_exception(self):
         """
         If the decorated method raises an exception then the exception is rendered
         into the response.
         """
+
         class R(Resource):
             @render_exception
             def render(self, request):
@@ -162,8 +166,9 @@ class RenderExceptionTests(SyncTestCase):
                         self,
                         BeautifulSoup(value),
                         "meta",
-                        {"http-equiv": "refresh",
-                         "content": "0;URL={}".format(loc.encode("ascii")),
+                        {
+                            "http-equiv": "refresh",
+                            "content": "0;URL={}".format(loc.encode("ascii")),
                         },
                     )
                     # The assertion will raise if it has a problem, otherwise
@@ -193,6 +198,7 @@ class RenderExceptionTests(SyncTestCase):
         responsible for finishing the request itself.
         """
         the_request = []
+
         class R(Resource):
             @render_exception
             def render(self, request):

@@ -74,7 +74,7 @@ class _FakeTahoeRoot(Resource, object):
 KNOWN_CAPABILITIES = [
     getattr(allmydata.uri, t).BASE_STRING
     for t in dir(allmydata.uri)
-    if hasattr(getattr(allmydata.uri, t), 'BASE_STRING')
+    if hasattr(getattr(allmydata.uri, t), "BASE_STRING")
 ]
 
 
@@ -173,7 +173,9 @@ class _FakeTahoeUriHandler(Resource, object):
         data = request.content.read()
         fresh, cap = self.add_data("URI:CHK:", data)
         if fresh:
-            request.setResponseCode(http.CREATED)  # real code does this for brand-new files
+            request.setResponseCode(
+                http.CREATED
+            )  # real code does this for brand-new files
         else:
             request.setResponseCode(http.OK)  # replaced/modified files
         return cap
@@ -182,15 +184,13 @@ class _FakeTahoeUriHandler(Resource, object):
         t = request.args[u"t"][0]
         data = request.content.read()
 
-        type_to_kind = {
-            "mkdir-immutable": "URI:DIR2-CHK:"
-        }
+        type_to_kind = {"mkdir-immutable": "URI:DIR2-CHK:"}
         kind = type_to_kind[t]
         fresh, cap = self.add_data(kind, data)
         return cap
 
     def render_GET(self, request):
-        uri = DecodedURL.from_text(request.uri.decode('utf8'))
+        uri = DecodedURL.from_text(request.uri.decode("utf8"))
         capability = None
         for arg, value in uri.query:
             if arg == u"uri":
@@ -255,9 +255,7 @@ class _SynchronousProducer(object):
             body = body._inputFile.read()
 
         if not isinstance(body, bytes):
-            raise ValueError(
-                "'body' must be bytes not '{}'".format(type(body))
-            )
+            raise ValueError("'body' must be bytes not '{}'".format(type(body)))
         self.body = body
         self.length = len(body)
 

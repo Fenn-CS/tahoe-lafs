@@ -56,6 +56,7 @@ from .common import (
     AsyncTestCase,
 )
 
+
 class EliotLoggedTestTests(AsyncTestCase):
     def test_returns_none(self):
         Message.log(hello="world")
@@ -75,11 +76,11 @@ class EliotLoggedTestTests(AsyncTestCase):
         return d.result
 
 
-
 class ParseDestinationDescriptionTests(SyncTestCase):
     """
     Tests for ``_parse_destination_description``.
     """
+
     def test_stdout(self):
         """
         A ``file:`` description with a path of ``-`` causes logs to be written to
@@ -90,7 +91,6 @@ class ParseDestinationDescriptionTests(SyncTestCase):
             _parse_destination_description("file:-")(reactor),
             Equals(FileDestination(stdout)),
         )
-
 
     def test_regular_file(self):
         """
@@ -121,6 +121,7 @@ class EliotLoggingTests(TestCase):
     """
     Tests for ``_EliotLogging``.
     """
+
     def test_stdlib_event_relayed(self):
         """
         An event logged using the stdlib logging module is delivered to the Eliot
@@ -156,45 +157,56 @@ class EliotLoggingTests(TestCase):
         self.addCleanup(service.stopService)
 
         from twisted.logger import Logger
+
         Logger().critical("oh no")
         self.assertThat(
             collected,
             AfterPreprocessing(
-                len, Equals(1),
+                len,
+                Equals(1),
             ),
         )
+
 
 class LogCallDeferredTests(TestCase):
     """
     Tests for ``log_call_deferred``.
     """
+
     @capture_logging(
-        lambda self, logger:
-        assertHasAction(self, logger, u"the-action", succeeded=True),
+        lambda self, logger: assertHasAction(
+            self, logger, "the-action", succeeded=True
+        ),
     )
     def test_return_value(self, logger):
         """
         The decorated function's return value is passed through.
         """
         result = object()
-        @log_call_deferred(action_type=u"the-action")
+
+        @log_call_deferred(action_type="the-action")
         def f():
             return result
+
         self.assertThat(f(), succeeded(Is(result)))
 
     @capture_logging(
-        lambda self, logger:
-        assertHasAction(self, logger, u"the-action", succeeded=False),
+        lambda self, logger: assertHasAction(
+            self, logger, "the-action", succeeded=False
+        ),
     )
     def test_raise_exception(self, logger):
         """
         An exception raised by the decorated function is passed through.
         """
+
         class Result(Exception):
             pass
-        @log_call_deferred(action_type=u"the-action")
+
+        @log_call_deferred(action_type="the-action")
         def f():
             raise Result()
+
         self.assertThat(
             f(),
             failed(

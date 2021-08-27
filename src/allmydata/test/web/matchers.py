@@ -2,6 +2,7 @@ import attr
 
 from testtools.matchers import Mismatch
 
+
 @attr.s
 class _HasResponseCode(object):
     match_expected_code = attr.ib()
@@ -18,6 +19,7 @@ class _HasResponseCode(object):
             ),
             mismatch.get_details(),
         )
+
 
 def has_response_code(match_expected_code):
     """

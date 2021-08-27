@@ -14,9 +14,7 @@ from allmydata.scripts.common import BaseOptions
 from allmydata.util.encodingutil import argv_to_abspath
 
 
-
 class GenerateKeypairOptions(BaseOptions):
-
     def getUsage(self, width=None):
         t = BaseOptions.getUsage(self, width)
         t += """
@@ -25,12 +23,15 @@ Generate a public/private keypair, dumped to stdout as two lines of ASCII..
 """
         return t
 
+
 def print_keypair(options):
     from allmydata.crypto import ed25519
+
     out = options.stdout
     private_key, public_key = ed25519.create_signing_keypair()
     print("private:", ed25519.string_from_signing_key(private_key), file=out)
     print("public:", ed25519.string_from_verifying_key(public_key), file=out)
+
 
 class DerivePubkeyOptions(BaseOptions):
     def parseArgs(self, privkey):
@@ -48,9 +49,11 @@ generate-keypair, derive the public key and print it to stdout.
 """
         return t
 
+
 def derive_pubkey(options):
     out = options.stdout
     from allmydata.crypto import ed25519
+
     privkey_vs = options.privkey
     private_key, public_key = ed25519.signing_keypair_from_string(privkey_vs)
     print("private:", ed25519.string_from_signing_key(private_key), file=out)
@@ -61,39 +64,31 @@ def derive_pubkey(options):
 class AddGridManagerCertOptions(BaseOptions):
 
     optParameters = [
-        ['filename', 'f', None, "Filename of the certificate ('-', a dash, for stdin)"],
-        ['name', 'n', None, "Name to give this certificate"],
+        ["filename", "f", None, "Filename of the certificate ('-', a dash, for stdin)"],
+        ["name", "n", None, "Name to give this certificate"],
     ]
 
     def getSynopsis(self):
         return "Usage: tahoe [global-options] admin add-grid-manager-cert [options]"
 
     def postOptions(self):
-        if self['name'] is None:
-            raise usage.UsageError(
-                "Must provide --name option"
-            )
-        if self['filename'] is None:
-            raise usage.UsageError(
-                "Must provide --filename option"
-            )
-        if self['filename'] == '-':
+        if self["name"] is None:
+            raise usage.UsageError("Must provide --name option")
+        if self["filename"] is None:
+            raise usage.UsageError("Must provide --filename option")
+        if self["filename"] == "-":
             print("reading certificate from stdin", file=self.parent.parent.stderr)
             data = self.parent.parent.stdin.read()
             if len(data) == 0:
-                raise usage.UsageError(
-                    "Reading certificate from stdin failed"
-                )
+                raise usage.UsageError("Reading certificate from stdin failed")
         else:
-            with open(self['filename'], 'r') as f:
+            with open(self["filename"], "r") as f:
                 data = f.read()
 
         try:
             self.certificate_data = parse_grid_manager_certificate(data)
         except ValueError as e:
-            raise usage.UsageError(
-                "Error parsing certificate: {}".format(e)
-            )
+            raise usage.UsageError("Error parsing certificate: {}".format(e))
 
     def getUsage(self, width=None):
         t = BaseOptions.getUsage(self, width)
@@ -115,20 +110,20 @@ def add_grid_manager_cert(options):
     if options.certificate_data is None:
         return 1
     # XXX is there really not already a function for this?
-    if options.parent.parent['node-directory']:
-        nd = argv_to_abspath(options.parent.parent['node-directory'])
+    if options.parent.parent["node-directory"]:
+        nd = argv_to_abspath(options.parent.parent["node-directory"])
     else:
         nd = _default_nodedir
 
     config = read_config(nd, "portnum")
-    cert_fname = "{}.cert".format(options['name'])
+    cert_fname = "{}.cert".format(options["name"])
     cert_path = FilePath(config.get_config_path(cert_fname))
-    cert_bytes = json.dumps(options.certificate_data, indent=4) + '\n'
-    cert_name = options['name']
+    cert_bytes = json.dumps(options.certificate_data, indent=4) + "\n"
+    cert_name = options["name"]
 
     if cert_path.exists():
         msg = "Already have certificate for '{}' (at {})".format(
-            options['name'],
+            options["name"],
             cert_path,
         )
         print(msg, file=options.parent.parent.stderr)
@@ -142,26 +137,43 @@ def add_grid_manager_cert(options):
         f.write(cert_bytes)
 
     cert_count = len(config.enumerate_section("grid_manager_certificates"))
-    print("There are now {} certificates".format(cert_count), file=options.parent.parent.stderr)
+    print(
+        "There are now {} certificates".format(cert_count),
+        file=options.parent.parent.stderr,
+    )
 
     return 0
 
 
 class AdminCommand(BaseOptions):
     subCommands = [
-        ("generate-keypair", None, GenerateKeypairOptions,
-         "Generate a public/private keypair, write to stdout."),
-        ("derive-pubkey", None, DerivePubkeyOptions,
-         "Derive a public key from a private key."),
-        ("add-grid-manager-cert", None, AddGridManagerCertOptions,
-         "Add a Grid Manager-provided certificate to a storage "
-         "server's config."),
-        ]
+        (
+            "generate-keypair",
+            None,
+            GenerateKeypairOptions,
+            "Generate a public/private keypair, write to stdout.",
+        ),
+        (
+            "derive-pubkey",
+            None,
+            DerivePubkeyOptions,
+            "Derive a public key from a private key.",
+        ),
+        (
+            "add-grid-manager-cert",
+            None,
+            AddGridManagerCertOptions,
+            "Add a Grid Manager-provided certificate to a storage " "server's config.",
+        ),
+    ]
+
     def postOptions(self):
-        if not hasattr(self, 'subOptions'):
+        if not hasattr(self, "subOptions"):
             raise usage.UsageError("must specify a subcommand")
+
     def getSynopsis(self):
         return "Usage: tahoe [global-options] admin SUBCOMMAND"
+
     def getUsage(self, width=None):
         t = BaseOptions.getUsage(self, width)
         t += """

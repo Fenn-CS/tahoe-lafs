@@ -16,7 +16,6 @@ from twisted.internet import protocol, defer
 
 
 class _EverythingGetter(protocol.ProcessProtocol, object):
-
     def __init__(self, deferred, stdinBytes=None):
         self.deferred = deferred
         self.outBuf = BytesIO()
@@ -43,21 +42,21 @@ class _EverythingGetter(protocol.ProcessProtocol, object):
             self.deferred.callback((out, err, code))
 
 
-
-def _callProtocolWithDeferred(protocol, executable, args, env, path,
-                              reactor=None, protoArgs=()):
+def _callProtocolWithDeferred(
+    protocol, executable, args, env, path, reactor=None, protoArgs=()
+):
     if reactor is None:
         from twisted.internet import reactor
 
     d = defer.Deferred()
     p = protocol(d, *protoArgs)
-    reactor.spawnProcess(p, executable, (executable,)+tuple(args), env, path)
+    reactor.spawnProcess(p, executable, (executable,) + tuple(args), env, path)
     return d
 
 
-
-def getProcessOutputAndValue(executable, args=(), env={}, path=None,
-                             reactor=None, stdinBytes=None):
+def getProcessOutputAndValue(
+    executable, args=(), env={}, path=None, reactor=None, stdinBytes=None
+):
     """Spawn a process and returns a Deferred that will be called back with
     its output (from stdout and stderr) and it's exit code as (out, err, code)
     If a signal is raised, the Deferred will errback with the stdout and

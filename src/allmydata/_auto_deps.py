@@ -8,8 +8,31 @@ from __future__ import division
 from __future__ import print_function
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 # Note: please minimize imports in this file. In particular, do not import
 # any module from Tahoe-LAFS or its dependencies, and do not import any
@@ -21,42 +44,42 @@ if PY2:
 # These are in the order they should be listed by --version, etc.
 package_imports = [
     # package name       module name
-    ('foolscap',         'foolscap'),
-    ('zfec',             'zfec'),
-    ('Twisted',          'twisted'),
-    ('zope.interface',   'zope.interface'),
-    ('python',           None),
-    ('platform',         None),
-    ('pyOpenSSL',        'OpenSSL'),
-    ('OpenSSL',          None),
-    ('pyasn1',           'pyasn1'),
-    ('service-identity', 'service_identity'),
-    ('pyasn1-modules',   'pyasn1_modules'),
-    ('cryptography',     'cryptography'),
-    ('cffi',             'cffi'),
-    ('six',              'six'),
-    ('enum34',           'enum'),
-    ('pycparser',        'pycparser'),
-    ('PyYAML',           'yaml'),
-    ('magic-wormhole',   'wormhole'),
-    ('setuptools',       'setuptools'),
-    ('eliot',            'eliot'),
-    ('attrs',            'attr'),
-    ('autobahn',         'autobahn'),
+    ("foolscap", "foolscap"),
+    ("zfec", "zfec"),
+    ("Twisted", "twisted"),
+    ("zope.interface", "zope.interface"),
+    ("python", None),
+    ("platform", None),
+    ("pyOpenSSL", "OpenSSL"),
+    ("OpenSSL", None),
+    ("pyasn1", "pyasn1"),
+    ("service-identity", "service_identity"),
+    ("pyasn1-modules", "pyasn1_modules"),
+    ("cryptography", "cryptography"),
+    ("cffi", "cffi"),
+    ("six", "six"),
+    ("enum34", "enum"),
+    ("pycparser", "pycparser"),
+    ("PyYAML", "yaml"),
+    ("magic-wormhole", "wormhole"),
+    ("setuptools", "setuptools"),
+    ("eliot", "eliot"),
+    ("attrs", "attr"),
+    ("autobahn", "autobahn"),
 ]
 
 # Dependencies for which we don't know how to get a version number at run-time.
 not_import_versionable = [
-    'zope.interface',
+    "zope.interface",
 ]
 
 # Dependencies reported by pkg_resources that we can safely ignore.
 ignorable = [
-    'argparse',
-    'distribute',
-    'twisted-web',
-    'twisted-core',
-    'twisted-conch',
+    "argparse",
+    "distribute",
+    "twisted-web",
+    "twisted-core",
+    "twisted-conch",
 ]
 
 
@@ -84,6 +107,6 @@ runtime_warning_messages = [
 ]
 
 warning_imports = [
-    'twisted.persisted.sob',
-    'twisted.python.filepath',
+    "twisted.persisted.sob",
+    "twisted.python.filepath",
 ]

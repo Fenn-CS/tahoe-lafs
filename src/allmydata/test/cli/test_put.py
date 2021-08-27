@@ -11,8 +11,8 @@ from allmydata.util.encodingutil import get_io_encoding, unicode_to_argv
 from allmydata.util.fileutil import abspath_expanduser_unicode
 from .common import CLITestMixin
 
-class Put(GridTestMixin, CLITestMixin, unittest.TestCase):
 
+class Put(GridTestMixin, CLITestMixin, unittest.TestCase):
     def test_unlinked_immutable_stdin(self):
         # tahoe get `echo DATA | tahoe put`
         # tahoe get `echo DATA | tahoe put -`
@@ -20,22 +20,27 @@ class Put(GridTestMixin, CLITestMixin, unittest.TestCase):
         DATA = "data" * 100
         self.set_up_grid(oneshare=True)
         d = self.do_cli("put", stdin=DATA)
+
         def _uploaded(res):
             (rc, out, err) = res
             self.failUnlessIn("waiting for file data on stdin..", err)
             self.failUnlessIn("200 OK", err)
             self.readcap = out
             self.failUnless(self.readcap.startswith("URI:CHK:"))
+
         d.addCallback(_uploaded)
         d.addCallback(lambda res: self.do_cli("get", self.readcap))
+
         def _downloaded(res):
             (rc, out, err) = res
             self.failUnlessReallyEqual(err, "")
             self.failUnlessReallyEqual(out, DATA)
+
         d.addCallback(_downloaded)
         d.addCallback(lambda res: self.do_cli("put", "-", stdin=DATA))
-        d.addCallback(lambda rc_out_err:
-                      self.failUnlessReallyEqual(rc_out_err[1], self.readcap))
+        d.addCallback(
+            lambda rc_out_err: self.failUnlessReallyEqual(rc_out_err[1], self.readcap)
+        )
         return d
 
     def test_unlinked_immutable_from_file(self):
@@ -51,18 +56,26 @@ class Put(GridTestMixin, CLITestMixin, unittest.TestCase):
         # we make the file small enough to fit in a LIT file, for speed
         fileutil.write(rel_fn, "short file")
         d = self.do_cli("put", rel_fn)
+
         def _uploaded(args):
             (rc, out, err) = args
             readcap = out
             self.failUnless(readcap.startswith("URI:LIT:"), readcap)
             self.readcap = readcap
+
         d.addCallback(_uploaded)
         d.addCallback(lambda res: self.do_cli("put", "./" + rel_fn))
-        d.addCallback(lambda rc_stdout_stderr:
-                      self.failUnlessReallyEqual(rc_stdout_stderr[1], self.readcap))
+        d.addCallback(
+            lambda rc_stdout_stderr: self.failUnlessReallyEqual(
+                rc_stdout_stderr[1], self.readcap
+            )
+        )
         d.addCallback(lambda res: self.do_cli("put", abs_fn))
-        d.addCallback(lambda rc_stdout_stderr:
-                      self.failUnlessReallyEqual(rc_stdout_stderr[1], self.readcap))
+        d.addCallback(
+            lambda rc_stdout_stderr: self.failUnlessReallyEqual(
+                rc_stdout_stderr[1], self.readcap
+            )
+        )
         # we just have to assume that ~ is handled properly
         return d
 
@@ -85,67 +98,85 @@ class Put(GridTestMixin, CLITestMixin, unittest.TestCase):
 
         d = self.do_cli("create-alias", "tahoe")
 
-        d.addCallback(lambda res:
-                      self.do_cli("put", rel_fn, "uploaded.txt"))
+        d.addCallback(lambda res: self.do_cli("put", rel_fn, "uploaded.txt"))
+
         def _uploaded(args):
             (rc, out, err) = args
             readcap = out.strip()
             self.failUnless(readcap.startswith("URI:LIT:"), readcap)
             self.failUnlessIn("201 Created", err)
             self.readcap = readcap
-        d.addCallback(_uploaded)
-        d.addCallback(lambda res:
-                      self.do_cli("get", "tahoe:uploaded.txt"))
-        d.addCallback(lambda rc_stdout_stderr:
-                      self.failUnlessReallyEqual(rc_stdout_stderr[1], DATA))
 
-        d.addCallback(lambda res:
-                      self.do_cli("put", "-", "uploaded.txt", stdin=DATA2))
+        d.addCallback(_uploaded)
+        d.addCallback(lambda res: self.do_cli("get", "tahoe:uploaded.txt"))
+        d.addCallback(
+            lambda rc_stdout_stderr: self.failUnlessReallyEqual(
+                rc_stdout_stderr[1], DATA
+            )
+        )
+
+        d.addCallback(lambda res: self.do_cli("put", "-", "uploaded.txt", stdin=DATA2))
+
         def _replaced(args):
             (rc, out, err) = args
             readcap = out.strip()
             self.failUnless(readcap.startswith("URI:LIT:"), readcap)
             self.failUnlessIn("200 OK", err)
+
         d.addCallback(_replaced)
 
-        d.addCallback(lambda res:
-                      self.do_cli("put", rel_fn, "subdir/uploaded2.txt"))
+        d.addCallback(lambda res: self.do_cli("put", rel_fn, "subdir/uploaded2.txt"))
         d.addCallback(lambda res: self.do_cli("get", "subdir/uploaded2.txt"))
-        d.addCallback(lambda rc_stdout_stderr:
-                      self.failUnlessReallyEqual(rc_stdout_stderr[1], DATA))
+        d.addCallback(
+            lambda rc_stdout_stderr: self.failUnlessReallyEqual(
+                rc_stdout_stderr[1], DATA
+            )
+        )
 
-        d.addCallback(lambda res:
-                      self.do_cli("put", rel_fn, "tahoe:uploaded3.txt"))
+        d.addCallback(lambda res: self.do_cli("put", rel_fn, "tahoe:uploaded3.txt"))
         d.addCallback(lambda res: self.do_cli("get", "tahoe:uploaded3.txt"))
-        d.addCallback(lambda rc_stdout_stderr:
-                      self.failUnlessReallyEqual(rc_stdout_stderr[1], DATA))
+        d.addCallback(
+            lambda rc_stdout_stderr: self.failUnlessReallyEqual(
+                rc_stdout_stderr[1], DATA
+            )
+        )
 
-        d.addCallback(lambda res:
-                      self.do_cli("put", rel_fn, "tahoe:subdir/uploaded4.txt"))
-        d.addCallback(lambda res:
-                      self.do_cli("get", "tahoe:subdir/uploaded4.txt"))
-        d.addCallback(lambda rc_stdout_stderr:
-                      self.failUnlessReallyEqual(rc_stdout_stderr[1], DATA))
+        d.addCallback(
+            lambda res: self.do_cli("put", rel_fn, "tahoe:subdir/uploaded4.txt")
+        )
+        d.addCallback(lambda res: self.do_cli("get", "tahoe:subdir/uploaded4.txt"))
+        d.addCallback(
+            lambda rc_stdout_stderr: self.failUnlessReallyEqual(
+                rc_stdout_stderr[1], DATA
+            )
+        )
 
         def _get_dircap(res):
             self.dircap = get_aliases(self.get_clientdir())["tahoe"]
+
         d.addCallback(_get_dircap)
 
-        d.addCallback(lambda res:
-                      self.do_cli("put", rel_fn,
-                                  self.dircap+":./uploaded5.txt"))
-        d.addCallback(lambda res:
-                      self.do_cli("get", "tahoe:uploaded5.txt"))
-        d.addCallback(lambda rc_stdout_stderr:
-                      self.failUnlessReallyEqual(rc_stdout_stderr[1], DATA))
+        d.addCallback(
+            lambda res: self.do_cli("put", rel_fn, self.dircap + ":./uploaded5.txt")
+        )
+        d.addCallback(lambda res: self.do_cli("get", "tahoe:uploaded5.txt"))
+        d.addCallback(
+            lambda rc_stdout_stderr: self.failUnlessReallyEqual(
+                rc_stdout_stderr[1], DATA
+            )
+        )
 
-        d.addCallback(lambda res:
-                      self.do_cli("put", rel_fn,
-                                  self.dircap+":./subdir/uploaded6.txt"))
-        d.addCallback(lambda res:
-                      self.do_cli("get", "tahoe:subdir/uploaded6.txt"))
-        d.addCallback(lambda rc_stdout_stderr:
-                      self.failUnlessReallyEqual(rc_stdout_stderr[1], DATA))
+        d.addCallback(
+            lambda res: self.do_cli(
+                "put", rel_fn, self.dircap + ":./subdir/uploaded6.txt"
+            )
+        )
+        d.addCallback(lambda res: self.do_cli("get", "tahoe:subdir/uploaded6.txt"))
+        d.addCallback(
+            lambda rc_stdout_stderr: self.failUnlessReallyEqual(
+                rc_stdout_stderr[1], DATA
+            )
+        )
 
         return d
 
@@ -165,34 +196,46 @@ class Put(GridTestMixin, CLITestMixin, unittest.TestCase):
         fileutil.write(rel_fn, DATA3)
 
         d = self.do_cli("put", "--mutable", stdin=DATA)
+
         def _created(res):
             (rc, out, err) = res
             self.failUnlessIn("waiting for file data on stdin..", err)
             self.failUnlessIn("200 OK", err)
             self.filecap = out
             self.failUnless(self.filecap.startswith("URI:SSK:"), self.filecap)
+
         d.addCallback(_created)
         d.addCallback(lambda res: self.do_cli("get", self.filecap))
-        d.addCallback(lambda rc_out_err: self.failUnlessReallyEqual(rc_out_err[1], DATA))
+        d.addCallback(
+            lambda rc_out_err: self.failUnlessReallyEqual(rc_out_err[1], DATA)
+        )
 
         d.addCallback(lambda res: self.do_cli("put", "-", self.filecap, stdin=DATA2))
+
         def _replaced(res):
             (rc, out, err) = res
             self.failUnlessIn("waiting for file data on stdin..", err)
             self.failUnlessIn("200 OK", err)
             self.failUnlessReallyEqual(self.filecap, out)
+
         d.addCallback(_replaced)
         d.addCallback(lambda res: self.do_cli("get", self.filecap))
-        d.addCallback(lambda rc_out_err: self.failUnlessReallyEqual(rc_out_err[1], DATA2))
+        d.addCallback(
+            lambda rc_out_err: self.failUnlessReallyEqual(rc_out_err[1], DATA2)
+        )
 
         d.addCallback(lambda res: self.do_cli("put", rel_fn, self.filecap))
+
         def _replaced2(res):
             (rc, out, err) = res
             self.failUnlessIn("200 OK", err)
             self.failUnlessReallyEqual(self.filecap, out)
+
         d.addCallback(_replaced2)
         d.addCallback(lambda res: self.do_cli("get", self.filecap))
-        d.addCallback(lambda rc_out_err: self.failUnlessReallyEqual(rc_out_err[1], DATA3))
+        d.addCallback(
+            lambda rc_out_err: self.failUnlessReallyEqual(rc_out_err[1], DATA3)
+        )
 
         return d
 
@@ -212,36 +255,41 @@ class Put(GridTestMixin, CLITestMixin, unittest.TestCase):
         fileutil.write(fn2, DATA2)
 
         d = self.do_cli("create-alias", "tahoe")
-        d.addCallback(lambda res:
-                      self.do_cli("put", "--mutable", fn1, "tahoe:uploaded.txt"))
+        d.addCallback(
+            lambda res: self.do_cli("put", "--mutable", fn1, "tahoe:uploaded.txt")
+        )
+
         def _check(res):
             (rc, out, err) = res
             self.failUnlessEqual(rc, 0, str(res))
             self.failUnlessEqual(err.strip(), "201 Created", str(res))
             self.uri = out
+
         d.addCallback(_check)
-        d.addCallback(lambda res:
-                      self.do_cli("put", fn2, "tahoe:uploaded.txt"))
+        d.addCallback(lambda res: self.do_cli("put", fn2, "tahoe:uploaded.txt"))
+
         def _check2(res):
             (rc, out, err) = res
             self.failUnlessEqual(rc, 0, str(res))
             self.failUnlessEqual(err.strip(), "200 OK", str(res))
             self.failUnlessEqual(out, self.uri, str(res))
+
         d.addCallback(_check2)
-        d.addCallback(lambda res:
-                      self.do_cli("get", "tahoe:uploaded.txt"))
-        d.addCallback(lambda rc_out_err: self.failUnlessReallyEqual(rc_out_err[1], DATA2))
+        d.addCallback(lambda res: self.do_cli("get", "tahoe:uploaded.txt"))
+        d.addCallback(
+            lambda rc_out_err: self.failUnlessReallyEqual(rc_out_err[1], DATA2)
+        )
         return d
 
     def _check_mdmf_json(self, args):
-         (rc, json, err) = args
-         self.failUnlessEqual(rc, 0)
-         self.failUnlessEqual(err, "")
-         self.failUnlessIn('"format": "MDMF"', json)
-         # We also want a valid MDMF cap to be in the json.
-         self.failUnlessIn("URI:MDMF", json)
-         self.failUnlessIn("URI:MDMF-RO", json)
-         self.failUnlessIn("URI:MDMF-Verifier", json)
+        (rc, json, err) = args
+        self.failUnlessEqual(rc, 0)
+        self.failUnlessEqual(err, "")
+        self.failUnlessIn('"format": "MDMF"', json)
+        # We also want a valid MDMF cap to be in the json.
+        self.failUnlessIn("URI:MDMF", json)
+        self.failUnlessIn("URI:MDMF-RO", json)
+        self.failUnlessIn("URI:MDMF-Verifier", json)
 
     def _check_sdmf_json(self, args):
         (rc, json, err) = args
@@ -265,7 +313,7 @@ class Put(GridTestMixin, CLITestMixin, unittest.TestCase):
     def test_format(self):
         self.basedir = "cli/Put/format"
         self.set_up_grid(oneshare=True)
-        data = "data" * 40000 # 160kB total, two segments
+        data = "data" * 40000  # 160kB total, two segments
         fn1 = os.path.join(self.basedir, "data")
         fileutil.write(fn1, data)
         d = self.do_cli("create-alias", "tahoe")
@@ -277,30 +325,36 @@ class Put(GridTestMixin, CLITestMixin, unittest.TestCase):
                 # unlinked
                 args = ["put"] + cmdargs + [fn1]
             d2 = self.do_cli(*args)
+
             def _list(args):
                 (rc, out, err) = args
-                self.failUnlessEqual(rc, 0) # don't allow failure
+                self.failUnlessEqual(rc, 0)  # don't allow failure
                 if filename:
                     return self.do_cli("ls", "--json", filename)
                 else:
                     cap = out.strip()
                     return self.do_cli("ls", "--json", cap)
+
             d2.addCallback(_list)
             return d2
 
         # 'tahoe put' to a directory
         d.addCallback(_put_and_ls, ["--mutable"], "SDMF", "tahoe:s1.txt")
-        d.addCallback(self._check_sdmf_json) # backwards-compatibility
+        d.addCallback(self._check_sdmf_json)  # backwards-compatibility
         d.addCallback(_put_and_ls, ["--format=SDMF"], "SDMF", "tahoe:s2.txt")
         d.addCallback(self._check_sdmf_json)
         d.addCallback(_put_and_ls, ["--format=sdmf"], "SDMF", "tahoe:s3.txt")
         d.addCallback(self._check_sdmf_json)
-        d.addCallback(_put_and_ls, ["--mutable", "--format=SDMF"], "SDMF", "tahoe:s4.txt")
+        d.addCallback(
+            _put_and_ls, ["--mutable", "--format=SDMF"], "SDMF", "tahoe:s4.txt"
+        )
         d.addCallback(self._check_sdmf_json)
 
         d.addCallback(_put_and_ls, ["--format=MDMF"], "MDMF", "tahoe:m1.txt")
         d.addCallback(self._check_mdmf_json)
-        d.addCallback(_put_and_ls, ["--mutable", "--format=MDMF"], "MDMF", "tahoe:m2.txt")
+        d.addCallback(
+            _put_and_ls, ["--mutable", "--format=MDMF"], "MDMF", "tahoe:m2.txt"
+        )
         d.addCallback(self._check_mdmf_json)
 
         d.addCallback(_put_and_ls, ["--format=CHK"], "CHK", "tahoe:c1.txt")
@@ -310,7 +364,7 @@ class Put(GridTestMixin, CLITestMixin, unittest.TestCase):
 
         # 'tahoe put' unlinked
         d.addCallback(_put_and_ls, ["--mutable"], "SDMF")
-        d.addCallback(self._check_sdmf_json) # backwards-compatibility
+        d.addCallback(self._check_sdmf_json)  # backwards-compatibility
         d.addCallback(_put_and_ls, ["--format=SDMF"], "SDMF")
         d.addCallback(self._check_sdmf_json)
         d.addCallback(_put_and_ls, ["--format=sdmf"], "SDMF")
@@ -337,46 +391,51 @@ class Put(GridTestMixin, CLITestMixin, unittest.TestCase):
         fn1 = os.path.join(self.basedir, "data")
         fileutil.write(fn1, data)
         d = self.do_cli("put", "--format=MDMF", fn1)
+
         def _got_cap(args):
             (rc, out, err) = args
             self.failUnlessEqual(rc, 0)
             self.cap = out.strip()
+
         d.addCallback(_got_cap)
         # Now try to write something to the cap using put.
         data2 = "data2" * 100000
         fn2 = os.path.join(self.basedir, "data2")
         fileutil.write(fn2, data2)
-        d.addCallback(lambda ignored:
-            self.do_cli("put", fn2, self.cap))
+        d.addCallback(lambda ignored: self.do_cli("put", fn2, self.cap))
+
         def _got_put(args):
             (rc, out, err) = args
             self.failUnlessEqual(rc, 0)
             self.failUnlessIn(self.cap, out)
+
         d.addCallback(_got_put)
         # Now get the cap. We should see the data we just put there.
-        d.addCallback(lambda ignored:
-            self.do_cli("get", self.cap))
+        d.addCallback(lambda ignored: self.do_cli("get", self.cap))
+
         def _got_data(args):
             (rc, out, err) = args
             self.failUnlessEqual(rc, 0)
             self.failUnlessEqual(out, data2)
+
         d.addCallback(_got_data)
         # add some extension information to the cap and try to put something
         # to it.
         def _make_extended_cap(ignored):
             self.cap = self.cap + ":Extension-Stuff"
+
         d.addCallback(_make_extended_cap)
         data3 = "data3" * 100000
         fn3 = os.path.join(self.basedir, "data3")
         fileutil.write(fn3, data3)
-        d.addCallback(lambda ignored:
-            self.do_cli("put", fn3, self.cap))
-        d.addCallback(lambda ignored:
-            self.do_cli("get", self.cap))
+        d.addCallback(lambda ignored: self.do_cli("put", fn3, self.cap))
+        d.addCallback(lambda ignored: self.do_cli("get", self.cap))
+
         def _got_data3(args):
             (rc, out, err) = args
             self.failUnlessEqual(rc, 0)
             self.failUnlessEqual(out, data3)
+
         d.addCallback(_got_data3)
         return d
 
@@ -387,37 +446,39 @@ class Put(GridTestMixin, CLITestMixin, unittest.TestCase):
         fn1 = os.path.join(self.basedir, "data")
         fileutil.write(fn1, data)
         d = self.do_cli("put", "--format=SDMF", fn1)
+
         def _got_cap(args):
             (rc, out, err) = args
             self.failUnlessEqual(rc, 0)
             self.cap = out.strip()
+
         d.addCallback(_got_cap)
         # Now try to write something to the cap using put.
         data2 = "data2" * 100000
         fn2 = os.path.join(self.basedir, "data2")
         fileutil.write(fn2, data2)
-        d.addCallback(lambda ignored:
-            self.do_cli("put", fn2, self.cap))
+        d.addCallback(lambda ignored: self.do_cli("put", fn2, self.cap))
+
         def _got_put(args):
             (rc, out, err) = args
             self.failUnlessEqual(rc, 0)
             self.failUnlessIn(self.cap, out)
+
         d.addCallback(_got_put)
         # Now get the cap. We should see the data we just put there.
-        d.addCallback(lambda ignored:
-            self.do_cli("get", self.cap))
+        d.addCallback(lambda ignored: self.do_cli("get", self.cap))
+
         def _got_data(args):
             (rc, out, err) = args
             self.failUnlessEqual(rc, 0)
             self.failUnlessEqual(out, data2)
+
         d.addCallback(_got_data)
         return d
 
     def test_mutable_type_invalid_format(self):
         o = cli.PutOptions()
-        self.failUnlessRaises(usage.UsageError,
-                              o.parseOptions,
-                              ["--format=LDMF"])
+        self.failUnlessRaises(usage.UsageError, o.parseOptions, ["--format=LDMF"])
 
     def test_put_with_nonexistent_alias(self):
         # when invoked with an alias that doesn't exist, 'tahoe put'
@@ -425,11 +486,13 @@ class Put(GridTestMixin, CLITestMixin, unittest.TestCase):
         self.basedir = "cli/Put/put_with_nonexistent_alias"
         self.set_up_grid(oneshare=True)
         d = self.do_cli("put", "somefile", "fake:afile")
+
         def _check(args):
             (rc, out, err) = args
             self.failUnlessReallyEqual(rc, 1)
             self.failUnlessIn("error:", err)
             self.failUnlessReallyEqual(out, "")
+
         d.addCallback(_check)
         return d
 
@@ -439,7 +502,9 @@ class Put(GridTestMixin, CLITestMixin, unittest.TestCase):
         try:
             a_trier_arg = u"\u00E0 trier.txt".encode(get_io_encoding())
         except UnicodeEncodeError:
-            raise unittest.SkipTest("A non-ASCII command argument could not be encoded on this platform.")
+            raise unittest.SkipTest(
+                "A non-ASCII command argument could not be encoded on this platform."
+            )
 
         skip_if_cannot_represent_filename(u"\u00E0 trier.txt")
 
@@ -453,19 +518,24 @@ class Put(GridTestMixin, CLITestMixin, unittest.TestCase):
 
         d = self.do_cli("create-alias", "tahoe")
 
-        d.addCallback(lambda res:
-                      self.do_cli("put", rel_fn.encode(get_io_encoding()), a_trier_arg))
+        d.addCallback(
+            lambda res: self.do_cli(
+                "put", rel_fn.encode(get_io_encoding()), a_trier_arg
+            )
+        )
+
         def _uploaded(args):
             (rc, out, err) = args
             readcap = out.strip()
             self.failUnless(readcap.startswith("URI:LIT:"), readcap)
             self.failUnlessIn("201 Created", err)
             self.readcap = readcap
+
         d.addCallback(_uploaded)
 
-        d.addCallback(lambda res:
-                      self.do_cli("get", "tahoe:" + a_trier_arg))
-        d.addCallback(lambda rc_out_err:
-                      self.failUnlessReallyEqual(rc_out_err[1], DATA))
+        d.addCallback(lambda res: self.do_cli("get", "tahoe:" + a_trier_arg))
+        d.addCallback(
+            lambda rc_out_err: self.failUnlessReallyEqual(rc_out_err[1], DATA)
+        )
 
         return d

@@ -24,8 +24,12 @@ from allmydata.util.encodingutil import quote_output, unicode_to_argv
 from allmydata.util.fileutil import abspath_expanduser_unicode
 from allmydata.util.consumer import MemoryConsumer, download_to_data
 from allmydata.stats import StatsGathererService
-from allmydata.interfaces import IDirectoryNode, IFileNode, \
-     NoSuchChildError, NoSharesError
+from allmydata.interfaces import (
+    IDirectoryNode,
+    IFileNode,
+    NoSuchChildError,
+    NoSharesError,
+)
 from allmydata.monitor import Monitor
 from allmydata.mutable.common import NotWriteableError
 from allmydata.mutable import layout as mutable_layout
@@ -42,9 +46,7 @@ from .common import (
     SameProcessStreamEndpointAssigner,
 )
 from .common_web import do_http, Error
-from .web.common import (
-    assert_soup_has_tag_with_attributes
-)
+from .web.common import assert_soup_has_tag_with_attributes
 
 # TODO: move this to common or common_util
 from allmydata.test.test_runner import RunBinTahoeMixin
@@ -62,7 +64,7 @@ enough to not fit inside a LIT uri.
 # our system test uses the same Tub certificates each time, to avoid the
 # overhead of key generation
 SYSTEM_TEST_CERTS = [
-"""-----BEGIN CERTIFICATE-----
+    """-----BEGIN CERTIFICATE-----
 MIICojCCAYoCAQEwDQYJKoZIhvcNAQELBQAwFzEVMBMGA1UEAwwMbmV3cGJfdGhp
 bmd5MB4XDTIwMDEwMjAxNDAzM1oXDTIxMDEwMTAxNDAzM1owFzEVMBMGA1UEAwwM
 bmV3cGJfdGhpbmd5MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA1iNV
@@ -107,8 +109,8 @@ rzrldLawDo98DRZ7Yb2kWlWZYqUk/Nvryvo2cns75WGSMDYVbbRp+BY7kZmNYa9K
 iQzKDL54ZRu6V+getJdeAO8yXoCmnZKxt5OHvOSrQMfAmFKSwLwxBbZBfXEyuune
 yfusXLtCgajpreoVIa0xWdQ=
 -----END PRIVATE KEY-----
-""", # 0
-"""-----BEGIN CERTIFICATE-----
+""",  # 0
+    """-----BEGIN CERTIFICATE-----
 MIICojCCAYoCAQEwDQYJKoZIhvcNAQELBQAwFzEVMBMGA1UEAwwMbmV3cGJfdGhp
 bmd5MB4XDTIwMDEwMjAxNDAzM1oXDTIxMDEwMTAxNDAzM1owFzEVMBMGA1UEAwwM
 bmV3cGJfdGhpbmd5MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApDzW
@@ -153,8 +155,8 @@ SbEDoLSYt23KRjQV93+INP949dYCagtgh/kTzxBopw5FljISLfdYizIRo2AzhhfP
 WWpILlnt19kD+sNirJVqxJacfEZsu5baWTedI/yrCuVsAs/s3/EEY6q0Qywknxtp
 Fwh1/8y5t14ib5fxOVhi8X1nEA==
 -----END PRIVATE KEY-----
-""", # 1
-"""-----BEGIN CERTIFICATE-----
+""",  # 1
+    """-----BEGIN CERTIFICATE-----
 MIICojCCAYoCAQEwDQYJKoZIhvcNAQELBQAwFzEVMBMGA1UEAwwMbmV3cGJfdGhp
 bmd5MB4XDTIwMDEwMjAxNDAzM1oXDTIxMDEwMTAxNDAzM1owFzEVMBMGA1UEAwwM
 bmV3cGJfdGhpbmd5MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwMTn
@@ -199,8 +201,8 @@ A8mAQvc7ttsebciZSi2x1BOX82QxUlDN8ptaKglJAoGBAMnLN1TQB0xtWYDPGcGV
 mrgkodk4TdqO1VtBCZBqak97DHVezstMrbpCGlUD5jBnsHVRLERvS09QlGhqMeNL
 jpNQbWH9VhutzbvpYquKrhvK
 -----END PRIVATE KEY-----
-""", # 2
-"""-----BEGIN CERTIFICATE-----
+""",  # 2
+    """-----BEGIN CERTIFICATE-----
 MIICojCCAYoCAQEwDQYJKoZIhvcNAQELBQAwFzEVMBMGA1UEAwwMbmV3cGJfdGhp
 bmd5MB4XDTIwMDEwMjAxNDAzM1oXDTIxMDEwMTAxNDAzM1owFzEVMBMGA1UEAwwM
 bmV3cGJfdGhpbmd5MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAypqi
@@ -245,8 +247,8 @@ ojiJHH2XnCDmefkm6lRacJKL/Tcj4SNmv6YjUEXLDwKBgF8WV9lzez3d/X5dphLy
 qXnYXe/hUU3yn5ipdNJ0Dm/ZhJPDD8TeqhnRRhxbZmsXs8EzfwB2tcUbASvjb3qA
 vAaPlOSU1wXqhAsG9aVs8gtL
 -----END PRIVATE KEY-----
-""", # 3
-"""-----BEGIN CERTIFICATE-----
+""",  # 3
+    """-----BEGIN CERTIFICATE-----
 MIICojCCAYoCAQEwDQYJKoZIhvcNAQELBQAwFzEVMBMGA1UEAwwMbmV3cGJfdGhp
 bmd5MB4XDTIwMDEwMjAxNDAzNFoXDTIxMDEwMTAxNDAzNFowFzEVMBMGA1UEAwwM
 bmV3cGJfdGhpbmd5MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzUqQ
@@ -291,8 +293,8 @@ DLumgF2Nwtg3G6TL2s+AbtJYH4hxagQl5woIdYmnyzECgYEAsLASpou16A3uXG5J
 If0IjFRh9WCvQxnoRha3/pKRSc3OEka1MR/ZREK/d/LQEPmsRJVzY6ABKqmPAMDD
 5CnG6Hz/rP87BiEKd1+3PGp8GCw=
 -----END PRIVATE KEY-----
-""", # 4
-"""-----BEGIN CERTIFICATE-----
+""",  # 4
+    """-----BEGIN CERTIFICATE-----
 MIICojCCAYoCAQEwDQYJKoZIhvcNAQELBQAwFzEVMBMGA1UEAwwMbmV3cGJfdGhp
 bmd5MB4XDTIwMDEwMjAxNDAzNFoXDTIxMDEwMTAxNDAzNFowFzEVMBMGA1UEAwwM
 bmV3cGJfdGhpbmd5MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0sap
@@ -337,8 +339,8 @@ xWZuV9mnl3kg0ULttPeOl3ppwjgRbWpyNgOXl8nVMYzxwT/A+xCPA18P0EcgNAWc
 frJqQYg3NMf+f0K1wSaswUSLEVrQOj25OZJNpb21JEiNfEd5DinVVj4BtVc6KSpS
 kvjbn2WhEUatc3lPL3V0Fkw=
 -----END PRIVATE KEY-----
-""", # 5
-"""-----BEGIN CERTIFICATE-----
+""",  # 5
+    """-----BEGIN CERTIFICATE-----
 MIICojCCAYoCAQEwDQYJKoZIhvcNAQELBQAwFzEVMBMGA1UEAwwMbmV3cGJfdGhp
 bmd5MB4XDTIwMDEwMjAxNTExM1oXDTIxMDEwMTAxNTExM1owFzEVMBMGA1UEAwwM
 bmV3cGJfdGhpbmd5MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA1c5y
@@ -383,8 +385,8 @@ ISLJxKvSFPYDLyAepLfo38NzKfPB/XuZrcOoMEWRBnLl6dNN0msuzXnPRcn1gc1t
 TG7db+hivAyUoRkIW3dB8pRj9dDUqO9OohjKsJxJaQCyH5vPkQFSLbTIgWrHhU+3
 oSPiK/YngDV1AOmPDH7i62po
 -----END PRIVATE KEY-----
-""", #6
-"""-----BEGIN CERTIFICATE-----
+""",  # 6
+    """-----BEGIN CERTIFICATE-----
 MIICojCCAYoCAQEwDQYJKoZIhvcNAQELBQAwFzEVMBMGA1UEAwwMbmV3cGJfdGhp
 bmd5MB4XDTIwMDEwMjAxNTExMloXDTIxMDEwMTAxNTExMlowFzEVMBMGA1UEAwwM
 bmV3cGJfdGhpbmd5MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAojGu
@@ -429,8 +431,8 @@ keZkrAp0xBJZgqG7CTPXWS1FjwbAPo7x4ZOwtsgjCuE52lar4j+r2Il+CDYeLfxN
 h/Jfn6S9ThUh+B1PMvKMMnJUahg8cVL8uQuBcbAy8HPRK78WO2BTnje44wFAJwTc
 0liuYqVxZIRlFLRl8nGqog8=
 -----END PRIVATE KEY-----
-""", #7
-"""-----BEGIN CERTIFICATE-----
+""",  # 7
+    """-----BEGIN CERTIFICATE-----
 MIICojCCAYoCAQEwDQYJKoZIhvcNAQELBQAwFzEVMBMGA1UEAwwMbmV3cGJfdGhp
 bmd5MB4XDTIwMDEwMjAxNTExMloXDTIxMDEwMTAxNTExMlowFzEVMBMGA1UEAwwM
 bmV3cGJfdGhpbmd5MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAu9oO
@@ -475,8 +477,8 @@ TLAHIrr7wK1xwgkmZlLzYSQ8Oqh1UEbgoMt4ulRczP2g7TCfvANw2Sw0H2Q5a6Fj
 cnwVcXJ38DLg0GCPMwzE8dK7d8tKtV6kGiKy+KFvoKChPjE6uxhKKmCJaSwtQEPS
 vsjX3iiIgUQPsSz8RrNFfQ==
 -----END PRIVATE KEY-----
-""", #8
-"""-----BEGIN CERTIFICATE-----
+""",  # 8
+    """-----BEGIN CERTIFICATE-----
 MIICojCCAYoCAQEwDQYJKoZIhvcNAQELBQAwFzEVMBMGA1UEAwwMbmV3cGJfdGhp
 bmd5MB4XDTIwMDEwMjAxNTExMloXDTIxMDEwMTAxNTExMlowFzEVMBMGA1UEAwwM
 bmV3cGJfdGhpbmd5MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA5DNu
@@ -521,8 +523,8 @@ qp2ODL54Qadc/thp2m+JmAvqmCCLwuYlGpRKVkLLuZW9W6RlVqarOC3VD3wX5PRZ
 IsyCGLi+Jbrv9JIrYUXE80xNeQVNhrrf02OW0KHbqGxRaNOmp1THPw98VUGR2J/q
 YAp6XUXU7LEBUrowye+Ty2o7Lg==
 -----END PRIVATE KEY-----
-""", #9
-"""-----BEGIN CERTIFICATE-----
+""",  # 9
+    """-----BEGIN CERTIFICATE-----
 MIICojCCAYoCAQEwDQYJKoZIhvcNAQELBQAwFzEVMBMGA1UEAwwMbmV3cGJfdGhp
 bmd5MB4XDTIwMDEwMjAxNTExMVoXDTIxMDEwMTAxNTExMVowFzEVMBMGA1UEAwwM
 bmV3cGJfdGhpbmd5MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA1k2R
@@ -567,8 +569,8 @@ hluEtx5bLOLuo6c0S149omUXUhbsuyzTZS6Ip9ySDMnK3954c4Q4WJ4yQKixQNVq
 78aDfy4hP/8TE/Q9CRddUof2P33PJMhVNqzTRYMpqV+zxifvtw3hoDTLKHTQxCR2
 M1+O4VvokU5pBqUpGXiMDfs=
 -----END PRIVATE KEY-----
-""", #10
-"""-----BEGIN CERTIFICATE-----
+""",  # 10
+    """-----BEGIN CERTIFICATE-----
 MIICojCCAYoCAQEwDQYJKoZIhvcNAQELBQAwFzEVMBMGA1UEAwwMbmV3cGJfdGhp
 bmd5MB4XDTIwMDEwMjAxNTExMVoXDTIxMDEwMTAxNTExMVowFzEVMBMGA1UEAwwM
 bmV3cGJfdGhpbmd5MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnbCU
@@ -613,52 +615,47 @@ WxLZ71AJ0PZBmRa/9iwtccwXQpMcW6wHK3YSQxci+sB97TElRa3/onlVSpohrUtg
 VCvCwfSHX1LmrfWNSkoJZwCQt+YYuMqW86K0tzLzI1EMjIH9LgQvB6RR26PZQs+E
 jr1ZvRc+wPTq6sxCF1h9ZAfN
 -----END PRIVATE KEY-----
-""", #11
+""",  # 11
 ]
 
 # To disable the pre-computed tub certs, uncomment this line.
 # SYSTEM_TEST_CERTS = []
 
+
 def flush_but_dont_ignore(res):
     d = flushEventualQueue()
+
     def _done(ignored):
         return res
+
     d.addCallback(_done)
     return d
+
 
 def _render_config(config):
     """
     Convert a ``dict`` of ``dict`` of ``bytes`` to an ini-format string.
     """
-    return "\n\n".join(list(
-        _render_config_section(k, v)
-        for (k, v)
-        in config.items()
-    ))
+    return "\n\n".join(list(_render_config_section(k, v) for (k, v) in config.items()))
+
 
 def _render_config_section(heading, values):
     """
     Convert a ``bytes`` heading and a ``dict`` of ``bytes`` to an ini-format
     section as ``bytes``.
     """
-    return "[{}]\n{}\n".format(
-        heading, _render_section_values(values)
-    )
+    return "[{}]\n{}\n".format(heading, _render_section_values(values))
+
 
 def _render_section_values(values):
     """
     Convert a ``dict`` of ``bytes`` to the body of an ini-format section as
     ``bytes``.
     """
-    return "\n".join(list(
-        "{} = {}".format(k, v)
-        for (k, v)
-        in sorted(values.items())
-    ))
+    return "\n".join(list("{} = {}".format(k, v) for (k, v) in sorted(values.items())))
 
 
 class SystemTestMixin(pollmixin.PollMixin, testutil.StallMixin):
-
     def setUp(self):
         self.port_assigner = SameProcessStreamEndpointAssigner()
         self.port_assigner.setUp()
@@ -692,13 +689,13 @@ class SystemTestMixin(pollmixin.PollMixin, testutil.StallMixin):
             _, port_endpoint = self.port_assigner.assign(reactor)
             introducer_config = (
                 u"[node]\n"
-                u"nickname = introducer \N{BLACK SMILING FACE}\n" +
-                u"web.port = {}\n".format(port_endpoint)
+                u"nickname = introducer \N{BLACK SMILING FACE}\n"
+                + u"web.port = {}\n".format(port_endpoint)
             ).encode("utf-8")
 
             fileutil.make_dirs(iv_dir)
             fileutil.write(
-                os.path.join(iv_dir, 'tahoe.cfg'),
+                os.path.join(iv_dir, "tahoe.cfg"),
                 introducer_config,
             )
             if SYSTEM_TEST_CERTS:
@@ -756,12 +753,16 @@ class SystemTestMixin(pollmixin.PollMixin, testutil.StallMixin):
         self.stats_gatherer_svc.setServiceParent(self.sparent)
 
         d = fireEventually()
-        sgf = os.path.join(statsdir, 'stats_gatherer.furl')
+        sgf = os.path.join(statsdir, "stats_gatherer.furl")
+
         def check_for_furl():
             return os.path.exists(sgf)
+
         d.addCallback(lambda junk: self.poll(check_for_furl, timeout=30))
+
         def get_furl(junk):
-            self.stats_gatherer_furl = file(sgf, 'rb').read().strip()
+            self.stats_gatherer_furl = file(sgf, "rb").read().strip()
+
         d.addCallback(get_furl)
         return d
 
@@ -781,16 +782,13 @@ class SystemTestMixin(pollmixin.PollMixin, testutil.StallMixin):
         self.clients.append(c)
         c.set_default_mutable_keysize(TEST_RSA_KEY_SIZE)
 
-        with open(os.path.join(basedirs[0],"private","helper.furl"), "r") as f:
+        with open(os.path.join(basedirs[0], "private", "helper.furl"), "r") as f:
             helper_furl = f.read()
 
         self.helper_furl = helper_furl
         if self.numclients >= 4:
-            with open(os.path.join(basedirs[3], 'tahoe.cfg'), 'ab+') as f:
-                f.write(
-                    "[client]\n"
-                    "helper.furl = {}\n".format(helper_furl)
-                )
+            with open(os.path.join(basedirs[3], "tahoe.cfg"), "ab+") as f:
+                f.write("[client]\n" "helper.furl = {}\n".format(helper_furl))
 
         # this starts the rest of the clients
         for i in range(1, self.numclients):
@@ -803,7 +801,7 @@ class SystemTestMixin(pollmixin.PollMixin, testutil.StallMixin):
         log.msg("CONNECTED")
         # now find out where the web port was
         self.webish_url = self.clients[0].getServiceNamed("webish").getURL()
-        if self.numclients >=4:
+        if self.numclients >= 4:
             # and the helper-using webport
             self.helper_webish_url = self.clients[3].getServiceNamed("webish").getURL()
 
@@ -813,17 +811,14 @@ class SystemTestMixin(pollmixin.PollMixin, testutil.StallMixin):
         except1 = set(range(self.numclients)) - {1}
         feature_matrix = {
             ("client", "nickname"): except1,
-
             # client 1 has to auto-assign an address.
             ("node", "tub.port"): except1,
             ("node", "tub.location"): except1,
-
             # client 0 runs a webserver and a helper
             # client 3 runs a webserver but no helper
             ("node", "web.port"): {0, 3},
             ("node", "timeout.keepalive"): {0},
             ("node", "timeout.disconnect"): {3},
-
             ("helper", "enabled"): {0},
         }
 
@@ -853,9 +848,7 @@ class SystemTestMixin(pollmixin.PollMixin, testutil.StallMixin):
 
         sethelper("enabled", "True")
 
-        iyaml = ("introducers:\n"
-                 " petname2:\n"
-                 "  furl: %s\n") % self.introducer_furl
+        iyaml = ("introducers:\n" " petname2:\n" "  furl: %s\n") % self.introducer_furl
         iyaml_fn = os.path.join(basedir, "private", "introducers.yaml")
         fileutil.write(iyaml_fn, iyaml)
 
@@ -869,7 +862,7 @@ class SystemTestMixin(pollmixin.PollMixin, testutil.StallMixin):
             f.write(SYSTEM_TEST_CERTS[which + 1])
             f.close()
         config = self._generate_config(which, basedir)
-        fileutil.write(os.path.join(basedir, 'tahoe.cfg'), config)
+        fileutil.write(os.path.join(basedir, "tahoe.cfg"), config)
         return basedir
 
     def _grab_stats(self):
@@ -891,18 +884,20 @@ class SystemTestMixin(pollmixin.PollMixin, testutil.StallMixin):
             self.clients[num] = new_c
             new_c.set_default_mutable_keysize(TEST_RSA_KEY_SIZE)
             new_c.setServiceParent(self.sparent)
+
         d.addCallback(_stopped)
         d.addCallback(lambda res: self.wait_for_connections())
+
         def _maybe_get_webport(res):
             if num == 0:
                 # now find out where the web port was
                 self.webish_url = self.clients[0].getServiceNamed("webish").getURL()
+
         d.addCallback(_maybe_get_webport)
         return d
 
     @defer.inlineCallbacks
-    def add_extra_node(self, client_num, helper_furl=None,
-                       add_to_sparent=False):
+    def add_extra_node(self, client_num, helper_furl=None, add_to_sparent=False):
         # usually this node is *not* parented to our self.sparent, so we can
         # shut it down separately from the rest, to exercise the
         # connection-lost code
@@ -938,29 +933,31 @@ class SystemTestMixin(pollmixin.PollMixin, testutil.StallMixin):
                 return False
             sb = c.get_storage_broker()
             connected_servers = sb.get_connected_servers()
-            connected_names = sorted(list(
-                connected.get_nickname()
-                for connected
-                in sb.get_known_servers()
-                if connected.is_connected()
-            ))
+            connected_names = sorted(
+                list(
+                    connected.get_nickname()
+                    for connected in sb.get_known_servers()
+                    if connected.is_connected()
+                )
+            )
             if len(connected_servers) != self.numclients:
-                wanted = sorted(list(
-                    client.nickname
-                    for client
-                    in self.clients
-                ))
+                wanted = sorted(list(client.nickname for client in self.clients))
                 log.msg(
-                    "client %s storage broker connected to %s, missing %s" % (
+                    "client %s storage broker connected to %s, missing %s"
+                    % (
                         i,
                         connected_names,
                         set(wanted) - set(connected_names),
                     )
                 )
                 return False
-            log.msg("client %s storage broker connected to %s, happy" % (
-                i, connected_names,
-            ))
+            log.msg(
+                "client %s storage broker connected to %s, happy"
+                % (
+                    i,
+                    connected_names,
+                )
+            )
             up = c.getServiceNamed("uploader")
             if up._helper_furl and not up._helper:
                 log.msg("Helper fURL but no helper")
@@ -969,6 +966,7 @@ class SystemTestMixin(pollmixin.PollMixin, testutil.StallMixin):
 
     def wait_for_connections(self, ignored=None):
         return self.poll(self._check_connections, timeout=200)
+
 
 class CountingDataUploadable(upload.Data):
     bytes_read = 0
@@ -983,6 +981,7 @@ class CountingDataUploadable(upload.Data):
                 self.interrupt_after_d.callback(self)
         return upload.Data.read(self, length)
 
+
 class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
 
     timeout = 180
@@ -992,22 +991,26 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
         d = self.set_up_nodes()
         self.extra_node = None
         d.addCallback(lambda res: self.add_extra_node(self.numclients))
+
         def _check(extra_node):
             self.extra_node = extra_node
             for c in self.clients:
                 all_peerids = c.get_storage_broker().get_all_serverids()
-                self.failUnlessEqual(len(all_peerids), self.numclients+1)
+                self.failUnlessEqual(len(all_peerids), self.numclients + 1)
                 sb = c.storage_broker
                 permuted_peers = sb.get_servers_for_psi("a")
-                self.failUnlessEqual(len(permuted_peers), self.numclients+1)
+                self.failUnlessEqual(len(permuted_peers), self.numclients + 1)
 
         d.addCallback(_check)
+
         def _shutdown_extra_node(res):
             if self.extra_node:
                 return self.extra_node.stopService()
             return res
+
         d.addBoth(_shutdown_extra_node)
         return d
+
     # test_connections is subsumed by test_upload_and_download, and takes
     # quite a while to run on a slow machine (because of all the TLS
     # connections that must be established). If we ever rework the introducer
@@ -1028,14 +1031,16 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
         # to disk among all our simulated nodes
         DATA = "Some data to upload\n" * 200
         d = self.set_up_nodes()
+
         def _check_connections(res):
             for c in self.clients:
-                c.encoding_params['happy'] = 5
+                c.encoding_params["happy"] = 5
                 all_peerids = c.get_storage_broker().get_all_serverids()
                 self.failUnlessEqual(len(all_peerids), self.numclients)
                 sb = c.storage_broker
                 permuted_peers = sb.get_servers_for_psi("a")
                 self.failUnlessEqual(len(permuted_peers), self.numclients)
+
         d.addCallback(_check_connections)
 
         def _do_upload(res):
@@ -1052,7 +1057,9 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
             up.max_segment_size = 1024
             d1 = u.upload(up)
             return d1
+
         d.addCallback(_do_upload)
+
         def _upload_done(results):
             theuri = results.get_uri()
             log.msg("upload finished: uri is %s" % (theuri,))
@@ -1060,6 +1067,7 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
             assert isinstance(self.uri, str), self.uri
             self.cap = uri.from_string(self.uri)
             self.n = self.clients[1].create_node_from_uri(self.uri)
+
         d.addCallback(_upload_done)
 
         def _upload_again(res):
@@ -1071,40 +1079,50 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
             up = upload.Data(DATA, convergence=convergence)
             up.max_segment_size = 1024
             return self.uploader.upload(up)
+
         d.addCallback(_upload_again)
 
         def _download_to_data(res):
             log.msg("DOWNLOADING")
             return download_to_data(self.n)
+
         d.addCallback(_download_to_data)
+
         def _download_to_data_done(data):
             log.msg("download finished")
             self.failUnlessEqual(data, DATA)
+
         d.addCallback(_download_to_data_done)
 
         def _test_read(res):
             n = self.clients[1].create_node_from_uri(self.uri)
             d = download_to_data(n)
+
             def _read_done(data):
                 self.failUnlessEqual(data, DATA)
+
             d.addCallback(_read_done)
-            d.addCallback(lambda ign:
-                          n.read(MemoryConsumer(), offset=1, size=4))
+            d.addCallback(lambda ign: n.read(MemoryConsumer(), offset=1, size=4))
+
             def _read_portion_done(mc):
-                self.failUnlessEqual("".join(mc.chunks), DATA[1:1+4])
+                self.failUnlessEqual("".join(mc.chunks), DATA[1 : 1 + 4])
+
             d.addCallback(_read_portion_done)
-            d.addCallback(lambda ign:
-                          n.read(MemoryConsumer(), offset=2, size=None))
+            d.addCallback(lambda ign: n.read(MemoryConsumer(), offset=2, size=None))
+
             def _read_tail_done(mc):
                 self.failUnlessEqual("".join(mc.chunks), DATA[2:])
+
             d.addCallback(_read_tail_done)
-            d.addCallback(lambda ign:
-                          n.read(MemoryConsumer(), size=len(DATA)+1000))
+            d.addCallback(lambda ign: n.read(MemoryConsumer(), size=len(DATA) + 1000))
+
             def _read_too_much(mc):
                 self.failUnlessEqual("".join(mc.chunks), DATA)
+
             d.addCallback(_read_too_much)
 
             return d
+
         d.addCallback(_test_read)
 
         def _test_bad_read(res):
@@ -1113,72 +1131,106 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
             bad_n = self.clients[1].create_node_from_uri(bad_u.to_string())
             # this should cause an error during download
 
-            d = self.shouldFail2(NoSharesError, "'download bad node'",
-                                 None,
-                                 bad_n.read, MemoryConsumer(), offset=2)
+            d = self.shouldFail2(
+                NoSharesError,
+                "'download bad node'",
+                None,
+                bad_n.read,
+                MemoryConsumer(),
+                offset=2,
+            )
             return d
+
         d.addCallback(_test_bad_read)
 
         def _download_nonexistent_uri(res):
             baduri = self.mangle_uri(self.uri)
             badnode = self.clients[1].create_node_from_uri(baduri)
-            log.msg("about to download non-existent URI", level=log.UNUSUAL,
-                    facility="tahoe.tests")
+            log.msg(
+                "about to download non-existent URI",
+                level=log.UNUSUAL,
+                facility="tahoe.tests",
+            )
             d1 = download_to_data(badnode)
+
             def _baduri_should_fail(res):
-                log.msg("finished downloading non-existent URI",
-                        level=log.UNUSUAL, facility="tahoe.tests")
+                log.msg(
+                    "finished downloading non-existent URI",
+                    level=log.UNUSUAL,
+                    facility="tahoe.tests",
+                )
                 self.failUnless(isinstance(res, Failure))
-                self.failUnless(res.check(NoSharesError),
-                                "expected NoSharesError, got %s" % res)
+                self.failUnless(
+                    res.check(NoSharesError), "expected NoSharesError, got %s" % res
+                )
+
             d1.addBoth(_baduri_should_fail)
             return d1
+
         d.addCallback(_download_nonexistent_uri)
 
         # add a new node, which doesn't accept shares, and only uses the
         # helper for upload.
-        d.addCallback(lambda res: self.add_extra_node(self.numclients,
-                                                      self.helper_furl,
-                                                      add_to_sparent=True))
+        d.addCallback(
+            lambda res: self.add_extra_node(
+                self.numclients, self.helper_furl, add_to_sparent=True
+            )
+        )
+
         def _added(extra_node):
             self.extra_node = extra_node
-            self.extra_node.encoding_params['happy'] = 5
+            self.extra_node.encoding_params["happy"] = 5
+
         d.addCallback(_added)
 
         def _has_helper():
             uploader = self.extra_node.getServiceNamed("uploader")
             furl, connected = uploader.get_helper_info()
             return connected
+
         d.addCallback(lambda ign: self.poll(_has_helper))
 
         HELPER_DATA = "Data that needs help to upload" * 1000
+
         def _upload_with_helper(res):
             u = upload.Data(HELPER_DATA, convergence=convergence)
             d = self.extra_node.upload(u)
+
             def _uploaded(results):
                 n = self.clients[1].create_node_from_uri(results.get_uri())
                 return download_to_data(n)
+
             d.addCallback(_uploaded)
+
             def _check(newdata):
                 self.failUnlessEqual(newdata, HELPER_DATA)
+
             d.addCallback(_check)
             return d
+
         d.addCallback(_upload_with_helper)
 
         def _upload_duplicate_with_helper(res):
             u = upload.Data(HELPER_DATA, convergence=convergence)
             u.debug_stash_RemoteEncryptedUploadable = True
             d = self.extra_node.upload(u)
+
             def _uploaded(results):
                 n = self.clients[1].create_node_from_uri(results.get_uri())
                 return download_to_data(n)
+
             d.addCallback(_uploaded)
+
             def _check(newdata):
                 self.failUnlessEqual(newdata, HELPER_DATA)
-                self.failIf(hasattr(u, "debug_RemoteEncryptedUploadable"),
-                            "uploadable started uploading, should have been avoided")
+                self.failIf(
+                    hasattr(u, "debug_RemoteEncryptedUploadable"),
+                    "uploadable started uploading, should have been avoided",
+                )
+
             d.addCallback(_check)
             return d
+
         if convergence is not None:
             d.addCallback(_upload_duplicate_with_helper)
 
@@ -1194,9 +1246,11 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
             u1.interrupt_after = 5000
             u1.interrupt_after_d = defer.Deferred()
             bounced_d = defer.Deferred()
+
             def _do_bounce(res):
                 d = self.bounce_client(0)
                 d.addBoth(bounced_d.callback)
+
             u1.interrupt_after_d.addCallback(_do_bounce)
 
             # sneak into the helper and reduce its chunk size, so that our
@@ -1213,51 +1267,72 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
             # about 5kB. bounced_d will fire after bounce_client() finishes
             # shutting down and restarting the node.
             d = bounced_d
+
             def _bounced(ign):
                 # By this point, the upload should have failed because of the
                 # interruption. upload_d will fire in a moment
                 def _should_not_finish(res):
-                    self.fail("interrupted upload should have failed, not"
-                              " finished with result %s" % (res,))
+                    self.fail(
+                        "interrupted upload should have failed, not"
+                        " finished with result %s" % (res,)
+                    )
+
                 def _interrupted(f):
                     f.trap(DeadReferenceError)
                     # make sure we actually interrupted it before finishing
                     # the file
-                    self.failUnless(u1.bytes_read < len(DATA),
-                                    "read %d out of %d total" %
-                                    (u1.bytes_read, len(DATA)))
+                    self.failUnless(
+                        u1.bytes_read < len(DATA),
+                        "read %d out of %d total" % (u1.bytes_read, len(DATA)),
+                    )
+
                 upload_d.addCallbacks(_should_not_finish, _interrupted)
                 return upload_d
+
             d.addCallback(_bounced)
 
             def _disconnected(res):
                 # check to make sure the storage servers aren't still hanging
                 # on to the partial share: their incoming/ directories should
                 # now be empty.
-                log.msg("disconnected", level=log.NOISY,
-                        facility="tahoe.test.test_system")
+                log.msg(
+                    "disconnected", level=log.NOISY, facility="tahoe.test.test_system"
+                )
                 for i in range(self.numclients):
-                    incdir = os.path.join(self.getdir("client%d" % i),
-                                          "storage", "shares", "incoming")
+                    incdir = os.path.join(
+                        self.getdir("client%d" % i), "storage", "shares", "incoming"
+                    )
                     self.failIf(os.path.exists(incdir) and os.listdir(incdir))
+
             d.addCallback(_disconnected)
 
-            d.addCallback(lambda res:
-                          log.msg("wait_for_helper", level=log.NOISY,
-                                  facility="tahoe.test.test_system"))
+            d.addCallback(
+                lambda res: log.msg(
+                    "wait_for_helper",
+                    level=log.NOISY,
+                    facility="tahoe.test.test_system",
+                )
+            )
             # then we need to wait for the extra node to reestablish its
             # connection to the helper.
             d.addCallback(lambda ign: self.poll(_has_helper))
 
-            d.addCallback(lambda res:
-                          log.msg("uploading again", level=log.NOISY,
-                                  facility="tahoe.test.test_system"))
+            d.addCallback(
+                lambda res: log.msg(
+                    "uploading again",
+                    level=log.NOISY,
+                    facility="tahoe.test.test_system",
+                )
+            )
             d.addCallback(lambda res: self.extra_node.upload(u2))
 
             def _uploaded(results):
                 cap = results.get_uri()
-                log.msg("Second upload complete", level=log.NOISY,
-                        facility="tahoe.test.test_system")
+                log.msg(
+                    "Second upload complete",
+                    level=log.NOISY,
+                    facility="tahoe.test.test_system",
+                )
 
                 # this is really bytes received rather than sent, but it's
                 # convenient and basically measures the same thing
@@ -1272,20 +1347,23 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
                 if convergence is not None:
                     # Make sure we did not have to read the whole file the
                     # second time around .
-                    self.failUnless(bytes_sent < len(DATA),
-                                    "resumption didn't save us any work:"
-                                    " read %r bytes out of %r total" %
-                                    (bytes_sent, len(DATA)))
+                    self.failUnless(
+                        bytes_sent < len(DATA),
+                        "resumption didn't save us any work:"
+                        " read %r bytes out of %r total" % (bytes_sent, len(DATA)),
+                    )
                 else:
                     # Make sure we did have to read the whole file the second
                     # time around -- because the one that we partially uploaded
                     # earlier was encrypted with a different random key.
-                    self.failIf(bytes_sent < len(DATA),
-                                "resumption saved us some work even though we were using random keys:"
-                                " read %r bytes out of %r total" %
-                                (bytes_sent, len(DATA)))
+                    self.failIf(
+                        bytes_sent < len(DATA),
+                        "resumption saved us some work even though we were using random keys:"
+                        " read %r bytes out of %r total" % (bytes_sent, len(DATA)),
+                    )
                 n = self.clients[1].create_node_from_uri(cap)
                 return download_to_data(n)
+
             d.addCallback(_uploaded)
 
             def _check(newdata):
@@ -1298,8 +1376,10 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
                     self.failUnlessEqual(files, [])
                     files = os.listdir(os.path.join(basedir, "CHK_incoming"))
                     self.failUnlessEqual(files, [])
+
             d.addCallback(_check)
             return d
+
         d.addCallback(_upload_resumable)
 
         def _grab_stats(ignored):
@@ -1312,16 +1392,19 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
             sp_furl = self.clients[0].tub.registerReference(sp)
             d = self.clients[1].tub.getReference(sp_furl)
             d.addCallback(lambda sp_rref: sp_rref.callRemote("get_stats"))
+
             def _got_stats(stats):
-                #print("STATS")
-                #from pprint import pprint
-                #pprint(stats)
+                # print("STATS")
+                # from pprint import pprint
+                # pprint(stats)
                 s = stats["stats"]
                 self.failUnlessEqual(s["storage_server.accepting_immutable_shares"], 1)
                 c = stats["counters"]
                 self.failUnless("storage_server.allocate" in c)
+
             d.addCallback(_got_stats)
             return d
+
         d.addCallback(_grab_stats)
 
         return d
@@ -1334,9 +1417,7 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
             if not filenames:
                 continue
             pieces = dirpath.split(os.sep)
-            if (len(pieces) >= 5
-                and pieces[-4] == "storage"
-                and pieces[-3] == "shares"):
+            if len(pieces) >= 5 and pieces[-4] == "storage" and pieces[-3] == "shares":
                 # we're sitting in .../storage/shares/$START/$SINDEX , and there
                 # are sharefiles here
                 assert pieces[-5].startswith("client")
@@ -1354,13 +1435,25 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
 
     def _corrupt_mutable_share(self, filename, which):
         msf = MutableShareFile(filename)
-        datav = msf.readv([ (0, 1000000) ])
+        datav = msf.readv([(0, 1000000)])
         final_share = datav[0]
-        assert len(final_share) < 1000000 # ought to be truncated
+        assert len(final_share) < 1000000  # ought to be truncated
         pieces = mutable_layout.unpack_share(final_share)
-        (seqnum, root_hash, IV, k, N, segsize, datalen,
-         verification_key, signature, share_hash_chain, block_hash_tree,
-         share_data, enc_privkey) = pieces
+        (
+            seqnum,
+            root_hash,
+            IV,
+            k,
+            N,
+            segsize,
+            datalen,
+            verification_key,
+            signature,
+            share_hash_chain,
+            block_hash_tree,
+            share_data,
+            enc_privkey,
+        ) = pieces
 
         if which == "seqnum":
             seqnum = seqnum + 15
@@ -1384,17 +1477,19 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
         elif which == "encprivkey":
             enc_privkey = self.flip_bit(enc_privkey)
 
-        prefix = mutable_layout.pack_prefix(seqnum, root_hash, IV, k, N,
-                                            segsize, datalen)
-        final_share = mutable_layout.pack_share(prefix,
-                                                verification_key,
-                                                signature,
-                                                share_hash_chain,
-                                                block_hash_tree,
-                                                share_data,
-                                                enc_privkey)
-        msf.writev( [(0, final_share)], None)
-
+        prefix = mutable_layout.pack_prefix(
+            seqnum, root_hash, IV, k, N, segsize, datalen
+        )
+        final_share = mutable_layout.pack_share(
+            prefix,
+            verification_key,
+            signature,
+            share_hash_chain,
+            block_hash_tree,
+            share_data,
+            enc_privkey,
+        )
+        msf.writev([(0, final_share)], None)
 
     def test_mutable(self):
         self.basedir = "system/SystemTest/test_mutable"
@@ -1411,11 +1506,14 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
             c = self.clients[0]
             log.msg("starting create_mutable_file")
             d1 = c.create_mutable_file(DATA_uploadable)
+
             def _done(res):
                 log.msg("DONE: %s" % (res,))
                 self._mutable_node_1 = res
+
             d1.addCallback(_done)
             return d1
+
         d.addCallback(_create_mutable)
 
         @defer.inlineCallbacks
@@ -1424,12 +1522,14 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
             # one slot in the grid.
             shares = self._find_all_shares(self.basedir)
             (client_num, storage_index, filename, shnum) = shares[0]
-            log.msg("test_system.SystemTest.test_mutable._test_debug using %s"
-                    % filename)
+            log.msg(
+                "test_system.SystemTest.test_mutable._test_debug using %s" % filename
+            )
             log.msg(" for clients[%d]" % client_num)
 
-            rc,output,err = yield run_cli("debug", "dump-share", "--offsets",
-                                          filename)
+            rc, output, err = yield run_cli(
+                "debug", "dump-share", "--offsets", filename
+            )
             self.failUnlessEqual(rc, 0)
             try:
                 self.failUnless("Mutable slot found:\n" in output)
@@ -1437,8 +1537,7 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
                 peerid = idlib.nodeid_b2a(self.clients[client_num].nodeid)
                 self.failUnless(" WE for nodeid: %s\n" % peerid in output)
                 self.failUnless(" num_extra_leases: 0\n" in output)
-                self.failUnless("  secrets are for nodeid: %s\n" % peerid
-                                in output)
+                self.failUnless("  secrets are for nodeid: %s\n" % peerid in output)
                 self.failUnless(" SDMF contents:\n" in output)
                 self.failUnless("  seqnum: 1\n" in output)
                 self.failUnless("  required_shares: 3\n" in output)
@@ -1450,14 +1549,16 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
                 # now
                 self.failUnless("  share_hash_chain: " in output)
                 self.failUnless("  block_hash_tree: 1 nodes\n" in output)
-                expected = ("  verify-cap: URI:SSK-Verifier:%s:" %
-                            base32.b2a(storage_index))
+                expected = "  verify-cap: URI:SSK-Verifier:%s:" % base32.b2a(
+                    storage_index
+                )
                 self.failUnless(expected in output)
             except unittest.FailTest:
                 print()
                 print("dump-share output was:")
                 print(output)
                 raise
+
         d.addCallback(_test_debug)
 
         # test retrieval
@@ -1467,6 +1568,7 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
         # latest-known sharemap.
 
         d.addCallback(lambda res: self._mutable_node_1.download_best_version())
+
         def _check_download_1(res):
             self.failUnlessEqual(res, DATA)
             # now we see if we can retrieve the data from a new node,
@@ -1478,6 +1580,7 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
             newnode_2 = self.clients[0].create_node_from_uri(uri)
             self.failUnlessIdentical(newnode, newnode_2)
             return newnode.download_best_version()
+
         d.addCallback(_check_download_1)
 
         def _check_download_2(res):
@@ -1489,6 +1592,7 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
             d1 = newnode.download_best_version()
             d1.addCallback(lambda res: (res, newnode))
             return d1
+
         d.addCallback(_check_download_2)
 
         def _check_download_3(res_and_newnode):
@@ -1499,6 +1603,7 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
             d1 = newnode.overwrite(NEWDATA_uploadable)
             d1.addCallback(lambda res: newnode.download_best_version())
             return d1
+
         d.addCallback(_check_download_3)
 
         def _check_download_4(res):
@@ -1513,11 +1618,13 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
             d1 = newnode1.overwrite(NEWERDATA_uploadable)
             d1.addCallback(lambda res: newnode2.download_best_version())
             return d1
+
         d.addCallback(_check_download_4)
 
         def _check_download_5(res):
             log.msg("finished replace2")
             self.failUnlessEqual(res, NEWERDATA)
+
         d.addCallback(_check_download_5)
 
         def _corrupt_shares(res):
@@ -1525,11 +1632,14 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
             # the hash checks
             shares = self._find_all_shares(self.basedir)
             ## sort by share number
-            #shares.sort( lambda a,b: cmp(a[3], b[3]) )
-            where = dict([ (shnum, filename)
-                           for (client_num, storage_index, filename, shnum)
-                           in shares ])
-            assert len(where) == 10 # this test is designed for 3-of-10
+            # shares.sort( lambda a,b: cmp(a[3], b[3]) )
+            where = dict(
+                [
+                    (shnum, filename)
+                    for (client_num, storage_index, filename, shnum) in shares
+                ]
+            )
+            assert len(where) == 10  # this test is designed for 3-of-10
             for shnum, filename in where.items():
                 # shares 7,8,9 are left alone. read will check
                 # (share_hash_chain, block_hash_tree, share_data). New
@@ -1572,6 +1682,7 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
                 # when we retrieve this, we should get three signature
                 # failures (where we've mangled seqnum, R, and segsize). The
                 # pubkey mangling
+
         d.addCallback(_corrupt_shares)
 
         d.addCallback(lambda res: self._newnode3.download_best_version())
@@ -1584,9 +1695,11 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
             d1.addCallback(lambda newnode: newnode.download_best_version())
             d1.addCallback(lambda res: self.failUnlessEqual("", res))
             return d1
+
         d.addCallback(_check_empty_file)
 
         d.addCallback(lambda res: self.clients[0].create_dirnode())
+
         def _created_dirnode(dnode):
             log.msg("_created_dirnode(%s)" % (dnode,))
             d1 = dnode.list()
@@ -1597,9 +1710,9 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
             d1.addCallback(lambda res: dnode.has_child(u"see recursive"))
             d1.addCallback(lambda answer: self.failUnlessEqual(answer, True))
             d1.addCallback(lambda res: dnode.build_manifest().when_done())
-            d1.addCallback(lambda res:
-                           self.failUnlessEqual(len(res["manifest"]), 1))
+            d1.addCallback(lambda res: self.failUnlessEqual(len(res["manifest"]), 1))
             return d1
+
         d.addCallback(_created_dirnode)
 
         return d
@@ -1611,11 +1724,13 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
         # change the key, which changes the storage index, which means we'll
         # be asking about the wrong file, so nobody will have any shares
         u = uri.from_string(gooduri)
-        u2 = uri.CHKFileURI(key=self.flip_bit(u.key),
-                            uri_extension_hash=u.uri_extension_hash,
-                            needed_shares=u.needed_shares,
-                            total_shares=u.total_shares,
-                            size=u.size)
+        u2 = uri.CHKFileURI(
+            key=self.flip_bit(u.key),
+            uri_extension_hash=u.uri_extension_hash,
+            needed_shares=u.needed_shares,
+            total_shares=u.total_shares,
+            size=u.size,
+        )
         return u2.to_string()
 
     # TODO: add a test which mangles the uri_extension_hash instead, and
@@ -1630,9 +1745,11 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
         self.basedir = "system/SystemTest/test_filesystem"
         self.data = LARGE_DATA
         d = self.set_up_nodes(use_stats_gatherer=True)
+
         def _new_happy_semantics(ign):
             for c in self.clients:
-                c.encoding_params['happy'] = 1
+                c.encoding_params["happy"] = 1
+
         d.addCallback(_new_happy_semantics)
         d.addCallback(self.log, "starting publish")
         d.addCallback(self._do_publish1)
@@ -1676,20 +1793,26 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
         ut = upload.Data(self.data, convergence=None)
         c0 = self.clients[0]
         d = c0.create_dirnode()
+
         def _made_root(new_dirnode):
             self._root_directory_uri = new_dirnode.get_uri()
             return c0.create_node_from_uri(self._root_directory_uri)
+
         d.addCallback(_made_root)
         d.addCallback(lambda root: root.create_subdirectory(u"subdir1"))
+
         def _made_subdir1(subdir1_node):
             self._subdir1_node = subdir1_node
             d1 = subdir1_node.add_file(u"mydata567", ut)
             d1.addCallback(self.log, "publish finished")
+
             def _stash_uri(filenode):
                 self.uri = filenode.get_uri()
                 assert isinstance(self.uri, str), (self.uri, filenode)
+
             d1.addCallback(_stash_uri)
             return d1
+
         d.addCallback(_made_subdir1)
         return d
 
@@ -1709,24 +1832,32 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
         ut = upload.Data(self.smalldata, convergence=None)
         d = self.clients[0].create_dirnode()
         d.addCallback(self.log, "GOT private directory")
+
         def _got_new_dir(privnode):
             rootnode = self.clients[0].create_node_from_uri(self._root_directory_uri)
             d1 = privnode.create_subdirectory(u"personal")
             d1.addCallback(self.log, "made P/personal")
             d1.addCallback(lambda node: node.add_file(u"sekrit data", ut))
             d1.addCallback(self.log, "made P/personal/sekrit data")
-            d1.addCallback(lambda res: rootnode.get_child_at_path([u"subdir1", u"subdir2"]))
+            d1.addCallback(
+                lambda res: rootnode.get_child_at_path([u"subdir1", u"subdir2"])
+            )
+
             def _got_s2(s2node):
-                d2 = privnode.set_uri(u"s2-rw", s2node.get_uri(),
-                                      s2node.get_readonly_uri())
-                d2.addCallback(lambda node:
-                               privnode.set_uri(u"s2-ro",
-                                                s2node.get_readonly_uri(),
-                                                s2node.get_readonly_uri()))
+                d2 = privnode.set_uri(
+                    u"s2-rw", s2node.get_uri(), s2node.get_readonly_uri()
+                )
+                d2.addCallback(
+                    lambda node: privnode.set_uri(
+                        u"s2-ro", s2node.get_readonly_uri(), s2node.get_readonly_uri()
+                    )
+                )
                 return d2
+
             d1.addCallback(_got_s2)
             d1.addCallback(lambda res: privnode)
             return d1
+
         d.addCallback(_got_new_dir)
         return d
 
@@ -1739,8 +1870,10 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
         d.addCallback(lambda subdir1: subdir1.get(u"mydata567"))
         d.addCallback(lambda filenode: download_to_data(filenode))
         d.addCallback(self.log, "get finished")
+
         def _get_done(data):
             self.failUnlessEqual(data, self.data)
+
         d.addCallback(_get_done)
         return d
 
@@ -1748,16 +1881,19 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
         # this one uses the path-based API
         rootnode = self.clients[1].create_node_from_uri(self._root_directory_uri)
         d = rootnode.get_child_at_path(u"subdir1")
-        d.addCallback(lambda dirnode:
-                      self.failUnless(IDirectoryNode.providedBy(dirnode)))
+        d.addCallback(
+            lambda dirnode: self.failUnless(IDirectoryNode.providedBy(dirnode))
+        )
         d.addCallback(lambda res: rootnode.get_child_at_path(u"subdir1/mydata567"))
         d.addCallback(lambda filenode: download_to_data(filenode))
         d.addCallback(lambda data: self.failUnlessEqual(data, self.data))
 
         d.addCallback(lambda res: rootnode.get_child_at_path(u"subdir1/mydata567"))
+
         def _got_filenode(filenode):
             fnode = self.clients[1].create_node_from_uri(filenode.get_uri())
             assert fnode == filenode
+
         d.addCallback(_got_filenode)
         return d
 
@@ -1766,13 +1902,17 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
         self._private_node = resnode
 
         d = self._private_node.get_child_at_path(u"personal")
+
         def _got_personal(personal):
             self._personal_node = personal
             return personal
+
         d.addCallback(_got_personal)
 
-        d.addCallback(lambda dirnode:
-                      self.failUnless(IDirectoryNode.providedBy(dirnode), dirnode))
+        d.addCallback(
+            lambda dirnode: self.failUnless(IDirectoryNode.providedBy(dirnode), dirnode)
+        )
+
         def get_path(path):
             return self._private_node.get_child_at_path(path)
 
@@ -1782,6 +1922,7 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
         d.addCallback(lambda res: get_path(u"s2-rw"))
         d.addCallback(lambda dirnode: self.failUnless(dirnode.is_mutable()))
         d.addCallback(lambda res: get_path(u"s2-ro"))
+
         def _got_s2ro(dirnode):
             self.failUnless(dirnode.is_mutable(), dirnode)
             self.failUnless(dirnode.is_readonly(), dirnode)
@@ -1789,48 +1930,114 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
             d1.addCallback(lambda res: dirnode.list())
             d1.addCallback(self.log, "dirnode.list")
 
-            d1.addCallback(lambda res: self.shouldFail2(NotWriteableError, "mkdir(nope)", None, dirnode.create_subdirectory, u"nope"))
+            d1.addCallback(
+                lambda res: self.shouldFail2(
+                    NotWriteableError,
+                    "mkdir(nope)",
+                    None,
+                    dirnode.create_subdirectory,
+                    u"nope",
+                )
+            )
 
             d1.addCallback(self.log, "doing add_file(ro)")
-            ut = upload.Data("I will disappear, unrecorded and unobserved. The tragedy of my demise is made more poignant by its silence, but this beauty is not for you to ever know.", convergence="99i-p1x4-xd4-18yc-ywt-87uu-msu-zo -- completely and totally unguessable string (unless you read this)")
-            d1.addCallback(lambda res: self.shouldFail2(NotWriteableError, "add_file(nope)", None, dirnode.add_file, u"hope", ut))
+            ut = upload.Data(
+                "I will disappear, unrecorded and unobserved. The tragedy of my demise is made more poignant by its silence, but this beauty is not for you to ever know.",
+                convergence="99i-p1x4-xd4-18yc-ywt-87uu-msu-zo -- completely and totally unguessable string (unless you read this)",
+            )
+            d1.addCallback(
+                lambda res: self.shouldFail2(
+                    NotWriteableError,
+                    "add_file(nope)",
+                    None,
+                    dirnode.add_file,
+                    u"hope",
+                    ut,
+                )
+            )
 
             d1.addCallback(self.log, "doing get(ro)")
             d1.addCallback(lambda res: dirnode.get(u"mydata992"))
-            d1.addCallback(lambda filenode:
-                           self.failUnless(IFileNode.providedBy(filenode)))
+            d1.addCallback(
+                lambda filenode: self.failUnless(IFileNode.providedBy(filenode))
+            )
 
             d1.addCallback(self.log, "doing delete(ro)")
-            d1.addCallback(lambda res: self.shouldFail2(NotWriteableError, "delete(nope)", None, dirnode.delete, u"mydata992"))
+            d1.addCallback(
+                lambda res: self.shouldFail2(
+                    NotWriteableError,
+                    "delete(nope)",
+                    None,
+                    dirnode.delete,
+                    u"mydata992",
+                )
+            )
 
-            d1.addCallback(lambda res: self.shouldFail2(NotWriteableError, "set_uri(nope)", None, dirnode.set_uri, u"hopeless", self.uri, self.uri))
+            d1.addCallback(
+                lambda res: self.shouldFail2(
+                    NotWriteableError,
+                    "set_uri(nope)",
+                    None,
+                    dirnode.set_uri,
+                    u"hopeless",
+                    self.uri,
+                    self.uri,
+                )
+            )
 
-            d1.addCallback(lambda res: self.shouldFail2(NoSuchChildError, "get(missing)", "missing", dirnode.get, u"missing"))
+            d1.addCallback(
+                lambda res: self.shouldFail2(
+                    NoSuchChildError, "get(missing)", "missing", dirnode.get, u"missing"
+                )
+            )
 
             personal = self._personal_node
-            d1.addCallback(lambda res: self.shouldFail2(NotWriteableError, "mv from readonly", None, dirnode.move_child_to, u"mydata992", personal, u"nope"))
+            d1.addCallback(
+                lambda res: self.shouldFail2(
+                    NotWriteableError,
+                    "mv from readonly",
+                    None,
+                    dirnode.move_child_to,
+                    u"mydata992",
+                    personal,
+                    u"nope",
+                )
+            )
 
             d1.addCallback(self.log, "doing move_child_to(ro)2")
-            d1.addCallback(lambda res: self.shouldFail2(NotWriteableError, "mv to readonly", None, personal.move_child_to, u"sekrit data", dirnode, u"nope"))
+            d1.addCallback(
+                lambda res: self.shouldFail2(
+                    NotWriteableError,
+                    "mv to readonly",
+                    None,
+                    personal.move_child_to,
+                    u"sekrit data",
+                    dirnode,
+                    u"nope",
+                )
+            )
 
             d1.addCallback(self.log, "finished with _got_s2ro")
             return d1
+
         d.addCallback(_got_s2ro)
+
         def _got_home(dummy):
             home = self._private_node
             personal = self._personal_node
             d1 = defer.succeed(None)
             d1.addCallback(self.log, "mv 'P/personal/sekrit data' to P/sekrit")
-            d1.addCallback(lambda res:
-                           personal.move_child_to(u"sekrit data",home,u"sekrit"))
+            d1.addCallback(
+                lambda res: personal.move_child_to(u"sekrit data", home, u"sekrit")
+            )
 
             d1.addCallback(self.log, "mv P/sekrit 'P/sekrit data'")
-            d1.addCallback(lambda res:
-                           home.move_child_to(u"sekrit", home, u"sekrit data"))
+            d1.addCallback(
+                lambda res: home.move_child_to(u"sekrit", home, u"sekrit data")
+            )
 
             d1.addCallback(self.log, "mv 'P/sekret data' P/personal/")
-            d1.addCallback(lambda res:
-                           home.move_child_to(u"sekrit data", personal))
+            d1.addCallback(lambda res: home.move_child_to(u"sekrit data", personal))
 
             d1.addCallback(lambda res: home.build_manifest().when_done())
             d1.addCallback(self.log, "manifest")
@@ -1840,34 +2047,40 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
             # P/personal/sekrit data
             # P/s2-rw  (same as P/s2-ro)
             # P/s2-rw/mydata992 (same as P/s2-rw/mydata992)
-            d1.addCallback(lambda res:
-                           self.failUnlessEqual(len(res["manifest"]), 5))
+            d1.addCallback(lambda res: self.failUnlessEqual(len(res["manifest"]), 5))
             d1.addCallback(lambda res: home.start_deep_stats().when_done())
+
             def _check_stats(stats):
-                expected = {"count-immutable-files": 1,
-                            "count-mutable-files": 0,
-                            "count-literal-files": 1,
-                            "count-files": 2,
-                            "count-directories": 3,
-                            "size-immutable-files": 112,
-                            "size-literal-files": 23,
-                            #"size-directories": 616, # varies
-                            #"largest-directory": 616,
-                            "largest-directory-children": 3,
-                            "largest-immutable-file": 112,
-                            }
-                for k,v in expected.iteritems():
-                    self.failUnlessEqual(stats[k], v,
-                                         "stats[%s] was %s, not %s" %
-                                         (k, stats[k], v))
-                self.failUnless(stats["size-directories"] > 1300,
-                                stats["size-directories"])
-                self.failUnless(stats["largest-directory"] > 800,
-                                stats["largest-directory"])
-                self.failUnlessEqual(stats["size-files-histogram"],
-                                     [ (11, 31, 1), (101, 316, 1) ])
+                expected = {
+                    "count-immutable-files": 1,
+                    "count-mutable-files": 0,
+                    "count-literal-files": 1,
+                    "count-files": 2,
+                    "count-directories": 3,
+                    "size-immutable-files": 112,
+                    "size-literal-files": 23,
+                    # "size-directories": 616, # varies
+                    # "largest-directory": 616,
+                    "largest-directory-children": 3,
+                    "largest-immutable-file": 112,
+                }
+                for k, v in expected.iteritems():
+                    self.failUnlessEqual(
+                        stats[k], v, "stats[%s] was %s, not %s" % (k, stats[k], v)
+                    )
+                self.failUnless(
+                    stats["size-directories"] > 1300, stats["size-directories"]
+                )
+                self.failUnless(
+                    stats["largest-directory"] > 800, stats["largest-directory"]
+                )
+                self.failUnlessEqual(
+                    stats["size-files-histogram"], [(11, 31, 1), (101, 316, 1)]
+                )
+
             d1.addCallback(_check_stats)
             return d1
+
         d.addCallback(_got_home)
         return d
 
@@ -1875,26 +2088,36 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
         if isinstance(res, Failure):
             res.trap(expected_failure)
             if substring:
-                self.failUnless(substring in str(res),
-                                "substring '%s' not in '%s'"
-                                % (substring, str(res)))
+                self.failUnless(
+                    substring in str(res),
+                    "substring '%s' not in '%s'" % (substring, str(res)),
+                )
         else:
-            self.fail("%s was supposed to raise %s, not get '%s'" %
-                      (which, expected_failure, res))
+            self.fail(
+                "%s was supposed to raise %s, not get '%s'"
+                % (which, expected_failure, res)
+            )
 
-    def shouldFail2(self, expected_failure, which, substring, callable, *args, **kwargs):
+    def shouldFail2(
+        self, expected_failure, which, substring, callable, *args, **kwargs
+    ):
         assert substring is None or isinstance(substring, str)
         d = defer.maybeDeferred(callable, *args, **kwargs)
+
         def done(res):
             if isinstance(res, Failure):
                 res.trap(expected_failure)
                 if substring:
-                    self.failUnless(substring in str(res),
-                                    "substring '%s' not in '%s'"
-                                    % (substring, str(res)))
+                    self.failUnless(
+                        substring in str(res),
+                        "substring '%s' not in '%s'" % (substring, str(res)),
+                    )
             else:
-                self.fail("%s was supposed to raise %s, not get '%s'" %
-                          (which, expected_failure, res))
+                self.fail(
+                    "%s was supposed to raise %s, not get '%s'"
+                    % (which, expected_failure, res)
+                )
+
         d.addBoth(done)
         return d
 
@@ -1910,17 +2133,19 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
         form = []
         form.append(sep)
         form.append('Content-Disposition: form-data; name="_charset"')
-        form.append('')
-        form.append('UTF-8')
+        form.append("")
+        form.append("UTF-8")
         form.append(sep)
         for name, value in fields.iteritems():
             if isinstance(value, tuple):
                 filename, value = value
-                form.append('Content-Disposition: form-data; name="%s"; '
-                            'filename="%s"' % (name, filename.encode("utf-8")))
+                form.append(
+                    'Content-Disposition: form-data; name="%s"; '
+                    'filename="%s"' % (name, filename.encode("utf-8"))
+                )
             else:
                 form.append('Content-Disposition: form-data; name="%s"' % name)
-            form.append('')
+            form.append("")
             form.append(str(value))
             form.append(sep)
         form[-1] += "--"
@@ -1941,75 +2166,104 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
     def _test_web(self, res):
         public = "uri/" + self._root_directory_uri
         d = self.GET("")
+
         def _got_welcome(page):
-            html = page.replace('\n', ' ')
-            connected_re = r'Connected to <span>%d</span>\s*of <span>%d</span> known storage servers' % (self.numclients, self.numclients)
-            self.failUnless(re.search(connected_re, html),
-                            "I didn't see the right '%s' message in:\n%s" % (connected_re, page))
+            html = page.replace("\n", " ")
+            connected_re = (
+                r"Connected to <span>%d</span>\s*of <span>%d</span> known storage servers"
+                % (self.numclients, self.numclients)
+            )
+            self.failUnless(
+                re.search(connected_re, html),
+                "I didn't see the right '%s' message in:\n%s" % (connected_re, page),
+            )
             # nodeids/tubids don't have any regexp-special characters
             nodeid_re = r'<th>Node ID:</th>\s*<td title="TubID: %s">%s</td>' % (
-                self.clients[0].get_long_tubid(), self.clients[0].get_long_nodeid())
-            self.failUnless(re.search(nodeid_re, html),
-                            "I didn't see the right '%s' message in:\n%s" % (nodeid_re, page))
+                self.clients[0].get_long_tubid(),
+                self.clients[0].get_long_nodeid(),
+            )
+            self.failUnless(
+                re.search(nodeid_re, html),
+                "I didn't see the right '%s' message in:\n%s" % (nodeid_re, page),
+            )
             self.failUnless("Helper: 0 active uploads" in page)
+
         d.addCallback(_got_welcome)
         d.addCallback(self.log, "done with _got_welcome")
 
         # get the welcome page from the node that uses the helper too
         d.addCallback(lambda res: do_http("get", self.helper_webish_url))
+
         def _got_welcome_helper(page):
-            soup = BeautifulSoup(page, 'html5lib')
+            soup = BeautifulSoup(page, "html5lib")
             assert_soup_has_tag_with_attributes(
-                self, soup, u"img",
-                { u"alt": u"Connected", u"src": u"img/connected-yes.png" }
+                self,
+                soup,
+                u"img",
+                {u"alt": u"Connected", u"src": u"img/connected-yes.png"},
             )
             self.failUnlessIn("Not running helper", page)
+
         d.addCallback(_got_welcome_helper)
 
         d.addCallback(lambda res: self.GET(public))
         d.addCallback(lambda res: self.GET(public + "/subdir1"))
+
         def _got_subdir1(page):
             # there ought to be an href for our file
             self.failUnlessIn('<td align="right">%d</td>' % len(self.data), page)
             self.failUnless(">mydata567</a>" in page)
+
         d.addCallback(_got_subdir1)
         d.addCallback(self.log, "done with _got_subdir1")
         d.addCallback(lambda res: self.GET(public + "/subdir1/mydata567"))
+
         def _got_data(page):
             self.failUnlessEqual(page, self.data)
+
         d.addCallback(_got_data)
 
         # download from a URI embedded in a URL
         d.addCallback(self.log, "_get_from_uri")
+
         def _get_from_uri(res):
             return self.GET("uri/%s?filename=%s" % (self.uri, "mydata567"))
+
         d.addCallback(_get_from_uri)
+
         def _got_from_uri(page):
             self.failUnlessEqual(page, self.data)
+
         d.addCallback(_got_from_uri)
 
         # download from a URI embedded in a URL, second form
         d.addCallback(self.log, "_get_from_uri2")
+
         def _get_from_uri2(res):
             return self.GET("uri?uri=%s" % (self.uri,))
+
         d.addCallback(_get_from_uri2)
         d.addCallback(_got_from_uri)
 
         # download from a bogus URI, make sure we get a reasonable error
         d.addCallback(self.log, "_get_from_bogus_uri", level=log.UNUSUAL)
+
         @defer.inlineCallbacks
         def _get_from_bogus_uri(res):
-            d1 = self.GET("uri/%s?filename=%s"
-                          % (self.mangle_uri(self.uri), "mydata567"))
+            d1 = self.GET(
+                "uri/%s?filename=%s" % (self.mangle_uri(self.uri), "mydata567")
+            )
             e = yield self.assertFailure(d1, Error)
             self.assertEquals(e.status, "410")
+
         d.addCallback(_get_from_bogus_uri)
         d.addCallback(self.log, "_got_from_bogus_uri", level=log.UNUSUAL)
 
         # upload a file with PUT
         d.addCallback(self.log, "about to try PUT")
-        d.addCallback(lambda res: self.PUT(public + "/subdir3/new.txt",
-                                           "new.txt contents"))
+        d.addCallback(
+            lambda res: self.PUT(public + "/subdir3/new.txt", "new.txt contents")
+        )
         d.addCallback(lambda res: self.GET(public + "/subdir3/new.txt"))
         d.addCallback(self.failUnlessEqual, "new.txt contents")
         # and again with something large enough to use multiple segments,
@@ -2017,29 +2271,37 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
         def _new_happy_semantics(ign):
             for c in self.clients:
                 # these get reset somewhere? Whatever.
-                c.encoding_params['happy'] = 1
+                c.encoding_params["happy"] = 1
+
         d.addCallback(_new_happy_semantics)
-        d.addCallback(lambda res: self.PUT(public + "/subdir3/big.txt",
-                                           "big" * 500000)) # 1.5MB
+        d.addCallback(
+            lambda res: self.PUT(public + "/subdir3/big.txt", "big" * 500000)
+        )  # 1.5MB
         d.addCallback(lambda res: self.GET(public + "/subdir3/big.txt"))
         d.addCallback(lambda res: self.failUnlessEqual(len(res), 1500000))
 
         # can we replace files in place?
-        d.addCallback(lambda res: self.PUT(public + "/subdir3/new.txt",
-                                           "NEWER contents"))
+        d.addCallback(
+            lambda res: self.PUT(public + "/subdir3/new.txt", "NEWER contents")
+        )
         d.addCallback(lambda res: self.GET(public + "/subdir3/new.txt"))
         d.addCallback(self.failUnlessEqual, "NEWER contents")
 
         # test unlinked POST
-        d.addCallback(lambda res: self.POST("uri", t="upload",
-                                            file=("new.txt", "data" * 10000)))
+        d.addCallback(
+            lambda res: self.POST("uri", t="upload", file=("new.txt", "data" * 10000))
+        )
         # and again using the helper, which exercises different upload-status
         # display code
-        d.addCallback(lambda res: self.POST("uri", use_helper=True, t="upload",
-                                            file=("foo.txt", "data2" * 10000)))
+        d.addCallback(
+            lambda res: self.POST(
+                "uri", use_helper=True, t="upload", file=("foo.txt", "data2" * 10000)
+            )
+        )
 
         # check that the status page exists
         d.addCallback(lambda res: self.GET("status"))
+
         def _got_status(res):
             # find an interesting upload and download to look at. LIT files
             # are not interesting.
@@ -2059,26 +2321,38 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
 
             # and that there are some upload- and download- status pages
             return self.GET("status/up-%d" % self._up_status)
+
         d.addCallback(_got_status)
+
         def _got_up(res):
             return self.GET("status/down-%d" % self._down_status)
+
         d.addCallback(_got_up)
+
         def _got_down(res):
             return self.GET("status/mapupdate-%d" % self._update_status)
+
         d.addCallback(_got_down)
+
         def _got_update(res):
             return self.GET("status/publish-%d" % self._publish_status)
+
         d.addCallback(_got_update)
+
         def _got_publish(res):
             self.failUnlessIn("Publish Results", res)
             return self.GET("status/retrieve-%d" % self._retrieve_status)
+
         d.addCallback(_got_publish)
+
         def _got_retrieve(res):
             self.failUnlessIn("Retrieve Results", res)
+
         d.addCallback(_got_retrieve)
 
         # check that the helper status page exists
         d.addCallback(lambda res: self.GET("helper_status"))
+
         def _got_helper_status(res):
             self.failUnless("Bytes Fetched:" in res)
             # touch a couple of files in the helper's working directory to
@@ -2088,7 +2362,7 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
             f = open(incfile, "wb")
             f.write("small file")
             f.close()
-            then = time.time() - 86400*3
+            then = time.time() - 86400 * 3
             now = time.time()
             os.utime(incfile, (now, then))
             encfile = os.path.join(workdir, "CHK_encoding", "spurious")
@@ -2096,51 +2370,60 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
             f.write("less small file")
             f.close()
             os.utime(encfile, (now, then))
+
         d.addCallback(_got_helper_status)
         # and that the json form exists
         d.addCallback(lambda res: self.GET("helper_status?t=json"))
+
         def _got_helper_status_json(res):
             data = json.loads(res)
-            self.failUnlessEqual(data["chk_upload_helper.upload_need_upload"],
-                                 1)
+            self.failUnlessEqual(data["chk_upload_helper.upload_need_upload"], 1)
             self.failUnlessEqual(data["chk_upload_helper.incoming_count"], 1)
             self.failUnlessEqual(data["chk_upload_helper.incoming_size"], 10)
-            self.failUnlessEqual(data["chk_upload_helper.incoming_size_old"],
-                                 10)
+            self.failUnlessEqual(data["chk_upload_helper.incoming_size_old"], 10)
             self.failUnlessEqual(data["chk_upload_helper.encoding_count"], 1)
             self.failUnlessEqual(data["chk_upload_helper.encoding_size"], 15)
-            self.failUnlessEqual(data["chk_upload_helper.encoding_size_old"],
-                                 15)
+            self.failUnlessEqual(data["chk_upload_helper.encoding_size_old"], 15)
+
         d.addCallback(_got_helper_status_json)
 
         # and check that client[3] (which uses a helper but does not run one
         # itself) doesn't explode when you ask for its status
-        d.addCallback(lambda res: do_http("get",
-                                          self.helper_webish_url + "status/"))
+        d.addCallback(lambda res: do_http("get", self.helper_webish_url + "status/"))
+
         def _got_non_helper_status(res):
             self.failUnlessIn("Recent and Active Operations", res)
+
         d.addCallback(_got_non_helper_status)
 
         # or for helper status with t=json
-        d.addCallback(lambda res:
-                      do_http("get",
-                              self.helper_webish_url + "helper_status?t=json"))
+        d.addCallback(
+            lambda res: do_http("get", self.helper_webish_url + "helper_status?t=json")
+        )
+
         def _got_non_helper_status_json(res):
             data = json.loads(res)
             self.failUnlessEqual(data, {})
+
         d.addCallback(_got_non_helper_status_json)
 
         # see if the statistics page exists
         d.addCallback(lambda res: self.GET("statistics"))
+
         def _got_stats(res):
             self.failUnlessIn("Operational Statistics", res)
             self.failUnlessIn("  'downloader.files_downloaded': 5,", res)
+
         d.addCallback(_got_stats)
         d.addCallback(lambda res: self.GET("statistics?t=json"))
+
         def _got_stats_json(res):
             data = json.loads(res)
             self.failUnlessEqual(data["counters"]["uploader.files_uploaded"], 5)
-            self.failUnlessEqual(data["stats"]["chk_upload_helper.upload_need_upload"], 1)
+            self.failUnlessEqual(
+                data["stats"]["chk_upload_helper.upload_need_upload"], 1
+            )
+
         d.addCallback(_got_stats_json)
 
         # TODO: mangle the second segment of a file, to test errors that
@@ -2166,40 +2449,52 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
             if not filenames:
                 continue
             pieces = dirpath.split(os.sep)
-            if (len(pieces) >= 4
-                and pieces[-4] == "storage"
-                and pieces[-3] == "shares"):
+            if len(pieces) >= 4 and pieces[-4] == "storage" and pieces[-3] == "shares":
                 # we're sitting in .../storage/shares/$START/$SINDEX , and there
                 # are sharefiles here
                 filename = os.path.join(dirpath, filenames[0])
                 # peek at the magic to see if it is a chk share
                 magic = open(filename, "rb").read(4)
-                if magic == '\x00\x00\x00\x01':
+                if magic == "\x00\x00\x00\x01":
                     break
         else:
-            self.fail("unable to find any uri_extension files in %r"
-                      % self.basedir)
+            self.fail("unable to find any uri_extension files in %r" % self.basedir)
         log.msg("test_system.SystemTest._test_runner using %r" % filename)
 
-        rc,output,err = yield run_cli("debug", "dump-share", "--offsets",
-                                      unicode_to_argv(filename))
+        rc, output, err = yield run_cli(
+            "debug", "dump-share", "--offsets", unicode_to_argv(filename)
+        )
         self.failUnlessEqual(rc, 0)
 
         # we only upload a single file, so we can assert some things about
         # its size and shares.
-        self.failUnlessIn("share filename: %s" % quote_output(abspath_expanduser_unicode(filename)), output)
+        self.failUnlessIn(
+            "share filename: %s" % quote_output(abspath_expanduser_unicode(filename)),
+            output,
+        )
         self.failUnlessIn("size: %d\n" % len(self.data), output)
         self.failUnlessIn("num_segments: 1\n", output)
         # segment_size is always a multiple of needed_shares
-        self.failUnlessIn("segment_size: %d\n" % mathutil.next_multiple(len(self.data), 3), output)
+        self.failUnlessIn(
+            "segment_size: %d\n" % mathutil.next_multiple(len(self.data), 3), output
+        )
         self.failUnlessIn("total_shares: 10\n", output)
         # keys which are supposed to be present
-        for key in ("size", "num_segments", "segment_size",
-                    "needed_shares", "total_shares",
-                    "codec_name", "codec_params", "tail_codec_params",
-                    #"plaintext_hash", "plaintext_root_hash",
-                    "crypttext_hash", "crypttext_root_hash",
-                    "share_root_hash", "UEB_hash"):
+        for key in (
+            "size",
+            "num_segments",
+            "segment_size",
+            "needed_shares",
+            "total_shares",
+            "codec_name",
+            "codec_params",
+            "tail_codec_params",
+            # "plaintext_hash", "plaintext_root_hash",
+            "crypttext_hash",
+            "crypttext_root_hash",
+            "share_root_hash",
+            "UEB_hash",
+        ):
             self.failUnlessIn("%s: " % key, output)
         self.failUnlessIn("  verify-cap: URI:CHK-Verifier:", output)
 
@@ -2209,21 +2504,22 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
         storagedir, storage_index_s = os.path.split(sharedir)
         storage_index_s = str(storage_index_s)
         nodedirs = [self.getdir("client%d" % i) for i in range(self.numclients)]
-        rc,out,err = yield run_cli("debug", "find-shares", storage_index_s,
-                                   *nodedirs)
+        rc, out, err = yield run_cli("debug", "find-shares", storage_index_s, *nodedirs)
         self.failUnlessEqual(rc, 0)
         sharefiles = [sfn.strip() for sfn in out.splitlines()]
         self.failUnlessEqual(len(sharefiles), 10)
 
         # also exercise the 'catalog-shares' tool
         nodedirs = [self.getdir("client%d" % i) for i in range(self.numclients)]
-        rc,out,err = yield run_cli("debug", "catalog-shares", *nodedirs)
+        rc, out, err = yield run_cli("debug", "catalog-shares", *nodedirs)
         self.failUnlessEqual(rc, 0)
         descriptions = [sfn.strip() for sfn in out.splitlines()]
         self.failUnlessEqual(len(descriptions), 30)
-        matching = [line
-                    for line in descriptions
-                    if line.startswith("CHK %s " % storage_index_s)]
+        matching = [
+            line
+            for line in descriptions
+            if line.startswith("CHK %s " % storage_index_s)
+        ]
         self.failUnlessEqual(len(matching), 10)
 
     def _test_control(self, res):
@@ -2237,6 +2533,7 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
         d = self.introducer.tub.getReference(control_furl)
         d.addCallback(self._test_control2, control_furl_file)
         return d
+
     def _test_control2(self, rref, filename):
         d = defer.succeed(None)
         d.addCallback(lambda res: rref.callRemote("speed_test", 1, 200, False))
@@ -2253,8 +2550,9 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
         client0_basedir = self.getdir("client0")
 
         nodeargs = [
-            "--node-directory", client0_basedir,
-            ]
+            "--node-directory",
+            client0_basedir,
+        ]
 
         d = defer.succeed(None)
 
@@ -2269,16 +2567,16 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
 
         @defer.inlineCallbacks
         def run(ignored, verb, *args, **kwargs):
-            rc,out,err = yield run_cli(verb, *args, nodeargs=nodeargs, **kwargs)
-            defer.returnValue((out,err))
+            rc, out, err = yield run_cli(verb, *args, nodeargs=nodeargs, **kwargs)
+            defer.returnValue((out, err))
 
         def _check_ls(out_and_err, expected_children, unexpected_children=[]):
             (out, err) = out_and_err
             self.failUnlessEqual(err, "")
             for s in expected_children:
-                self.failUnless(s in out, (s,out))
+                self.failUnless(s in out, (s, out))
             for s in unexpected_children:
-                self.failIf(s in out, (s,out))
+                self.failIf(s in out, (s, out))
 
         def _check_ls_root(out_and_err):
             (out, err) = out_and_err
@@ -2292,41 +2590,50 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
         d.addCallback(_check_ls, ["personal", "s2-ro", "s2-rw"])
 
         d.addCallback(run, "list-aliases")
+
         def _check_aliases_1(out_and_err):
             (out, err) = out_and_err
             self.failUnlessEqual(err, "")
             self.failUnlessEqual(out.strip(" \n"), "tahoe: %s" % private_uri)
+
         d.addCallback(_check_aliases_1)
 
         # now that that's out of the way, remove root_dir.cap and work with
         # new files
         d.addCallback(lambda res: os.unlink(root_file))
         d.addCallback(run, "list-aliases")
+
         def _check_aliases_2(out_and_err):
             (out, err) = out_and_err
             self.failUnlessEqual(err, "")
             self.failUnlessEqual(out, "")
+
         d.addCallback(_check_aliases_2)
 
         d.addCallback(run, "mkdir")
-        def _got_dir(out_and_err ):
+
+        def _got_dir(out_and_err):
             (out, err) = out_and_err
             self.failUnless(uri.from_string_dirnode(out.strip()))
             return out.strip()
+
         d.addCallback(_got_dir)
         d.addCallback(lambda newcap: run(None, "add-alias", "tahoe", newcap))
 
         d.addCallback(run, "list-aliases")
+
         def _check_aliases_3(out_and_err):
             (out, err) = out_and_err
             self.failUnlessEqual(err, "")
             self.failUnless("tahoe: " in out)
+
         d.addCallback(_check_aliases_3)
 
         def _check_empty_dir(out_and_err):
             (out, err) = out_and_err
             self.failUnlessEqual(out, "")
             self.failUnlessEqual(err, "")
+
         d.addCallback(run, "ls")
         d.addCallback(_check_empty_dir)
 
@@ -2335,6 +2642,7 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
             (out, err) = out_and_err
             self.failUnlessEqual(out, "")
             self.failUnlessEqual(err, "No such file or directory\n")
+
         d.addCallback(run, "ls", "bogus")
         d.addCallback(_check_missing_dir)
 
@@ -2345,7 +2653,7 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
             files.append(fn)
             data = "data to be uploaded: file%d\n" % i
             datas.append(data)
-            open(fn,"wb").write(data)
+            open(fn, "wb").write(data)
 
         def _check_stdout_against(out_and_err, filenum=None, data=None):
             (out, err) = out_and_err
@@ -2358,12 +2666,14 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
         # test all both forms of put: from a file, and from stdin
         #  tahoe put bar FOO
         d.addCallback(run, "put", files[0], "tahoe-file0")
+
         def _put_out(out_and_err):
             (out, err) = out_and_err
             self.failUnless("URI:LIT:" in out, out)
             self.failUnless("201 Created" in err, err)
             uri0 = out.strip()
             return run(None, "get", uri0)
+
         d.addCallback(_put_out)
         d.addCallback(lambda out_err: self.failUnlessEqual(out_err[0], datas[0]))
 
@@ -2371,9 +2681,11 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
         #  tahoe put bar tahoe:FOO
         d.addCallback(run, "put", files[2], "tahoe:file2")
         d.addCallback(run, "put", "--format=SDMF", files[3], "tahoe:file3")
+
         def _check_put_mutable(out_and_err):
             (out, err) = out_and_err
             self._mutable_file3_uri = out.strip()
+
         d.addCallback(_check_put_mutable)
         d.addCallback(run, "get", "tahoe:file3")
         d.addCallback(_check_stdout_against, 3)
@@ -2382,12 +2694,22 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
         STDIN_DATA = "This is the file to upload from stdin."
         d.addCallback(run, "put", "-", "tahoe-file-stdin", stdin=STDIN_DATA)
         #  tahoe put tahoe:FOO
-        d.addCallback(run, "put", "-", "tahoe:from-stdin",
-                      stdin="Other file from stdin.")
+        d.addCallback(
+            run, "put", "-", "tahoe:from-stdin", stdin="Other file from stdin."
+        )
 
         d.addCallback(run, "ls")
-        d.addCallback(_check_ls, ["tahoe-file0", "file2", "file3", "subdir",
-                                  "tahoe-file-stdin", "from-stdin"])
+        d.addCallback(
+            _check_ls,
+            [
+                "tahoe-file0",
+                "file2",
+                "file3",
+                "subdir",
+                "tahoe-file-stdin",
+                "from-stdin",
+            ],
+        )
         d.addCallback(run, "ls", "subdir")
         d.addCallback(_check_ls, ["tahoe-file1"])
 
@@ -2404,17 +2726,21 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
         d.addCallback(_check_stdout_against, 1)
         outfile0 = os.path.join(self.basedir, "outfile0")
         d.addCallback(run, "get", "file2", outfile0)
+
         def _check_outfile0(out_and_err):
             (out, err) = out_and_err
-            data = open(outfile0,"rb").read()
+            data = open(outfile0, "rb").read()
             self.failUnlessEqual(data, "data to be uploaded: file2\n")
+
         d.addCallback(_check_outfile0)
         outfile1 = os.path.join(self.basedir, "outfile0")
         d.addCallback(run, "get", "tahoe:subdir/tahoe-file1", outfile1)
+
         def _check_outfile1(out_and_err):
             (out, err) = out_and_err
-            data = open(outfile1,"rb").read()
+            data = open(outfile1, "rb").read()
             self.failUnlessEqual(data, "data to be uploaded: file1\n")
+
         d.addCallback(_check_outfile1)
 
         d.addCallback(run, "unlink", "tahoe-file0")
@@ -2423,6 +2749,7 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
         d.addCallback(_check_ls, [], ["tahoe-file0", "file2"])
 
         d.addCallback(run, "ls", "-l")
+
         def _check_ls_l(out_and_err):
             (out, err) = out_and_err
             lines = out.split("\n")
@@ -2431,19 +2758,23 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
                     self.failUnless(l.startswith("-r-- "), l)
                     self.failUnless(" %d " % len(STDIN_DATA) in l)
                 if "file3" in l:
-                    self.failUnless(l.startswith("-rw- "), l) # mutable
+                    self.failUnless(l.startswith("-rw- "), l)  # mutable
+
         d.addCallback(_check_ls_l)
 
         d.addCallback(run, "ls", "--uri")
+
         def _check_ls_uri(out_and_err):
             (out, err) = out_and_err
             lines = out.split("\n")
             for l in lines:
                 if "file3" in l:
                     self.failUnless(self._mutable_file3_uri in l)
+
         d.addCallback(_check_ls_uri)
 
         d.addCallback(run, "ls", "--readonly-uri")
+
         def _check_ls_rouri(out_and_err):
             (out, err) = out_and_err
             lines = out.split("\n")
@@ -2453,8 +2784,8 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
                     u = uri.from_string_mutable_filenode(rw_uri)
                     ro_uri = u.get_readonly().to_string()
                     self.failUnless(ro_uri in l)
-        d.addCallback(_check_ls_rouri)
 
+        d.addCallback(_check_ls_rouri)
 
         d.addCallback(run, "mv", "tahoe-file-stdin", "tahoe-moved")
         d.addCallback(run, "ls")
@@ -2480,30 +2811,36 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
         # copy from tahoe into disk
         target_filename = os.path.join(self.basedir, "file-out")
         d.addCallback(run, "cp", "tahoe:file4", target_filename)
+
         def _check_cp_out(out_and_err):
             (out, err) = out_and_err
             self.failUnless(os.path.exists(target_filename))
-            got = open(target_filename,"rb").read()
+            got = open(target_filename, "rb").read()
             self.failUnlessEqual(got, datas[4])
+
         d.addCallback(_check_cp_out)
 
         # copy from disk to disk (silly case)
         target2_filename = os.path.join(self.basedir, "file-out-copy")
         d.addCallback(run, "cp", target_filename, target2_filename)
+
         def _check_cp_out2(out_and_err):
             (out, err) = out_and_err
             self.failUnless(os.path.exists(target2_filename))
-            got = open(target2_filename,"rb").read()
+            got = open(target2_filename, "rb").read()
             self.failUnlessEqual(got, datas[4])
+
         d.addCallback(_check_cp_out2)
 
         # copy from tahoe into disk, overwriting an existing file
         d.addCallback(run, "cp", "tahoe:file3", target_filename)
+
         def _check_cp_out3(out_and_err):
             (out, err) = out_and_err
             self.failUnless(os.path.exists(target_filename))
-            got = open(target_filename,"rb").read()
+            got = open(target_filename, "rb").read()
             self.failUnlessEqual(got, datas[3])
+
         d.addCallback(_check_cp_out3)
 
         # copy from disk into tahoe, overwriting an existing immutable file
@@ -2536,30 +2873,34 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
         d.addCallback(run, "ls")
         d.addCallback(_check_ls, ["dir1"])
         d.addCallback(run, "ls", "dir1")
-        d.addCallback(_check_ls, ["rfile1", "rfile2", "rfile3", "subdir2"],
-                      ["rfile4", "rfile5"])
+        d.addCallback(
+            _check_ls, ["rfile1", "rfile2", "rfile3", "subdir2"], ["rfile4", "rfile5"]
+        )
         d.addCallback(run, "ls", "tahoe:dir1/subdir2")
-        d.addCallback(_check_ls, ["rfile4", "rfile5"],
-                      ["rfile1", "rfile2", "rfile3"])
+        d.addCallback(_check_ls, ["rfile4", "rfile5"], ["rfile1", "rfile2", "rfile3"])
         d.addCallback(run, "get", "dir1/subdir2/rfile4")
         d.addCallback(_check_stdout_against, data="rfile4")
 
         # and back out again
         dn_copy = os.path.join(self.basedir, "dir1-copy")
         d.addCallback(run, "cp", "--verbose", "-r", "tahoe:dir1", dn_copy)
+
         def _check_cp_r_out(out_and_err):
             (out, err) = out_and_err
+
             def _cmp(name):
                 old = open(os.path.join(dn, name), "rb").read()
                 newfn = os.path.join(dn_copy, "dir1", name)
                 self.failUnless(os.path.exists(newfn))
                 new = open(newfn, "rb").read()
                 self.failUnlessEqual(old, new)
+
             _cmp("rfile1")
             _cmp("rfile2")
             _cmp("rfile3")
             _cmp(os.path.join("subdir2", "rfile4"))
             _cmp(os.path.join("subdir2", "rfile5"))
+
         d.addCallback(_check_cp_r_out)
 
         # and copy it a second time, which ought to overwrite the same files
@@ -2568,12 +2909,14 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
         # and again, only writing filecaps
         dn_copy2 = os.path.join(self.basedir, "dir1-copy-capsonly")
         d.addCallback(run, "cp", "-r", "--caps-only", "tahoe:dir1", dn_copy2)
+
         def _check_capsonly(out_and_err):
             # these should all be LITs
             (out, err) = out_and_err
             x = open(os.path.join(dn_copy2, "dir1", "subdir2", "rfile4")).read()
             y = uri.from_string_filenode(x)
             self.failUnlessEqual(y.data, "rfile4")
+
         d.addCallback(_check_capsonly)
 
         # and tahoe-to-tahoe
@@ -2581,11 +2924,11 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
         d.addCallback(run, "ls")
         d.addCallback(_check_ls, ["dir1", "dir1-copy"])
         d.addCallback(run, "ls", "dir1-copy/dir1")
-        d.addCallback(_check_ls, ["rfile1", "rfile2", "rfile3", "subdir2"],
-                      ["rfile4", "rfile5"])
+        d.addCallback(
+            _check_ls, ["rfile1", "rfile2", "rfile3", "subdir2"], ["rfile4", "rfile5"]
+        )
         d.addCallback(run, "ls", "tahoe:dir1-copy/dir1/subdir2")
-        d.addCallback(_check_ls, ["rfile4", "rfile5"],
-                      ["rfile1", "rfile2", "rfile3"])
+        d.addCallback(_check_ls, ["rfile4", "rfile5"], ["rfile1", "rfile2", "rfile3"])
         d.addCallback(run, "get", "dir1-copy/dir1/subdir2/rfile4")
         d.addCallback(_check_stdout_against, data="rfile4")
 
@@ -2594,15 +2937,15 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
 
         # tahoe_ls doesn't currently handle the error correctly: it tries to
         # JSON-parse a traceback.
-##         def _ls_missing(res):
-##             argv = nodeargs + ["ls", "bogus"]
-##             return self._run_cli(argv)
-##         d.addCallback(_ls_missing)
-##         def _check_ls_missing((out,err)):
-##             print("OUT", out)
-##             print("ERR", err)
-##             self.failUnlessEqual(err, "")
-##         d.addCallback(_check_ls_missing)
+        ##         def _ls_missing(res):
+        ##             argv = nodeargs + ["ls", "bogus"]
+        ##             return self._run_cli(argv)
+        ##         d.addCallback(_ls_missing)
+        ##         def _check_ls_missing((out,err)):
+        ##             print("OUT", out)
+        ##             print("ERR", err)
+        ##             self.failUnlessEqual(err, "")
+        ##         d.addCallback(_check_ls_missing)
 
         return d
 
@@ -2611,9 +2954,11 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
 
         self.basedir = "system/SystemTest/test_filesystem_with_cli_in_subprocess"
         d = self.set_up_nodes()
+
         def _new_happy_semantics(ign):
             for c in self.clients:
-                c.encoding_params['happy'] = 1
+                c.encoding_params["happy"] = 1
+
         d.addCallback(_new_happy_semantics)
 
         def _run_in_subprocess(ignored, verb, *args, **kwargs):
@@ -2634,23 +2979,32 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
         d.addCallback(_check_succeeded)
 
         STDIN_DATA = "This is the file to upload from stdin."
-        d.addCallback(_run_in_subprocess, "put", "-", "newalias:tahoe-file", stdin=STDIN_DATA)
+        d.addCallback(
+            _run_in_subprocess, "put", "-", "newalias:tahoe-file", stdin=STDIN_DATA
+        )
         d.addCallback(_check_succeeded, check_stderr=False)
 
         def _mv_with_http_proxy(ign):
             env = os.environ
-            env['http_proxy'] = env['HTTP_PROXY'] = "http://127.0.0.0:12345"  # invalid address
-            return _run_in_subprocess(None, "mv", "newalias:tahoe-file", "newalias:tahoe-moved", env=env)
+            env["http_proxy"] = env[
+                "HTTP_PROXY"
+            ] = "http://127.0.0.0:12345"  # invalid address
+            return _run_in_subprocess(
+                None, "mv", "newalias:tahoe-file", "newalias:tahoe-moved", env=env
+            )
+
         d.addCallback(_mv_with_http_proxy)
         d.addCallback(_check_succeeded)
 
         d.addCallback(_run_in_subprocess, "ls", "newalias:")
+
         def _check_ls(res):
             out, err, rc_or_sig = res
             self.failUnlessEqual(rc_or_sig, 0, str(res))
             self.failUnlessEqual(err, "", str(res))
             self.failUnlessIn("tahoe-moved", out)
             self.failIfIn("tahoe-file", out)
+
         d.addCallback(_check_ls)
         return d
 
@@ -2659,53 +3013,67 @@ class SystemTest(SystemTestMixin, RunBinTahoeMixin, unittest.TestCase):
         d = self._personal_node.add_file(u"big file", ut)
 
         d.addCallback(lambda res: self._personal_node.check(Monitor()))
+
         def _check_dirnode_results(r):
             self.failUnless(r.is_healthy())
+
         d.addCallback(_check_dirnode_results)
         d.addCallback(lambda res: self._personal_node.check(Monitor(), verify=True))
         d.addCallback(_check_dirnode_results)
 
         d.addCallback(lambda res: self._personal_node.get(u"big file"))
+
         def _got_chk_filenode(n):
             self.failUnless(isinstance(n, ImmutableFileNode))
             d = n.check(Monitor())
+
             def _check_filenode_results(r):
                 self.failUnless(r.is_healthy())
+
             d.addCallback(_check_filenode_results)
             d.addCallback(lambda res: n.check(Monitor(), verify=True))
             d.addCallback(_check_filenode_results)
             return d
+
         d.addCallback(_got_chk_filenode)
 
         d.addCallback(lambda res: self._personal_node.get(u"sekrit data"))
+
         def _got_lit_filenode(n):
             self.failUnless(isinstance(n, LiteralFileNode))
             d = n.check(Monitor())
+
             def _check_lit_filenode_results(r):
                 self.failUnlessEqual(r, None)
+
             d.addCallback(_check_lit_filenode_results)
             d.addCallback(lambda res: n.check(Monitor(), verify=True))
             d.addCallback(_check_lit_filenode_results)
             return d
+
         d.addCallback(_got_lit_filenode)
         return d
 
 
 class Connections(SystemTestMixin, unittest.TestCase):
-
     def test_rref(self):
         self.basedir = "system/Connections/rref"
         d = self.set_up_nodes(2)
+
         def _start(ign):
             self.c0 = self.clients[0]
-            nonclients = [s for s in self.c0.storage_broker.get_connected_servers()
-                          if s.get_serverid() != self.c0.get_long_nodeid()]
+            nonclients = [
+                s
+                for s in self.c0.storage_broker.get_connected_servers()
+                if s.get_serverid() != self.c0.get_long_nodeid()
+            ]
             self.failUnlessEqual(len(nonclients), 1)
 
             self.s1 = nonclients[0]  # s1 is the server, not c0
             self.s1_storage_server = self.s1.get_storage_server()
             self.assertIsNot(self.s1_storage_server, None)
             self.assertTrue(self.s1.is_connected())
+
         d.addCallback(_start)
 
         # now shut down the server
@@ -2713,6 +3081,7 @@ class Connections(SystemTestMixin, unittest.TestCase):
         # and wait for the client to notice
         def _poll():
             return len(self.c0.storage_broker.get_connected_servers()) < 2
+
         d.addCallback(lambda ign: self.poll(_poll))
 
         def _down(ign):
@@ -2720,5 +3089,6 @@ class Connections(SystemTestMixin, unittest.TestCase):
             storage_server = self.s1.get_storage_server()
             self.assertIsNot(storage_server, None)
             self.assertEqual(storage_server, self.s1_storage_server)
+
         d.addCallback(_down)
         return d

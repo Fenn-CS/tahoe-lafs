@@ -7,9 +7,30 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
     # Don't import bytes and str, to prevent API leakage
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, dict, list, object, range, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        dict,
+        list,
+        object,
+        range,
+        max,
+        min,
+    )  # noqa: F401
 
 import time
 
@@ -18,26 +39,35 @@ from zope.interface import implementer
 from twisted.internet import defer
 from twisted.python import failure
 from twisted.internet.interfaces import IPushProducer, IConsumer
-from foolscap.api import eventually, fireEventually, DeadReferenceError, \
-     RemoteException
+from foolscap.api import eventually, fireEventually, DeadReferenceError, RemoteException
 
 from allmydata.crypto import aes
 from allmydata.crypto import rsa
-from allmydata.interfaces import IRetrieveStatus, NotEnoughSharesError, \
-     DownloadStopped, MDMF_VERSION, SDMF_VERSION
+from allmydata.interfaces import (
+    IRetrieveStatus,
+    NotEnoughSharesError,
+    DownloadStopped,
+    MDMF_VERSION,
+    SDMF_VERSION,
+)
 from allmydata.util.assertutil import _assert, precondition
 from allmydata.util import hashutil, log, mathutil, deferredutil
 from allmydata.util.dictutil import DictOfSets
 from allmydata import hashtree, codec
 from allmydata.storage.server import si_b2a
 
-from allmydata.mutable.common import CorruptShareError, BadShareError, \
-     UncoordinatedWriteError
+from allmydata.mutable.common import (
+    CorruptShareError,
+    BadShareError,
+    UncoordinatedWriteError,
+)
 from allmydata.mutable.layout import MDMFSlotReadProxy
+
 
 @implementer(IRetrieveStatus)
 class RetrieveStatus(object):
     statusid_counter = count(0)
+
     def __init__(self):
         self.timings = {}
         self.timings["fetch_per_server"] = {}
@@ -48,7 +78,7 @@ class RetrieveStatus(object):
         self.active = True
         self.storage_index = None
         self.helper = False
-        self.encoding = ("?","?")
+        self.encoding = ("?", "?")
         self.size = None
         self.status = "Not started"
         self.progress = 0.0
@@ -57,22 +87,31 @@ class RetrieveStatus(object):
 
     def get_started(self):
         return self.started
+
     def get_storage_index(self):
         return self.storage_index
+
     def get_encoding(self):
         return self.encoding
+
     def using_helper(self):
         return self.helper
+
     def get_size(self):
         return self.size
+
     def get_status(self):
         return self.status
+
     def get_progress(self):
         return self.progress
+
     def get_active(self):
         return self.active
+
     def get_counter(self):
         return self.counter
+
     def get_problems(self):
         return self._problems
 
@@ -80,30 +119,42 @@ class RetrieveStatus(object):
         if server not in self.timings["fetch_per_server"]:
             self.timings["fetch_per_server"][server] = []
         self.timings["fetch_per_server"][server].append(elapsed)
+
     def accumulate_decode_time(self, elapsed):
         self.timings["decode"] += elapsed
+
     def accumulate_decrypt_time(self, elapsed):
         self.timings["decrypt"] += elapsed
+
     def set_storage_index(self, si):
         self.storage_index = si
+
     def set_helper(self, helper):
         self.helper = helper
+
     def set_encoding(self, k, n):
         self.encoding = (k, n)
+
     def set_size(self, size):
         self.size = size
+
     def set_status(self, status):
         self.status = status
+
     def set_progress(self, value):
         self.progress = value
+
     def set_active(self, value):
         self.active = value
+
     def add_problem(self, server, f):
         serverid = server.get_serverid()
         self._problems[serverid] = f
 
+
 class Marker(object):
     pass
+
 
 @implementer(IPushProducer)
 class Retrieve(object):
@@ -113,8 +164,15 @@ class Retrieve(object):
     # Retrieve object will remain tied to a specific version of the file, and
     # will use a single ServerMap instance.
 
-    def __init__(self, filenode, storage_broker, servermap, verinfo,
-                 fetch_privkey=False, verify=False):
+    def __init__(
+        self,
+        filenode,
+        storage_broker,
+        servermap,
+        verinfo,
+        fetch_privkey=False,
+        verify=False,
+    ):
         self._node = filenode
         _assert(self._node.get_pubkey())
         self._storage_broker = storage_broker
@@ -130,21 +188,29 @@ class Retrieve(object):
         self.servermap = servermap
         self.verinfo = verinfo
         # TODO: make it possible to use self.verinfo.datalength instead
-        (seqnum, root_hash, IV, segsize, datalength, k, N, prefix,
-         offsets_tuple) = self.verinfo
+        (
+            seqnum,
+            root_hash,
+            IV,
+            segsize,
+            datalength,
+            k,
+            N,
+            prefix,
+            offsets_tuple,
+        ) = self.verinfo
         self._data_length = datalength
         # during repair, we may be called upon to grab the private key, since
         # it wasn't picked up during a verify=False checker run, and we'll
         # need it for repair to generate a new version.
-        self._need_privkey = verify or (fetch_privkey
-                                        and not self._node.get_privkey())
+        self._need_privkey = verify or (fetch_privkey and not self._node.get_privkey())
 
         if self._need_privkey:
             # TODO: Evaluate the need for this. We'll use it if we want
             # to limit how many queries are on the wire for the privkey
             # at once.
-            self._privkey_query_markers = [] # one Marker for each time we've
-                                             # tried to get the privkey.
+            self._privkey_query_markers = []  # one Marker for each time we've
+            # tried to get the privkey.
 
         # verify means that we are using the downloader logic to verify all
         # of our shares. This tells the downloader a few things.
@@ -171,7 +237,6 @@ class Retrieve(object):
         self._offset = None
         self._read_length = None
         self.log("got seqnum %d" % self.verinfo[0])
-
 
     def get_status(self):
         return self._status
@@ -205,7 +270,6 @@ class Retrieve(object):
 
         self._pause_deferred = defer.Deferred()
 
-
     def resumeProducing(self):
         """
         I am called by my download target once it is ready to begin
@@ -223,7 +287,6 @@ class Retrieve(object):
     def stopProducing(self):
         self._stopped = True
         self.resumeProducing()
-
 
     def _check_for_paused(self, res):
         """
@@ -243,7 +306,6 @@ class Retrieve(object):
         if self._stopped:
             raise DownloadStopped("our Consumer called stopProducing()")
         return res
-
 
     def download(self, consumer=None, offset=0, size=None):
         precondition(self._verify or IConsumer.providedBy(consumer))
@@ -267,10 +329,12 @@ class Retrieve(object):
         return self._done_deferred
 
     def _start_download(self, consumer, offset, size):
-        precondition((0 <= offset < self._data_length)
-                     and (size > 0)
-                     and (offset+size <= self._data_length),
-                     (offset, size, self._data_length))
+        precondition(
+            (0 <= offset < self._data_length)
+            and (size > 0)
+            and (offset + size <= self._data_length),
+            (offset, size, self._data_length),
+        )
 
         self._offset = offset
         self._read_length = size
@@ -288,7 +352,7 @@ class Retrieve(object):
         self.loop()
 
     def loop(self):
-        d = fireEventually(None) # avoid #237 recursion limit problem
+        d = fireEventually(None)  # avoid #237 recursion limit problem
         d.addCallback(lambda ign: self._activate_enough_servers())
         d.addCallback(lambda ign: self._download_current_segment())
         # when we're done, _download_current_segment will call _done. If we
@@ -299,15 +363,17 @@ class Retrieve(object):
         self._status.set_status("Retrieving Shares")
 
         # how many shares do we need?
-        (seqnum,
-         root_hash,
-         IV,
-         segsize,
-         datalength,
-         k,
-         N,
-         prefix,
-         offsets_tuple) = self.verinfo
+        (
+            seqnum,
+            root_hash,
+            IV,
+            segsize,
+            datalength,
+            k,
+            N,
+            prefix,
+            offsets_tuple,
+        ) = self.verinfo
 
         # first, which servers can we use?
         versionmap = self.servermap.make_versionmap()
@@ -317,22 +383,22 @@ class Retrieve(object):
         for (shnum, server, timestamp) in shares:
             self.remaining_sharemap.add(shnum, server)
             # Reuse the SlotReader from the servermap.
-            key = (self.verinfo, server.get_serverid(),
-                   self._storage_index, shnum)
+            key = (self.verinfo, server.get_serverid(), self._storage_index, shnum)
             if key in self.servermap.proxies:
                 reader = self.servermap.proxies[key]
             else:
-                reader = MDMFSlotReadProxy(server.get_storage_server(),
-                                           self._storage_index, shnum, None)
+                reader = MDMFSlotReadProxy(
+                    server.get_storage_server(), self._storage_index, shnum, None
+                )
             reader.server = server
             self.readers[shnum] = reader
 
         if len(self.remaining_sharemap) < k:
             self._raise_notenoughshareserror()
 
-        self.shares = {} # maps shnum to validated blocks
-        self._active_readers = [] # list of active readers for this dl.
-        self._block_hash_trees = {} # shnum => hashtree
+        self.shares = {}  # maps shnum to validated blocks
+        self._active_readers = []  # list of active readers for this dl.
+        self._block_hash_trees = {}  # shnum => hashtree
 
         for i in range(self._total_shares):
             # So we don't have to do this later.
@@ -366,25 +432,26 @@ class Retrieve(object):
         d.addCallback(self._decrypt_segment)
         return d
 
-
     def _setup_encoding_parameters(self):
         """
         I set up the encoding parameters, including k, n, the number
         of segments associated with this file, and the segment decoders.
         """
-        (seqnum,
-         root_hash,
-         IV,
-         segsize,
-         datalength,
-         k,
-         n,
-         known_prefix,
-         offsets_tuple) = self.verinfo
+        (
+            seqnum,
+            root_hash,
+            IV,
+            segsize,
+            datalength,
+            k,
+            n,
+            known_prefix,
+            offsets_tuple,
+        ) = self.verinfo
         self._required_shares = k
         self._total_shares = n
         self._segment_size = segsize
-        #self._data_length = datalength # set during __init__()
+        # self._data_length = datalength # set during __init__()
 
         if not IV:
             self._version = MDMF_VERSION
@@ -401,25 +468,27 @@ class Retrieve(object):
         self._segment_decoder = codec.CRSDecoder()
         self._segment_decoder.set_params(segsize, k, n)
 
-        if  not self._tail_data_size:
+        if not self._tail_data_size:
             self._tail_data_size = segsize
 
-        self._tail_segment_size = mathutil.next_multiple(self._tail_data_size,
-                                                         self._required_shares)
+        self._tail_segment_size = mathutil.next_multiple(
+            self._tail_data_size, self._required_shares
+        )
         if self._tail_segment_size == self._segment_size:
             self._tail_decoder = self._segment_decoder
         else:
             self._tail_decoder = codec.CRSDecoder()
-            self._tail_decoder.set_params(self._tail_segment_size,
-                                          self._required_shares,
-                                          self._total_shares)
+            self._tail_decoder.set_params(
+                self._tail_segment_size, self._required_shares, self._total_shares
+            )
 
-        self.log("got encoding parameters: "
-                 "k: %d "
-                 "n: %d "
-                 "%d segments of %d bytes each (%d byte tail segment)" % \
-                 (k, n, self._num_segments, self._segment_size,
-                  self._tail_segment_size))
+        self.log(
+            "got encoding parameters: "
+            "k: %d "
+            "n: %d "
+            "%d segments of %d bytes each (%d byte tail segment)"
+            % (k, n, self._num_segments, self._segment_size, self._tail_segment_size)
+        )
 
         # Our last task is to tell the downloader where to start and
         # where to stop. We use three parameters for that:
@@ -440,9 +509,13 @@ class Retrieve(object):
             # offset we were given.
             start = self._offset // self._segment_size
 
-            _assert(start <= self._num_segments,
-                    start=start, num_segments=self._num_segments,
-                    offset=self._offset, segment_size=self._segment_size)
+            _assert(
+                start <= self._num_segments,
+                start=start,
+                num_segments=self._num_segments,
+                offset=self._offset,
+                segment_size=self._segment_size,
+            )
             self._start_segment = start
             self.log("got start segment: %d" % self._start_segment)
         else:
@@ -457,10 +530,15 @@ class Retrieve(object):
         # We don't actually need to read the byte at end_data, but the one
         # before it.
         end = (end_data - 1) // self._segment_size
-        _assert(0 <= end < self._num_segments,
-                end=end, num_segments=self._num_segments,
-                end_data=end_data, offset=self._offset,
-                read_length=self._read_length, segment_size=self._segment_size)
+        _assert(
+            0 <= end < self._num_segments,
+            end=end,
+            num_segments=self._num_segments,
+            end_data=end_data,
+            offset=self._offset,
+            read_length=self._read_length,
+            segment_size=self._segment_size,
+        )
         self._last_segment = end
         self.log("got end segment: %d" % self._last_segment)
 
@@ -500,7 +578,7 @@ class Retrieve(object):
         unused_shnums = known_shnums - used_shnums
 
         if self._verify:
-            new_shnums = unused_shnums # use them all
+            new_shnums = unused_shnums  # use them all
         elif len(self._active_readers) < self._required_shares:
             # need more shares
             more = self._required_shares - len(self._active_readers)
@@ -539,19 +617,22 @@ class Retrieve(object):
         candidate server for segment retrieval. If it doesn't, I return
         False, which means that another server must be chosen.
         """
-        (seqnum,
-         root_hash,
-         IV,
-         segsize,
-         datalength,
-         k,
-         N,
-         known_prefix,
-         offsets_tuple) = self.verinfo
+        (
+            seqnum,
+            root_hash,
+            IV,
+            segsize,
+            datalength,
+            k,
+            N,
+            known_prefix,
+            offsets_tuple,
+        ) = self.verinfo
         if known_prefix != prefix:
             self.log("prefix from share %d doesn't match" % reader.shnum)
-            raise UncoordinatedWriteError("Mismatched prefix -- this could "
-                                          "indicate an uncoordinated write")
+            raise UncoordinatedWriteError(
+                "Mismatched prefix -- this could " "indicate an uncoordinated write"
+            )
         # Otherwise, we're okay -- no issues.
 
     def _mark_bad_share(self, server, shnum, reader, f):
@@ -574,8 +655,7 @@ class Retrieve(object):
         remote server (with no guarantee of success) that its share is
         corrupt.
         """
-        self.log("marking share %d on server %s as bad" % \
-                 (shnum, server.get_name()))
+        self.log("marking share %d on server %s as bad" % (shnum, server.get_name()))
         prefix = self.verinfo[-2]
         self.servermap.mark_bad_share(server, shnum, prefix)
         self._bad_shares.add((server, shnum, f))
@@ -603,8 +683,9 @@ class Retrieve(object):
         elif self._verify and len(self._active_readers) == 0:
             self.log("no more good shares, no need to keep verifying")
             return self._done()
-        self.log("on segment %d of %d" %
-                 (self._current_segment + 1, self._num_segments))
+        self.log(
+            "on segment %d of %d" % (self._current_segment + 1, self._num_segments)
+        )
         d = self._process_segment(self._current_segment)
         d.addCallback(lambda ign: self.loop())
         return d
@@ -629,8 +710,8 @@ class Retrieve(object):
         for reader in self._active_readers:
             started = time.time()
             d1 = reader.get_block_and_salt(segnum)
-            d2,d3 = self._get_needed_hashes(reader, segnum)
-            d = deferredutil.gatherResults([d1,d2,d3])
+            d2, d3 = self._get_needed_hashes(reader, segnum)
+            d = deferredutil.gatherResults([d1, d2, d3])
             d.addCallback(self._validate_block, segnum, reader, reader.server, started)
             # _handle_bad_share takes care of recoverable errors (by dropping
             # that share and returning None). Any other errors (i.e. code
@@ -644,7 +725,6 @@ class Retrieve(object):
         else:
             dl.addCallback(self._maybe_decode_and_decrypt_segment, segnum)
         return dl
-
 
     def _maybe_decode_and_decrypt_segment(self, results, segnum):
         """
@@ -675,7 +755,6 @@ class Retrieve(object):
         d.addCallback(self._set_segment)
         return d
 
-
     def _set_segment(self, segment):
         """
         Given a plaintext segment, I register that segment with the
@@ -694,8 +773,7 @@ class Retrieve(object):
                 self.log("on the last segment: using first %d bytes" % wanted)
                 segment = segment[:wanted]
             else:
-                self.log("on the last segment: using all %d bytes" %
-                         len(segment))
+                self.log("on the last segment: using all %d bytes" % len(segment))
 
         if self._current_segment == self._start_segment:
             # Trim off the head, if offset != 0. This should also work if
@@ -710,7 +788,6 @@ class Retrieve(object):
             # we don't care about the plaintext if we are doing a verify.
             segment = None
         self._current_segment += 1
-
 
     def _handle_bad_share(self, f, readers):
         """
@@ -734,13 +811,13 @@ class Retrieve(object):
         precondition(isinstance(readers, list), readers)
         bad_shnums = [reader.shnum for reader in readers]
 
-        self.log("validation or decoding failed on share(s) %s, server(s) %s "
-                 ", segment %d: %s" % \
-                 (bad_shnums, readers, self._current_segment, str(f)))
+        self.log(
+            "validation or decoding failed on share(s) %s, server(s) %s "
+            ", segment %d: %s" % (bad_shnums, readers, self._current_segment, str(f))
+        )
         for reader in readers:
             self._mark_bad_share(reader.server, reader.shnum, reader, f)
         return None
-
 
     def _validate_block(self, results, segnum, reader, server, started):
         """
@@ -748,8 +825,7 @@ class Retrieve(object):
         """
         # Grab the part of the block hash tree that is necessary to
         # validate this block, then generate the block hash root.
-        self.log("validating share %d for segment %d" % (reader.shnum,
-                                                             segnum))
+        self.log("validating share %d for segment %d" % (reader.shnum, segnum))
         elapsed = time.time() - started
         self._status.add_fetch_timing(server, elapsed)
         self._set_current_status("validating blocks")
@@ -759,20 +835,27 @@ class Retrieve(object):
         _assert(isinstance(block, bytes), (block, salt))
 
         blockhashes = dict(enumerate(blockhashes))
-        self.log("the reader gave me the following blockhashes: %s" % \
-                 list(blockhashes.keys()))
-        self.log("the reader gave me the following sharehashes: %s" % \
-                 list(sharehashes.keys()))
+        self.log(
+            "the reader gave me the following blockhashes: %s"
+            % list(blockhashes.keys())
+        )
+        self.log(
+            "the reader gave me the following sharehashes: %s"
+            % list(sharehashes.keys())
+        )
         bht = self._block_hash_trees[reader.shnum]
 
         if bht.needed_hashes(segnum, include_leaf=True):
             try:
                 bht.set_hashes(blockhashes)
-            except (hashtree.BadHashError, hashtree.NotEnoughHashesError, \
-                    IndexError) as e:
-                raise CorruptShareError(server,
-                                        reader.shnum,
-                                        "block hash tree failure: %s" % e)
+            except (
+                hashtree.BadHashError,
+                hashtree.NotEnoughHashesError,
+                IndexError,
+            ) as e:
+                raise CorruptShareError(
+                    server, reader.shnum, "block hash tree failure: %s" % e
+                )
 
         if self._version == MDMF_VERSION:
             blockhash = hashutil.block_hash(salt + block)
@@ -781,12 +864,11 @@ class Retrieve(object):
         # If this works without an error, then validation is
         # successful.
         try:
-           bht.set_hashes(leaves={segnum: blockhash})
-        except (hashtree.BadHashError, hashtree.NotEnoughHashesError, \
-                IndexError) as e:
-            raise CorruptShareError(server,
-                                    reader.shnum,
-                                    "block hash tree failure: %s" % e)
+            bht.set_hashes(leaves={segnum: blockhash})
+        except (hashtree.BadHashError, hashtree.NotEnoughHashesError, IndexError) as e:
+            raise CorruptShareError(
+                server, reader.shnum, "block hash tree failure: %s" % e
+            )
 
         # Reaching this point means that we know that this segment
         # is correct. Now we need to check to see whether the share
@@ -798,18 +880,14 @@ class Retrieve(object):
         # shnum, which will be a leaf in the share hash tree, which
         # will allow us to validate the rest of the tree.
         try:
-            self.share_hash_tree.set_hashes(hashes=sharehashes,
-                                        leaves={reader.shnum: bht[0]})
-        except (hashtree.BadHashError, hashtree.NotEnoughHashesError, \
-                IndexError) as e:
-            raise CorruptShareError(server,
-                                    reader.shnum,
-                                    "corrupt hashes: %s" % e)
+            self.share_hash_tree.set_hashes(
+                hashes=sharehashes, leaves={reader.shnum: bht[0]}
+            )
+        except (hashtree.BadHashError, hashtree.NotEnoughHashesError, IndexError) as e:
+            raise CorruptShareError(server, reader.shnum, "corrupt hashes: %s" % e)
 
-        self.log('share %d is valid for segment %d' % (reader.shnum,
-                                                       segnum))
+        self.log("share %d is valid for segment %d" % (reader.shnum, segnum))
         return {reader.shnum: (block, salt)}
-
 
     def _get_needed_hashes(self, reader, segnum):
         """
@@ -826,21 +904,23 @@ class Retrieve(object):
         # hash tree, and is a leaf in the share hash tree. This is fine,
         # since any share corruption will be detected in the share hash
         # tree.
-        #needed.discard(0)
-        self.log("getting blockhashes for segment %d, share %d: %s" % \
-                 (segnum, reader.shnum, str(needed)))
+        # needed.discard(0)
+        self.log(
+            "getting blockhashes for segment %d, share %d: %s"
+            % (segnum, reader.shnum, str(needed))
+        )
         # TODO is force_remote necessary here?
         d1 = reader.get_blockhashes(needed, force_remote=False)
         if self.share_hash_tree.needed_hashes(reader.shnum):
             need = self.share_hash_tree.needed_hashes(reader.shnum)
-            self.log("also need sharehashes for share %d: %s" % (reader.shnum,
-                                                                 str(need)))
+            self.log(
+                "also need sharehashes for share %d: %s" % (reader.shnum, str(need))
+            )
             d2 = reader.get_sharehashes(need, force_remote=False)
         else:
-            d2 = defer.succeed({}) # the logic in the next method
-                                   # expects a dict
-        return d1,d2
-
+            d2 = defer.succeed({})  # the logic in the next method
+            # expects a dict
+        return d1, d2
 
     def _decode_blocks(self, results, segnum):
         """
@@ -875,21 +955,25 @@ class Retrieve(object):
         started = time.time()
         _assert(len(shareids) >= self._required_shares, len(shareids))
         # zfec really doesn't want extra shares
-        shareids = shareids[:self._required_shares]
-        shares = shares[:self._required_shares]
+        shareids = shareids[: self._required_shares]
+        shares = shares[: self._required_shares]
         self.log("decoding segment %d" % segnum)
         if segnum == self._num_segments - 1:
             d = defer.maybeDeferred(self._tail_decoder.decode, shares, shareids)
         else:
             d = defer.maybeDeferred(self._segment_decoder.decode, shares, shareids)
+
         def _process(buffers):
             segment = b"".join(buffers)
-            self.log(format="now decoding segment %(segnum)s of %(numsegs)s",
-                     segnum=segnum,
-                     numsegs=self._num_segments,
-                     level=log.NOISY)
-            self.log(" joined length %d, datalength %d" %
-                     (len(segment), self._data_length))
+            self.log(
+                format="now decoding segment %(segnum)s of %(numsegs)s",
+                segnum=segnum,
+                numsegs=self._num_segments,
+                level=log.NOISY,
+            )
+            self.log(
+                " joined length %d, datalength %d" % (len(segment), self._data_length)
+            )
             if segnum == self._num_segments - 1:
                 size_to_use = self._tail_data_size
             else:
@@ -898,9 +982,9 @@ class Retrieve(object):
             self.log(" segment len=%d" % len(segment))
             self._status.accumulate_decode_time(time.time() - started)
             return segment, salt
+
         d.addCallback(_process)
         return d
-
 
     def _decrypt_segment(self, segment_and_salt):
         """
@@ -917,7 +1001,6 @@ class Retrieve(object):
         self._status.accumulate_decrypt_time(time.time() - started)
         return plaintext
 
-
     def notify_server_corruption(self, server, shnum, reason):
         if isinstance(reason, str):
             reason = reason.encode("utf-8")
@@ -929,27 +1012,26 @@ class Retrieve(object):
             reason,
         )
 
-
     def _try_to_validate_privkey(self, enc_privkey, reader, server):
         alleged_privkey_s = self._node._decrypt_privkey(enc_privkey)
         alleged_writekey = hashutil.ssk_writekey_hash(alleged_privkey_s)
         if alleged_writekey != self._node.get_writekey():
-            self.log("invalid privkey from %s shnum %d" %
-                     (reader, reader.shnum),
-                     level=log.WEIRD, umid="YIw4tA")
+            self.log(
+                "invalid privkey from %s shnum %d" % (reader, reader.shnum),
+                level=log.WEIRD,
+                umid="YIw4tA",
+            )
             if self._verify:
-                self.servermap.mark_bad_share(server, reader.shnum,
-                                              self.verinfo[-2])
-                e = CorruptShareError(server,
-                                      reader.shnum,
-                                      "invalid privkey")
+                self.servermap.mark_bad_share(server, reader.shnum, self.verinfo[-2])
+                e = CorruptShareError(server, reader.shnum, "invalid privkey")
                 f = failure.Failure(e)
                 self._bad_shares.add((server, reader.shnum, f))
             return
 
         # it's good
-        self.log("got valid privkey from shnum %d on reader %s" %
-                 (reader.shnum, reader))
+        self.log(
+            "got valid privkey from shnum %d on reader %s" % (reader.shnum, reader)
+        )
         privkey, _ = rsa.create_signing_keypair_from_string(alleged_privkey_s)
         self._node._populate_encprivkey(enc_privkey)
         self._node._populate_privkey(privkey)
@@ -965,14 +1047,23 @@ class Retrieve(object):
         self._running = False
         self._status.set_active(False)
         now = time.time()
-        self._status.timings['total'] = now - self._started
-        self._status.timings['fetch'] = now - self._started_fetching
+        self._status.timings["total"] = now - self._started
+        self._status.timings["fetch"] = now - self._started_fetching
         self._status.set_status("Finished")
         self._status.set_progress(1.0)
 
         # remember the encoding parameters, use them again next time
-        (seqnum, root_hash, IV, segsize, datalength, k, N, prefix,
-         offsets_tuple) = self.verinfo
+        (
+            seqnum,
+            root_hash,
+            IV,
+            segsize,
+            datalength,
+            k,
+            N,
+            prefix,
+            offsets_tuple,
+        ) = self.verinfo
         self._node._populate_required_shares(k)
         self._node._populate_total_shares(N)
 
@@ -993,28 +1084,32 @@ class Retrieve(object):
         self._done_deferred.
         """
 
-        format = ("ran out of servers: "
-                  "have %(have)d of %(total)d segments; "
-                  "found %(bad)d bad shares; "
-                  "have %(remaining)d remaining shares of the right version; "
-                  "encoding %(k)d-of-%(n)d")
-        args = {"have": self._current_segment,
-                "total": self._num_segments,
-                "need": self._last_segment,
-                "k": self._required_shares,
-                "n": self._total_shares,
-                "bad": len(self._bad_shares),
-                "remaining": len(self.remaining_sharemap),
-               }
-        raise NotEnoughSharesError("%s, last failure: %s" %
-                                   (format % args, str(self._last_failure)))
+        format = (
+            "ran out of servers: "
+            "have %(have)d of %(total)d segments; "
+            "found %(bad)d bad shares; "
+            "have %(remaining)d remaining shares of the right version; "
+            "encoding %(k)d-of-%(n)d"
+        )
+        args = {
+            "have": self._current_segment,
+            "total": self._num_segments,
+            "need": self._last_segment,
+            "k": self._required_shares,
+            "n": self._total_shares,
+            "bad": len(self._bad_shares),
+            "remaining": len(self.remaining_sharemap),
+        }
+        raise NotEnoughSharesError(
+            "%s, last failure: %s" % (format % args, str(self._last_failure))
+        )
 
     def _error(self, f):
         # all errors, including NotEnoughSharesError, land here
         self._running = False
         self._status.set_active(False)
         now = time.time()
-        self._status.timings['total'] = now - self._started
-        self._status.timings['fetch'] = now - self._started_fetching
+        self._status.timings["total"] = now - self._started
+        self._status.timings["fetch"] = now - self._started_fetching
         self._status.set_status("Failed")
         eventually(self._done_deferred.errback, f)

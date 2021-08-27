@@ -1,4 +1,3 @@
-
 import urllib
 
 from twisted.web import http
@@ -25,6 +24,7 @@ from allmydata.web.common import (
 )
 from allmydata.web import status
 
+
 def PUTUnlinkedCHK(req, client):
     # "PUT /uri", to create an unlinked file.
     uploadable = FileHandle(req.content, client.convergence)
@@ -32,6 +32,7 @@ def PUTUnlinkedCHK(req, client):
     d.addCallback(lambda results: results.get_uri())
     # that fires with the URI of the new file
     return d
+
 
 def PUTUnlinkedSSK(req, client, version):
     # SDMF: files are small, and we can only upload data
@@ -41,12 +42,12 @@ def PUTUnlinkedSSK(req, client, version):
     d.addCallback(lambda n: n.get_uri())
     return d
 
+
 def PUTUnlinkedCreateDirectory(req, client):
     # "PUT /uri?t=mkdir", to create an unlinked directory.
     file_format = get_format(req, None)
     if file_format == "CHK":
-        raise WebError("format=CHK not accepted for PUT /uri?t=mkdir",
-                       http.BAD_REQUEST)
+        raise WebError("format=CHK not accepted for PUT /uri?t=mkdir", http.BAD_REQUEST)
     mt = None
     if file_format:
         mt = get_mutable_type(file_format)
@@ -66,8 +67,11 @@ def POSTUnlinkedCHK(req, client):
         # usual upload-results page
         def _done(upload_results, redir_to):
             if "%(uri)s" in redir_to:
-                redir_to = redir_to.replace("%(uri)s", urllib.quote(upload_results.get_uri()))
+                redir_to = redir_to.replace(
+                    "%(uri)s", urllib.quote(upload_results.get_uri())
+                )
             return url_for_string(req, redir_to)
+
         d.addCallback(_done, when_done)
     else:
         # return the Upload Results page, which includes the URI
@@ -117,9 +121,11 @@ class UploadResultsElement(status.UploadResultsRendererMixin):
     @renderer
     def download_link(self, req, tag):
         d = self.upload_results()
-        d.addCallback(lambda res:
-                      tags.a("/uri/" + res.get_uri(),
-                             href="/uri/" + urllib.quote(res.get_uri())))
+        d.addCallback(
+            lambda res: tags.a(
+                "/uri/" + res.get_uri(), href="/uri/" + urllib.quote(res.get_uri())
+            )
+        )
         return d
 
 
@@ -131,6 +137,7 @@ def POSTUnlinkedSSK(req, client, version):
     d = client.create_mutable_file(data, version=version)
     d.addCallback(lambda n: n.get_uri())
     return d
+
 
 def POSTUnlinkedCreateDirectory(req, client):
     # "POST /uri?t=mkdir", to create an unlinked directory.
@@ -144,28 +151,34 @@ def POSTUnlinkedCreateDirectory(req, client):
         req.content.seek(0)
         kids_json = req.content.read()
         if kids_json:
-            raise WebError("t=mkdir does not accept children=, "
-                           "try t=mkdir-with-children instead",
-                           http.BAD_REQUEST)
+            raise WebError(
+                "t=mkdir does not accept children=, "
+                "try t=mkdir-with-children instead",
+                http.BAD_REQUEST,
+            )
     file_format = get_format(req, None)
     if file_format == "CHK":
-        raise WebError("format=CHK not currently accepted for POST /uri?t=mkdir",
-                       http.BAD_REQUEST)
+        raise WebError(
+            "format=CHK not currently accepted for POST /uri?t=mkdir", http.BAD_REQUEST
+        )
     mt = None
     if file_format:
         mt = get_mutable_type(file_format)
     d = client.create_dirnode(version=mt)
     redirect = get_arg(req, "redirect_to_result", "false")
     if boolean_of_arg(redirect):
+
         def _then_redir(res):
             new_url = "uri/" + urllib.quote(res.get_uri())
-            req.setResponseCode(http.SEE_OTHER) # 303
-            req.setHeader('location', new_url)
-            return ''
+            req.setResponseCode(http.SEE_OTHER)  # 303
+            req.setHeader("location", new_url)
+            return ""
+
         d.addCallback(_then_redir)
     else:
         d.addCallback(lambda dirnode: dirnode.get_uri())
     return d
+
 
 def POSTUnlinkedCreateDirectoryWithChildren(req, client):
     # "POST /uri?t=mkdir", to create an unlinked directory.
@@ -175,15 +188,18 @@ def POSTUnlinkedCreateDirectoryWithChildren(req, client):
     d = client.create_dirnode(initial_children=kids)
     redirect = get_arg(req, "redirect_to_result", "false")
     if boolean_of_arg(redirect):
+
         def _then_redir(res):
             new_url = "uri/" + urllib.quote(res.get_uri())
-            req.setResponseCode(http.SEE_OTHER) # 303
-            req.setHeader('location', new_url)
-            return ''
+            req.setResponseCode(http.SEE_OTHER)  # 303
+            req.setHeader("location", new_url)
+            return ""
+
         d.addCallback(_then_redir)
     else:
         d.addCallback(lambda dirnode: dirnode.get_uri())
     return d
+
 
 def POSTUnlinkedCreateImmutableDirectory(req, client):
     # "POST /uri?t=mkdir", to create an unlinked directory.
@@ -193,11 +209,13 @@ def POSTUnlinkedCreateImmutableDirectory(req, client):
     d = client.create_immutable_dirnode(kids)
     redirect = get_arg(req, "redirect_to_result", "false")
     if boolean_of_arg(redirect):
+
         def _then_redir(res):
             new_url = "uri/" + urllib.quote(res.get_uri())
-            req.setResponseCode(http.SEE_OTHER) # 303
-            req.setHeader('location', new_url)
-            return ''
+            req.setResponseCode(http.SEE_OTHER)  # 303
+            req.setHeader("location", new_url)
+            return ""
+
         d.addCallback(_then_redir)
     else:
         d.addCallback(lambda dirnode: dirnode.get_uri())

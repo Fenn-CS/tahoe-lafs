@@ -29,6 +29,7 @@ from allmydata.crypto import (
     error,
 )
 
+
 @attr.s
 class MatchesNodePublicKey(object):
     """
@@ -37,6 +38,7 @@ class MatchesNodePublicKey(object):
     To verify, the private key is loaded from the node's private config
     directory at the time the match is checked.
     """
+
     basedir = attr.ib()
 
     def match(self, other):
@@ -109,12 +111,12 @@ def matches_base32():
     return AfterPreprocessing(base32.a2b, Always())
 
 
-
 class MatchesSameElements(object):
     """
     Match if the two-tuple value given contains two elements that are equal to
     each other.
     """
+
     def match(self, value):
         left, right = value
         return Equals(left).match(right)

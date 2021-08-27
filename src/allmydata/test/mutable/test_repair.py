@@ -7,8 +7,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 from twisted.trial import unittest
 from allmydata.interfaces import IRepairResults, ICheckAndRepairResults
@@ -19,15 +42,15 @@ from allmydata.mutable.repairer import MustForceRepairError
 from ..common import ShouldFailMixin
 from .util import PublishMixin
 
-class Repair(unittest.TestCase, PublishMixin, ShouldFailMixin):
 
+class Repair(unittest.TestCase, PublishMixin, ShouldFailMixin):
     def get_shares(self, s):
-        all_shares = {} # maps (peerid, shnum) to share data
+        all_shares = {}  # maps (peerid, shnum) to share data
         for peerid in s._peers:
             shares = s._peers[peerid]
             for shnum in shares:
                 data = shares[shnum]
-                all_shares[ (peerid, shnum) ] = data
+                all_shares[(peerid, shnum)] = data
         return all_shares
 
     def copy_shares(self, ignored=None):
@@ -39,6 +62,7 @@ class Repair(unittest.TestCase, PublishMixin, ShouldFailMixin):
         d.addCallback(self.copy_shares)
         d.addCallback(lambda res: self._fn.check(Monitor()))
         d.addCallback(lambda check_results: self._fn.repair(check_results))
+
         def _check_results(rres):
             self.failUnless(IRepairResults.providedBy(rres))
             self.failUnless(rres.get_successful())
@@ -50,32 +74,42 @@ class Repair(unittest.TestCase, PublishMixin, ShouldFailMixin):
             new_shares = self.old_shares[1]
             # TODO: this really shouldn't change anything. When we implement
             # a "minimal-bandwidth" repairer", change this test to assert:
-            #self.failUnlessEqual(new_shares, initial_shares)
+            # self.failUnlessEqual(new_shares, initial_shares)
 
             # all shares should be in the same place as before
-            self.failUnlessEqual(set(initial_shares.keys()),
-                                 set(new_shares.keys()))
+            self.failUnlessEqual(set(initial_shares.keys()), set(new_shares.keys()))
             # but they should all be at a newer seqnum. The IV will be
             # different, so the roothash will be too.
             for key in initial_shares:
-                (version0,
-                 seqnum0,
-                 root_hash0,
-                 IV0,
-                 k0, N0, segsize0, datalen0,
-                 o0) = unpack_header(initial_shares[key])
-                (version1,
-                 seqnum1,
-                 root_hash1,
-                 IV1,
-                 k1, N1, segsize1, datalen1,
-                 o1) = unpack_header(new_shares[key])
+                (
+                    version0,
+                    seqnum0,
+                    root_hash0,
+                    IV0,
+                    k0,
+                    N0,
+                    segsize0,
+                    datalen0,
+                    o0,
+                ) = unpack_header(initial_shares[key])
+                (
+                    version1,
+                    seqnum1,
+                    root_hash1,
+                    IV1,
+                    k1,
+                    N1,
+                    segsize1,
+                    datalen1,
+                    o1,
+                ) = unpack_header(new_shares[key])
                 self.failUnlessEqual(version0, version1)
-                self.failUnlessEqual(seqnum0+1, seqnum1)
+                self.failUnlessEqual(seqnum0 + 1, seqnum1)
                 self.failUnlessEqual(k0, k1)
                 self.failUnlessEqual(N0, N1)
                 self.failUnlessEqual(segsize0, segsize1)
                 self.failUnlessEqual(datalen0, datalen1)
+
         d.addCallback(_check_results)
         return d
 
@@ -84,24 +118,29 @@ class Repair(unittest.TestCase, PublishMixin, ShouldFailMixin):
         current_shares = self.old_shares[-1]
         self.failUnlessEqual(old_shares, current_shares)
 
-
     def _test_whether_repairable(self, publisher, nshares, expected_result):
         d = publisher()
+
         def _delete_some_shares(ign):
             shares = self._storage._peers
             for peerid in shares:
                 for shnum in list(shares[peerid]):
                     if shnum >= nshares:
                         del shares[peerid][shnum]
+
         d.addCallback(_delete_some_shares)
         d.addCallback(lambda ign: self._fn.check(Monitor()))
+
         def _check(cr):
             self.failIf(cr.is_healthy())
             self.failUnlessEqual(cr.is_recoverable(), expected_result)
             return cr
+
         d.addCallback(_check)
         d.addCallback(lambda check_results: self._fn.repair(check_results))
-        d.addCallback(lambda crr: self.failUnlessEqual(crr.get_successful(), expected_result))
+        d.addCallback(
+            lambda crr: self.failUnlessEqual(crr.get_successful(), expected_result)
+        )
         return d
 
     def test_unrepairable_0shares(self):
@@ -128,15 +167,21 @@ class Repair(unittest.TestCase, PublishMixin, ShouldFailMixin):
         instead of invoking check and then invoking repair.
         """
         d = publisher()
+
         def _delete_some_shares(ign):
             shares = self._storage._peers
             for peerid in shares:
                 for shnum in list(shares[peerid]):
                     if shnum >= nshares:
                         del shares[peerid][shnum]
+
         d.addCallback(_delete_some_shares)
         d.addCallback(lambda ign: self._fn.check_and_repair(Monitor()))
-        d.addCallback(lambda crr: self.failUnlessEqual(crr.get_repair_successful(), expected_result))
+        d.addCallback(
+            lambda crr: self.failUnlessEqual(
+                crr.get_repair_successful(), expected_result
+            )
+        )
         return d
 
     def test_unrepairable_0shares_checkandrepair(self):
@@ -157,34 +202,39 @@ class Repair(unittest.TestCase, PublishMixin, ShouldFailMixin):
     def test_mdmf_repairable_5shares_checkandrepair(self):
         return self._test_whether_checkandrepairable(self.publish_mdmf, 5, True)
 
-
     def test_merge(self):
         self.old_shares = []
         d = self.publish_multiple()
         # repair will refuse to merge multiple highest seqnums unless you
         # pass force=True
-        d.addCallback(lambda res:
-                      self._set_versions({0:3,2:3,4:3,6:3,8:3,
-                                          1:4,3:4,5:4,7:4,9:4}))
+        d.addCallback(
+            lambda res: self._set_versions(
+                {0: 3, 2: 3, 4: 3, 6: 3, 8: 3, 1: 4, 3: 4, 5: 4, 7: 4, 9: 4}
+            )
+        )
         d.addCallback(self.copy_shares)
         d.addCallback(lambda res: self._fn.check(Monitor()))
+
         def _try_repair(check_results):
             ex = "There were multiple recoverable versions with identical seqnums, so force=True must be passed to the repair() operation"
-            d2 = self.shouldFail(MustForceRepairError, "test_merge", ex,
-                                 self._fn.repair, check_results)
+            d2 = self.shouldFail(
+                MustForceRepairError, "test_merge", ex, self._fn.repair, check_results
+            )
             d2.addCallback(self.copy_shares)
             d2.addCallback(self.failIfSharesChanged)
             d2.addCallback(lambda res: check_results)
             return d2
+
         d.addCallback(_try_repair)
-        d.addCallback(lambda check_results:
-                      self._fn.repair(check_results, force=True))
+        d.addCallback(lambda check_results: self._fn.repair(check_results, force=True))
         # this should give us 10 shares of the highest roothash
         def _check_repair_results(rres):
             self.failUnless(rres.get_successful())
-            pass # TODO
+            pass  # TODO
+
         d.addCallback(_check_repair_results)
         d.addCallback(lambda res: self._fn.get_servermap(MODE_CHECK))
+
         def _check_smap(smap):
             self.failUnlessEqual(len(smap.recoverable_versions()), 1)
             self.failIf(smap.unrecoverable_versions())
@@ -196,10 +246,11 @@ class Repair(unittest.TestCase, PublishMixin, ShouldFailMixin):
             else:
                 expected_contents = self.CONTENTS[3]
             new_versionid = smap.best_recoverable_version()
-            self.failUnlessEqual(new_versionid[0], 5) # seqnum 5
+            self.failUnlessEqual(new_versionid[0], 5)  # seqnum 5
             d2 = self._fn.download_version(smap, new_versionid)
             d2.addCallback(self.failUnlessEqual, expected_contents)
             return d2
+
         d.addCallback(_check_smap)
         return d
 
@@ -209,27 +260,32 @@ class Repair(unittest.TestCase, PublishMixin, ShouldFailMixin):
         # repair should not refuse a repair that doesn't need to merge. In
         # this case, we combine v2 with v3. The repair should ignore v2 and
         # copy v3 into a new v5.
-        d.addCallback(lambda res:
-                      self._set_versions({0:2,2:2,4:2,6:2,8:2,
-                                          1:3,3:3,5:3,7:3,9:3}))
+        d.addCallback(
+            lambda res: self._set_versions(
+                {0: 2, 2: 2, 4: 2, 6: 2, 8: 2, 1: 3, 3: 3, 5: 3, 7: 3, 9: 3}
+            )
+        )
         d.addCallback(lambda res: self._fn.check(Monitor()))
         d.addCallback(lambda check_results: self._fn.repair(check_results))
         # this should give us 10 shares of v3
         def _check_repair_results(rres):
             self.failUnless(rres.get_successful())
-            pass # TODO
+            pass  # TODO
+
         d.addCallback(_check_repair_results)
         d.addCallback(lambda res: self._fn.get_servermap(MODE_CHECK))
+
         def _check_smap(smap):
             self.failUnlessEqual(len(smap.recoverable_versions()), 1)
             self.failIf(smap.unrecoverable_versions())
             # now, which should have won?
             expected_contents = self.CONTENTS[3]
             new_versionid = smap.best_recoverable_version()
-            self.failUnlessEqual(new_versionid[0], 5) # seqnum 5
+            self.failUnlessEqual(new_versionid[0], 5)  # seqnum 5
             d2 = self._fn.download_version(smap, new_versionid)
             d2.addCallback(self.failUnlessEqual, expected_contents)
             return d2
+
         d.addCallback(_check_smap)
         return d
 
@@ -239,8 +295,17 @@ class Repair(unittest.TestCase, PublishMixin, ShouldFailMixin):
         for peerid in shares:
             for shnum in shares[peerid]:
                 share = shares[peerid][shnum]
-                (version, seqnum, root_hash, IV, k, N, segsize, datalen, o) = \
-                          unpack_header(share)
+                (
+                    version,
+                    seqnum,
+                    root_hash,
+                    IV,
+                    k,
+                    N,
+                    segsize,
+                    datalen,
+                    o,
+                ) = unpack_header(share)
                 return root_hash
 
     def test_check_and_repair_readcap(self):
@@ -248,13 +313,16 @@ class Repair(unittest.TestCase, PublishMixin, ShouldFailMixin):
         self.old_shares = []
         d = self.publish_one()
         d.addCallback(self.copy_shares)
+
         def _get_readcap(res):
             self._fn3 = self._fn.get_readonly()
             # also delete some shares
-            for peerid,shares in list(self._storage._peers.items()):
+            for peerid, shares in list(self._storage._peers.items()):
                 shares.pop(0, None)
+
         d.addCallback(_get_readcap)
         d.addCallback(lambda res: self._fn3.check_and_repair(Monitor()))
+
         def _check_results(crr):
             self.failUnless(ICheckAndRepairResults.providedBy(crr))
             # we should detect the unhealthy, but skip over mutable-readcap
@@ -262,6 +330,7 @@ class Repair(unittest.TestCase, PublishMixin, ShouldFailMixin):
             self.failIf(crr.get_pre_repair_results().is_healthy())
             self.failIf(crr.get_repair_attempted())
             self.failIf(crr.get_post_repair_results().is_healthy())
+
         d.addCallback(_check_results)
         return d
 
@@ -271,16 +340,20 @@ class Repair(unittest.TestCase, PublishMixin, ShouldFailMixin):
         # cycle uses MODE_READ, instead of MODE_REPAIR, and fails to get the
         # privkey that repair needs.
         d = self.publish_sdmf(b"")
+
         def _delete_one_share(ign):
             shares = self._storage._peers
             for peerid in shares:
                 for shnum in list(shares[peerid]):
                     if shnum == 0:
                         del shares[peerid][shnum]
+
         d.addCallback(_delete_one_share)
         d.addCallback(lambda ign: self._fn2.check(Monitor()))
         d.addCallback(lambda check_results: self._fn2.repair(check_results))
+
         def _check(crr):
             self.failUnlessEqual(crr.get_successful(), True)
+
         d.addCallback(_check)
         return d

@@ -16,16 +16,21 @@ class NeedRootcapLookupScheme(Exception):
     mechanism to translate name+passwd pairs into a rootcap, either a file of
     name/passwd/rootcap tuples, or a server to do the translation."""
 
+
 class FTPAvatarID(object):
     def __init__(self, username, rootcap):
         self.username = username
         self.rootcap = rootcap
 
+
 @implementer(checkers.ICredentialsChecker)
 class AccountFileChecker(object):
-    credentialInterfaces = (credentials.IUsernamePassword,
-                            credentials.IUsernameHashedPassword,
-                            credentials.ISSHPrivateKey)
+    credentialInterfaces = (
+        credentials.IUsernamePassword,
+        credentials.IUsernameHashedPassword,
+        credentials.ISSHPrivateKey,
+    )
+
     def __init__(self, client, accountfile):
         self.client = client
         self.passwords = {}
@@ -109,6 +114,7 @@ class AccountFileChecker(object):
 
         return defer.fail(error.UnauthorizedLogin())
 
+
 @implementer(checkers.ICredentialsChecker)
 class AccountURLChecker(object):
     credentialInterfaces = (credentials.IUsernamePassword,)
@@ -125,23 +131,30 @@ class AccountURLChecker(object):
         sep = "--" + sepbase
         form = []
         form.append(sep)
-        fields = {"action": "authenticate",
-                  "email": username,
-                  "passwd": password,
-                  }
+        fields = {
+            "action": "authenticate",
+            "email": username,
+            "passwd": password,
+        }
         for name, value in fields.iteritems():
             form.append('Content-Disposition: form-data; name="%s"' % name)
-            form.append('')
+            form.append("")
             assert isinstance(value, str)
             form.append(value)
             form.append(sep)
         form[-1] += "--"
         body = "\r\n".join(form) + "\r\n"
-        headers = {"content-type": "multipart/form-data; boundary=%s" % sepbase,
-                   }
-        return getPage(self.auth_url, method="POST",
-                       postdata=body, headers=headers,
-                       followRedirect=True, timeout=30)
+        headers = {
+            "content-type": "multipart/form-data; boundary=%s" % sepbase,
+        }
+        return getPage(
+            self.auth_url,
+            method="POST",
+            postdata=body,
+            headers=headers,
+            followRedirect=True,
+            timeout=30,
+        )
 
     def _parse_response(self, res):
         rootcap = res.strip()
@@ -157,4 +170,3 @@ class AccountURLChecker(object):
         d.addCallback(self._parse_response)
         d.addCallback(self._cbPasswordMatch, str(credentials.username))
         return d
-

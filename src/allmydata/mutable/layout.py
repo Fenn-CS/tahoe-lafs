@@ -7,16 +7,46 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
     # Omit dict so Python 3 changes don't leak into API callers on Python 2.
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 from past.utils import old_div
 
 import struct
-from allmydata.mutable.common import NeedMoreDataError, UnknownVersionError, \
-     BadShareError
-from allmydata.interfaces import HASH_SIZE, SALT_SIZE, SDMF_VERSION, \
-                                 MDMF_VERSION, IMutableSlotWriter
+from allmydata.mutable.common import (
+    NeedMoreDataError,
+    UnknownVersionError,
+    BadShareError,
+)
+from allmydata.interfaces import (
+    HASH_SIZE,
+    SALT_SIZE,
+    SDMF_VERSION,
+    MDMF_VERSION,
+    IMutableSlotWriter,
+)
 from allmydata.util import mathutil
 from twisted.python import failure
 from twisted.internet import defer
@@ -76,87 +106,119 @@ from zope.interface import implementer
 #  Given this, we may need to check to see how many bytes a reasonably sized
 #  block hash tree will take up.
 
-PREFIX = ">BQ32s16s" # each version may have a different prefix
-SIGNED_PREFIX = ">BQ32s16s BBQQ" # this is covered by the signature
+PREFIX = ">BQ32s16s"  # each version may have a different prefix
+SIGNED_PREFIX = ">BQ32s16s BBQQ"  # this is covered by the signature
 SIGNED_PREFIX_LENGTH = struct.calcsize(SIGNED_PREFIX)
-HEADER = ">BQ32s16s BBQQ LLLLQQ" # includes offsets
+HEADER = ">BQ32s16s BBQQ LLLLQQ"  # includes offsets
 HEADER_LENGTH = struct.calcsize(HEADER)
 OFFSETS = ">LLLLQQ"
 OFFSETS_LENGTH = struct.calcsize(OFFSETS)
 
-MAX_MUTABLE_SHARE_SIZE = 69105*1000*1000*1000*1000 # 69105 TB, kind of arbitrary
+MAX_MUTABLE_SHARE_SIZE = (
+    69105 * 1000 * 1000 * 1000 * 1000
+)  # 69105 TB, kind of arbitrary
 
 
 # These are still used for some tests of SDMF files.
 def unpack_header(data):
     o = {}
-    (version,
-     seqnum,
-     root_hash,
-     IV,
-     k, N, segsize, datalen,
-     o['signature'],
-     o['share_hash_chain'],
-     o['block_hash_tree'],
-     o['share_data'],
-     o['enc_privkey'],
-     o['EOF']) = struct.unpack(HEADER, data[:HEADER_LENGTH])
+    (
+        version,
+        seqnum,
+        root_hash,
+        IV,
+        k,
+        N,
+        segsize,
+        datalen,
+        o["signature"],
+        o["share_hash_chain"],
+        o["block_hash_tree"],
+        o["share_data"],
+        o["enc_privkey"],
+        o["EOF"],
+    ) = struct.unpack(HEADER, data[:HEADER_LENGTH])
     return (version, seqnum, root_hash, IV, k, N, segsize, datalen, o)
+
 
 def unpack_share(data):
     assert len(data) >= HEADER_LENGTH
     o = {}
-    (version,
-     seqnum,
-     root_hash,
-     IV,
-     k, N, segsize, datalen,
-     o['signature'],
-     o['share_hash_chain'],
-     o['block_hash_tree'],
-     o['share_data'],
-     o['enc_privkey'],
-     o['EOF']) = struct.unpack(HEADER, data[:HEADER_LENGTH])
+    (
+        version,
+        seqnum,
+        root_hash,
+        IV,
+        k,
+        N,
+        segsize,
+        datalen,
+        o["signature"],
+        o["share_hash_chain"],
+        o["block_hash_tree"],
+        o["share_data"],
+        o["enc_privkey"],
+        o["EOF"],
+    ) = struct.unpack(HEADER, data[:HEADER_LENGTH])
 
     if version != 0:
-        raise UnknownVersionError("got mutable share version %d, but I only understand version 0" % version)
+        raise UnknownVersionError(
+            "got mutable share version %d, but I only understand version 0" % version
+        )
 
-    if len(data) < o['EOF']:
-        raise NeedMoreDataError(o['EOF'],
-                                o['enc_privkey'], o['EOF']-o['enc_privkey'])
+    if len(data) < o["EOF"]:
+        raise NeedMoreDataError(o["EOF"], o["enc_privkey"], o["EOF"] - o["enc_privkey"])
 
-    pubkey = data[HEADER_LENGTH:o['signature']]
-    signature = data[o['signature']:o['share_hash_chain']]
-    share_hash_chain_s = data[o['share_hash_chain']:o['block_hash_tree']]
+    pubkey = data[HEADER_LENGTH : o["signature"]]
+    signature = data[o["signature"] : o["share_hash_chain"]]
+    share_hash_chain_s = data[o["share_hash_chain"] : o["block_hash_tree"]]
     share_hash_format = ">H32s"
     hsize = struct.calcsize(share_hash_format)
     if len(share_hash_chain_s) % hsize != 0:
-        raise BadShareError("hash chain is %d bytes, not multiple of %d"
-                            % (len(share_hash_chain_s), hsize))
+        raise BadShareError(
+            "hash chain is %d bytes, not multiple of %d"
+            % (len(share_hash_chain_s), hsize)
+        )
     share_hash_chain = []
     for i in range(0, len(share_hash_chain_s), hsize):
-        chunk = share_hash_chain_s[i:i+hsize]
+        chunk = share_hash_chain_s[i : i + hsize]
         (hid, h) = struct.unpack(share_hash_format, chunk)
-        share_hash_chain.append( (hid, h) )
+        share_hash_chain.append((hid, h))
     share_hash_chain = dict(share_hash_chain)
-    block_hash_tree_s = data[o['block_hash_tree']:o['share_data']]
+    block_hash_tree_s = data[o["block_hash_tree"] : o["share_data"]]
     if len(block_hash_tree_s) % 32 != 0:
-        raise BadShareError("block_hash_tree is %d bytes, not multiple of %d"
-                            % (len(block_hash_tree_s), 32))
+        raise BadShareError(
+            "block_hash_tree is %d bytes, not multiple of %d"
+            % (len(block_hash_tree_s), 32)
+        )
     block_hash_tree = []
     for i in range(0, len(block_hash_tree_s), 32):
-        block_hash_tree.append(block_hash_tree_s[i:i+32])
+        block_hash_tree.append(block_hash_tree_s[i : i + 32])
 
-    share_data = data[o['share_data']:o['enc_privkey']]
-    enc_privkey = data[o['enc_privkey']:o['EOF']]
+    share_data = data[o["share_data"] : o["enc_privkey"]]
+    enc_privkey = data[o["enc_privkey"] : o["EOF"]]
 
-    return (seqnum, root_hash, IV, k, N, segsize, datalen,
-            pubkey, signature, share_hash_chain, block_hash_tree,
-            share_data, enc_privkey)
+    return (
+        seqnum,
+        root_hash,
+        IV,
+        k,
+        N,
+        segsize,
+        datalen,
+        pubkey,
+        signature,
+        share_hash_chain,
+        block_hash_tree,
+        share_data,
+        enc_privkey,
+    )
+
 
 def get_version_from_checkstring(checkstring):
-    (t, ) = struct.unpack(">B", checkstring[:1])
+    (t,) = struct.unpack(">B", checkstring[:1])
     return t
+
 
 def unpack_sdmf_checkstring(checkstring):
     cs_len = struct.calcsize(PREFIX)
@@ -164,70 +226,98 @@ def unpack_sdmf_checkstring(checkstring):
     assert version == SDMF_VERSION, version
     return (seqnum, root_hash, IV)
 
+
 def unpack_mdmf_checkstring(checkstring):
     cs_len = struct.calcsize(MDMFCHECKSTRING)
     version, seqnum, root_hash = struct.unpack(MDMFCHECKSTRING, checkstring[:cs_len])
     assert version == MDMF_VERSION, version
     return (seqnum, root_hash)
 
-def pack_offsets(verification_key_length, signature_length,
-                 share_hash_chain_length, block_hash_tree_length,
-                 share_data_length, encprivkey_length):
+
+def pack_offsets(
+    verification_key_length,
+    signature_length,
+    share_hash_chain_length,
+    block_hash_tree_length,
+    share_data_length,
+    encprivkey_length,
+):
     post_offset = HEADER_LENGTH
     offsets = {}
-    o1 = offsets['signature'] = post_offset + verification_key_length
-    o2 = offsets['share_hash_chain'] = o1 + signature_length
-    o3 = offsets['block_hash_tree'] = o2 + share_hash_chain_length
-    o4 = offsets['share_data'] = o3 + block_hash_tree_length
-    o5 = offsets['enc_privkey'] = o4 + share_data_length
-    offsets['EOF'] = o5 + encprivkey_length
+    o1 = offsets["signature"] = post_offset + verification_key_length
+    o2 = offsets["share_hash_chain"] = o1 + signature_length
+    o3 = offsets["block_hash_tree"] = o2 + share_hash_chain_length
+    o4 = offsets["share_data"] = o3 + block_hash_tree_length
+    o5 = offsets["enc_privkey"] = o4 + share_data_length
+    offsets["EOF"] = o5 + encprivkey_length
 
-    return struct.pack(">LLLLQQ",
-                       offsets['signature'],
-                       offsets['share_hash_chain'],
-                       offsets['block_hash_tree'],
-                       offsets['share_data'],
-                       offsets['enc_privkey'],
-                       offsets['EOF'])
+    return struct.pack(
+        ">LLLLQQ",
+        offsets["signature"],
+        offsets["share_hash_chain"],
+        offsets["block_hash_tree"],
+        offsets["share_data"],
+        offsets["enc_privkey"],
+        offsets["EOF"],
+    )
 
-def pack_share(prefix, verification_key, signature,
-               share_hash_chain, block_hash_tree,
-               share_data, encprivkey):
-    share_hash_chain_s = b"".join([struct.pack(">H32s", i, share_hash_chain[i])
-                                   for i in sorted(share_hash_chain.keys())])
+
+def pack_share(
+    prefix,
+    verification_key,
+    signature,
+    share_hash_chain,
+    block_hash_tree,
+    share_data,
+    encprivkey,
+):
+    share_hash_chain_s = b"".join(
+        [
+            struct.pack(">H32s", i, share_hash_chain[i])
+            for i in sorted(share_hash_chain.keys())
+        ]
+    )
     for h in block_hash_tree:
         assert len(h) == 32
     block_hash_tree_s = b"".join(block_hash_tree)
 
-    offsets = pack_offsets(len(verification_key),
-                           len(signature),
-                           len(share_hash_chain_s),
-                           len(block_hash_tree_s),
-                           len(share_data),
-                           len(encprivkey))
-    final_share = b"".join([prefix,
-                            offsets,
-                            verification_key,
-                            signature,
-                            share_hash_chain_s,
-                            block_hash_tree_s,
-                            share_data,
-                            encprivkey])
+    offsets = pack_offsets(
+        len(verification_key),
+        len(signature),
+        len(share_hash_chain_s),
+        len(block_hash_tree_s),
+        len(share_data),
+        len(encprivkey),
+    )
+    final_share = b"".join(
+        [
+            prefix,
+            offsets,
+            verification_key,
+            signature,
+            share_hash_chain_s,
+            block_hash_tree_s,
+            share_data,
+            encprivkey,
+        ]
+    )
     return final_share
 
-def pack_prefix(seqnum, root_hash, IV,
-                required_shares, total_shares,
-                segment_size, data_length):
-    prefix = struct.pack(SIGNED_PREFIX,
-                         0, # version,
-                         seqnum,
-                         root_hash,
-                         IV,
-                         required_shares,
-                         total_shares,
-                         segment_size,
-                         data_length,
-                         )
+
+def pack_prefix(
+    seqnum, root_hash, IV, required_shares, total_shares, segment_size, data_length
+):
+    prefix = struct.pack(
+        SIGNED_PREFIX,
+        0,  # version,
+        seqnum,
+        root_hash,
+        IV,
+        required_shares,
+        total_shares,
+        segment_size,
+        data_length,
+    )
     return prefix
 
 
@@ -241,16 +331,19 @@ class SDMFSlotWriteProxy(object):
     allows the MDMF uploader to be built without much special-casing for
     file format, which makes the uploader code more readable.
     """
-    def __init__(self,
-                 shnum,
-                 storage_server, # an IStorageServer
-                 storage_index,
-                 secrets, # (write_enabler, renew_secret, cancel_secret)
-                 seqnum, # the sequence number of the mutable file
-                 required_shares,
-                 total_shares,
-                 segment_size,
-                 data_length): # the length of the original file
+
+    def __init__(
+        self,
+        shnum,
+        storage_server,  # an IStorageServer
+        storage_index,
+        secrets,  # (write_enabler, renew_secret, cancel_secret)
+        seqnum,  # the sequence number of the mutable file
+        required_shares,
+        total_shares,
+        segment_size,
+        data_length,
+    ):  # the length of the original file
         self.shnum = shnum
         self._storage_server = storage_server
         self._storage_index = storage_index
@@ -264,8 +357,9 @@ class SDMFSlotWriteProxy(object):
         # This is an SDMF file, so it should have only one segment, so,
         # modulo padding of the data length, the segment size and the
         # data length should be the same.
-        expected_segment_size = mathutil.next_multiple(data_length,
-                                                       self._required_shares)
+        expected_segment_size = mathutil.next_multiple(
+            data_length, self._required_shares
+        )
         assert expected_segment_size == segment_size
 
         self._block_size = old_div(self._segment_size, self._required_shares)
@@ -285,10 +379,7 @@ class SDMFSlotWriteProxy(object):
 
         self._readvs = [(0, struct.calcsize(PREFIX))]
 
-
-    def set_checkstring(self, checkstring_or_seqnum,
-                              root_hash=None,
-                              salt=None):
+    def set_checkstring(self, checkstring_or_seqnum, root_hash=None, salt=None):
         """
         Set the checkstring that I will pass to the remote server when
         writing.
@@ -302,15 +393,10 @@ class SDMFSlotWriteProxy(object):
         some other thing.
         """
         if root_hash and salt:
-            checkstring = struct.pack(PREFIX,
-                                      0,
-                                      checkstring_or_seqnum,
-                                      root_hash,
-                                      salt)
+            checkstring = struct.pack(PREFIX, 0, checkstring_or_seqnum, root_hash, salt)
         else:
             checkstring = checkstring_or_seqnum
         self._testvs = [(0, len(checkstring), b"eq", checkstring)]
-
 
     def get_checkstring(self):
         """
@@ -321,7 +407,6 @@ class SDMFSlotWriteProxy(object):
             return self._testvs[0][3]
         return b""
 
-
     def put_block(self, data, segnum, salt):
         """
         Add a block and salt to the share.
@@ -331,21 +416,19 @@ class SDMFSlotWriteProxy(object):
         assert len(data) == self._block_size
         assert len(salt) == SALT_SIZE
 
-        self._share_pieces['sharedata'] = data
-        self._share_pieces['salt'] = salt
+        self._share_pieces["sharedata"] = data
+        self._share_pieces["salt"] = salt
 
         # TODO: Figure out something intelligent to return.
         return defer.succeed(None)
-
 
     def put_encprivkey(self, encprivkey):
         """
         Add the encrypted private key to the share.
         """
-        self._share_pieces['encprivkey'] = encprivkey
+        self._share_pieces["encprivkey"] = encprivkey
 
         return defer.succeed(None)
-
 
     def put_blockhashes(self, blockhashes):
         """
@@ -357,10 +440,9 @@ class SDMFSlotWriteProxy(object):
 
         # serialize the blockhashes, then set them.
         blockhashes_s = b"".join(blockhashes)
-        self._share_pieces['block_hash_tree'] = blockhashes_s
+        self._share_pieces["block_hash_tree"] = blockhashes_s
 
         return defer.succeed(None)
-
 
     def put_sharehashes(self, sharehashes):
         """
@@ -371,12 +453,15 @@ class SDMFSlotWriteProxy(object):
             assert len(h) == HASH_SIZE
 
         # serialize the sharehashes, then set them.
-        sharehashes_s = b"".join([struct.pack(">H32s", i, sharehashes[i])
-                                  for i in sorted(sharehashes.keys())])
-        self._share_pieces['share_hash_chain'] = sharehashes_s
+        sharehashes_s = b"".join(
+            [
+                struct.pack(">H32s", i, sharehashes[i])
+                for i in sorted(sharehashes.keys())
+            ]
+        )
+        self._share_pieces["share_hash_chain"] = sharehashes_s
 
         return defer.succeed(None)
-
 
     def put_root_hash(self, root_hash):
         """
@@ -384,10 +469,9 @@ class SDMFSlotWriteProxy(object):
         """
         assert len(root_hash) == HASH_SIZE
 
-        self._share_pieces['root_hash'] = root_hash
+        self._share_pieces["root_hash"] = root_hash
 
         return defer.succeed(None)
-
 
     def put_salt(self, salt):
         """
@@ -395,9 +479,8 @@ class SDMFSlotWriteProxy(object):
         """
         assert len(salt) == SALT_SIZE
 
-        self._share_pieces['salt'] = salt
-        self._share_pieces['sharedata'] = b""
-
+        self._share_pieces["salt"] = salt
+        self._share_pieces["sharedata"] = b""
 
     def get_signable(self):
         """
@@ -416,34 +499,33 @@ class SDMFSlotWriteProxy(object):
 
         This method is responsible for returning that to callers.
         """
-        return struct.pack(SIGNED_PREFIX,
-                           0,
-                           self._seqnum,
-                           self._share_pieces['root_hash'],
-                           self._share_pieces['salt'],
-                           self._required_shares,
-                           self._total_shares,
-                           self._segment_size,
-                           self._data_length)
-
+        return struct.pack(
+            SIGNED_PREFIX,
+            0,
+            self._seqnum,
+            self._share_pieces["root_hash"],
+            self._share_pieces["salt"],
+            self._required_shares,
+            self._total_shares,
+            self._segment_size,
+            self._data_length,
+        )
 
     def put_signature(self, signature):
         """
         Add the signature to the share.
         """
-        self._share_pieces['signature'] = signature
+        self._share_pieces["signature"] = signature
 
         return defer.succeed(None)
-
 
     def put_verification_key(self, verification_key):
         """
         Add the verification key to the share.
         """
-        self._share_pieces['verification_key'] = verification_key
+        self._share_pieces["verification_key"] = verification_key
 
         return defer.succeed(None)
-
 
     def get_verinfo(self):
         """
@@ -467,55 +549,56 @@ class SDMFSlotWriteProxy(object):
         The verinfo tuple for SDMF files is the same, but contains a
         16-byte IV instead of a hash of salts.
         """
-        return (self._seqnum,
-                self._share_pieces['root_hash'],
-                self._share_pieces['salt'],
-                self._segment_size,
-                self._data_length,
-                self._required_shares,
-                self._total_shares,
-                self.get_signable(),
-                self._get_offsets_tuple())
+        return (
+            self._seqnum,
+            self._share_pieces["root_hash"],
+            self._share_pieces["salt"],
+            self._segment_size,
+            self._data_length,
+            self._required_shares,
+            self._total_shares,
+            self.get_signable(),
+            self._get_offsets_tuple(),
+        )
 
     def _get_offsets_dict(self):
         post_offset = HEADER_LENGTH
         offsets = {}
 
-        verification_key_length = len(self._share_pieces['verification_key'])
-        o1 = offsets['signature'] = post_offset + verification_key_length
+        verification_key_length = len(self._share_pieces["verification_key"])
+        o1 = offsets["signature"] = post_offset + verification_key_length
 
-        signature_length = len(self._share_pieces['signature'])
-        o2 = offsets['share_hash_chain'] = o1 + signature_length
+        signature_length = len(self._share_pieces["signature"])
+        o2 = offsets["share_hash_chain"] = o1 + signature_length
 
-        share_hash_chain_length = len(self._share_pieces['share_hash_chain'])
-        o3 = offsets['block_hash_tree'] = o2 + share_hash_chain_length
+        share_hash_chain_length = len(self._share_pieces["share_hash_chain"])
+        o3 = offsets["block_hash_tree"] = o2 + share_hash_chain_length
 
-        block_hash_tree_length = len(self._share_pieces['block_hash_tree'])
-        o4 = offsets['share_data'] = o3 + block_hash_tree_length
+        block_hash_tree_length = len(self._share_pieces["block_hash_tree"])
+        o4 = offsets["share_data"] = o3 + block_hash_tree_length
 
-        share_data_length = len(self._share_pieces['sharedata'])
-        o5 = offsets['enc_privkey'] = o4 + share_data_length
+        share_data_length = len(self._share_pieces["sharedata"])
+        o5 = offsets["enc_privkey"] = o4 + share_data_length
 
-        encprivkey_length = len(self._share_pieces['encprivkey'])
-        offsets['EOF'] = o5 + encprivkey_length
+        encprivkey_length = len(self._share_pieces["encprivkey"])
+        offsets["EOF"] = o5 + encprivkey_length
         return offsets
-
 
     def _get_offsets_tuple(self):
         offsets = self._get_offsets_dict()
         return tuple([(key, value) for key, value in offsets.items()])
 
-
     def _pack_offsets(self):
         offsets = self._get_offsets_dict()
-        return struct.pack(">LLLLQQ",
-                           offsets['signature'],
-                           offsets['share_hash_chain'],
-                           offsets['block_hash_tree'],
-                           offsets['share_data'],
-                           offsets['enc_privkey'],
-                           offsets['EOF'])
-
+        return struct.pack(
+            ">LLLLQQ",
+            offsets["signature"],
+            offsets["share_hash_chain"],
+            offsets["block_hash_tree"],
+            offsets["share_data"],
+            offsets["enc_privkey"],
+            offsets["EOF"],
+        )
 
     def finish_publishing(self):
         """
@@ -523,8 +606,14 @@ class SDMFSlotWriteProxy(object):
         server. I require that no further publishing needs to take place
         after this method has been called.
         """
-        for k in ["sharedata", "encprivkey", "signature", "verification_key",
-                  "share_hash_chain", "block_hash_tree"]:
+        for k in [
+            "sharedata",
+            "encprivkey",
+            "signature",
+            "verification_key",
+            "share_hash_chain",
+            "block_hash_tree",
+        ]:
             assert k in self._share_pieces, (self.shnum, k, self._share_pieces.keys())
         # This is the only method that actually writes something to the
         # remote server.
@@ -532,14 +621,18 @@ class SDMFSlotWriteProxy(object):
         # to the remote server in one write.
         offsets = self._pack_offsets()
         prefix = self.get_signable()
-        final_share = b"".join([prefix,
-                                offsets,
-                                self._share_pieces['verification_key'],
-                                self._share_pieces['signature'],
-                                self._share_pieces['share_hash_chain'],
-                                self._share_pieces['block_hash_tree'],
-                                self._share_pieces['sharedata'],
-                                self._share_pieces['encprivkey']])
+        final_share = b"".join(
+            [
+                prefix,
+                offsets,
+                self._share_pieces["verification_key"],
+                self._share_pieces["signature"],
+                self._share_pieces["share_hash_chain"],
+                self._share_pieces["block_hash_tree"],
+                self._share_pieces["sharedata"],
+                self._share_pieces["encprivkey"],
+            ]
+        )
 
         # Our only data vector is going to be writing the final share,
         # in its entirely.
@@ -578,7 +671,8 @@ VERIFICATION_KEY_SIZE = 292
 # We know we won't have more than 256 shares, and we know that we won't need
 # to store more than ln2(256) hash-chain nodes to validate, so that's our
 # bound. Each node requires 2 bytes of node-number plus 32 bytes of hash.
-SHARE_HASH_CHAIN_SIZE = (2+HASH_SIZE)*mathutil.log_ceil(256, 2)
+SHARE_HASH_CHAIN_SIZE = (2 + HASH_SIZE) * mathutil.log_ceil(256, 2)
+
 
 @implementer(IMutableSlotWriter)
 class MDMFSlotWriteProxy(object):
@@ -590,9 +684,10 @@ class MDMFSlotWriteProxy(object):
     management, and the implementation of the on-disk format for MDMF
     shares.
     """
+
     # Expected layout, MDMF:
     # offset:     size:       name:
-    #-- signed part --
+    # -- signed part --
     # 0           1           version number (01)
     # 1           8           sequence number
     # 9           32          share tree root hash
@@ -600,7 +695,7 @@ class MDMFSlotWriteProxy(object):
     # 42          1           The "N" encoding parameter
     # 43          8           The segment size of the uploaded file
     # 51          8           The data length of the original plaintext
-    #-- end signed part --
+    # -- end signed part --
     # 59          8           The offset of the encrypted private key
     # 67          8           The offset of the share hash chain
     # 75          8           The offset of the signature
@@ -741,16 +836,18 @@ class MDMFSlotWriteProxy(object):
     # since these values will change the header. It is possible that we
     # can just make those be written in one operation to minimize
     # disruption.
-    def __init__(self,
-                 shnum,
-                 storage_server, # a remote reference to a storage server
-                 storage_index,
-                 secrets, # (write_enabler, renew_secret, cancel_secret)
-                 seqnum, # the sequence number of the mutable file
-                 required_shares,
-                 total_shares,
-                 segment_size,
-                 data_length): # the length of the original file
+    def __init__(
+        self,
+        shnum,
+        storage_server,  # a remote reference to a storage server
+        storage_index,
+        secrets,  # (write_enabler, renew_secret, cancel_secret)
+        seqnum,  # the sequence number of the mutable file
+        required_shares,
+        total_shares,
+        segment_size,
+        data_length,
+    ):  # the length of the original file
         self.shnum = shnum
         self._storage_server = storage_server
         self._storage_index = storage_index
@@ -799,8 +896,7 @@ class MDMFSlotWriteProxy(object):
         # We calculate the number of segments because it tells us
         # where the salt part of the file ends/share segment begins,
         # and also because it provides a useful amount of bounds checking.
-        self._num_segments = mathutil.div_ceil(self._data_length,
-                                               self._segment_size)
+        self._num_segments = mathutil.div_ceil(self._data_length, self._segment_size)
         self._block_size = old_div(self._segment_size, self._required_shares)
         # We also calculate the share size, to help us with block
         # constraints later.
@@ -808,9 +904,12 @@ class MDMFSlotWriteProxy(object):
         if not tail_size:
             self._tail_block_size = self._block_size
         else:
-            self._tail_block_size = mathutil.next_multiple(tail_size,
-                                                           self._required_shares)
-            self._tail_block_size = old_div(self._tail_block_size, self._required_shares)
+            self._tail_block_size = mathutil.next_multiple(
+                tail_size, self._required_shares
+            )
+            self._tail_block_size = old_div(
+                self._tail_block_size, self._required_shares
+            )
 
         # We already know where the sharedata starts; right after the end
         # of the header (which is defined as the signable part + the offsets)
@@ -820,36 +919,31 @@ class MDMFSlotWriteProxy(object):
         data_size = self._actual_block_size * (self._num_segments - 1)
         data_size += self._tail_block_size
         data_size += SALT_SIZE
-        self._offsets['enc_privkey'] = MDMFHEADERSIZE
+        self._offsets["enc_privkey"] = MDMFHEADERSIZE
 
         # We don't define offsets for these because we want them to be
         # tightly packed -- this allows us to ignore the responsibility
         # of padding individual values, and of removing that padding
         # later. So nonconstant_start is where we start writing
         # nonconstant data.
-        nonconstant_start = self._offsets['enc_privkey']
+        nonconstant_start = self._offsets["enc_privkey"]
         nonconstant_start += PRIVATE_KEY_SIZE
         nonconstant_start += SIGNATURE_SIZE
         nonconstant_start += VERIFICATION_KEY_SIZE
         nonconstant_start += SHARE_HASH_CHAIN_SIZE
 
-        self._offsets['share_data'] = nonconstant_start
+        self._offsets["share_data"] = nonconstant_start
 
         # Finally, we know how big the share data will be, so we can
         # figure out where the block hash tree needs to go.
         # XXX: But this will go away if Zooko wants to make it so that
         # you don't need to know the size of the file before you start
         # uploading it.
-        self._offsets['block_hash_tree'] = self._offsets['share_data'] + \
-                    data_size
+        self._offsets["block_hash_tree"] = self._offsets["share_data"] + data_size
 
         # Done. We can snow start writing.
 
-
-    def set_checkstring(self,
-                        seqnum_or_checkstring,
-                        root_hash=None,
-                        salt=None):
+    def set_checkstring(self, seqnum_or_checkstring, root_hash=None, salt=None):
         """
         Set checkstring checkstring for the given shnum.
 
@@ -874,10 +968,9 @@ class MDMFSlotWriteProxy(object):
         # I assume that users know what they are doing when they call
         # it.
         if root_hash:
-            checkstring = struct.pack(MDMFCHECKSTRING,
-                                      1,
-                                      seqnum_or_checkstring,
-                                      root_hash)
+            checkstring = struct.pack(
+                MDMFCHECKSTRING, 1, seqnum_or_checkstring, root_hash
+            )
         else:
             checkstring = seqnum_or_checkstring
 
@@ -891,10 +984,8 @@ class MDMFSlotWriteProxy(object):
             self._testvs = []
             self._testvs.append((0, len(checkstring), b"eq", checkstring))
 
-
     def __repr__(self):
         return "MDMFSlotWriteProxy for share %d" % self.shnum
-
 
     def get_checkstring(self):
         """
@@ -907,11 +998,7 @@ class MDMFSlotWriteProxy(object):
             roothash = self._root_hash
         else:
             roothash = b"\x00" * 32
-        return struct.pack(MDMFCHECKSTRING,
-                           1,
-                           self._seqnum,
-                           roothash)
-
+        return struct.pack(MDMFCHECKSTRING, 1, self._seqnum, roothash)
 
     def put_block(self, data, segnum, salt):
         """
@@ -922,8 +1009,9 @@ class MDMFSlotWriteProxy(object):
         if segnum >= self._num_segments:
             raise LayoutInvalid("I won't overwrite the block hash tree")
         if len(salt) != SALT_SIZE:
-            raise LayoutInvalid("I was given a salt of size %d, but "
-                                "I wanted a salt of size %d")
+            raise LayoutInvalid(
+                "I was given a salt of size %d, but " "I wanted a salt of size %d"
+            )
         if segnum + 1 == self._num_segments:
             if len(data) != self._tail_block_size:
                 raise LayoutInvalid("I was given the wrong size block to write")
@@ -931,12 +1019,10 @@ class MDMFSlotWriteProxy(object):
             raise LayoutInvalid("I was given the wrong size block to write")
 
         # We want to write at len(MDMFHEADER) + segnum * block_size.
-        offset = self._offsets['share_data'] + \
-            (self._actual_block_size * segnum)
+        offset = self._offsets["share_data"] + (self._actual_block_size * segnum)
         data = salt + data
 
         self._writevs.append(tuple([offset, data]))
-
 
     def put_encprivkey(self, encprivkey):
         """
@@ -944,7 +1030,7 @@ class MDMFSlotWriteProxy(object):
         me.
         """
         assert self._offsets
-        assert self._offsets['enc_privkey']
+        assert self._offsets["enc_privkey"]
         # You shouldn't re-write the encprivkey after the block hash
         # tree is written, since that could cause the private key to run
         # into the block hash tree. Before it writes the block hash
@@ -952,14 +1038,16 @@ class MDMFSlotWriteProxy(object):
         # the share hash chain. So that's a good indicator of whether or
         # not the block hash tree has been written.
         if "signature" in self._offsets:
-            raise LayoutInvalid("You can't put the encrypted private key "
-                                "after putting the share hash chain")
+            raise LayoutInvalid(
+                "You can't put the encrypted private key "
+                "after putting the share hash chain"
+            )
 
-        self._offsets['share_hash_chain'] = self._offsets['enc_privkey'] + \
-                len(encprivkey)
+        self._offsets["share_hash_chain"] = self._offsets["enc_privkey"] + len(
+            encprivkey
+        )
 
-        self._writevs.append(tuple([self._offsets['enc_privkey'], encprivkey]))
-
+        self._writevs.append(tuple([self._offsets["enc_privkey"], encprivkey]))
 
     def put_blockhashes(self, blockhashes):
         """
@@ -978,11 +1066,9 @@ class MDMFSlotWriteProxy(object):
         assert isinstance(blockhashes, list)
 
         blockhashes_s = b"".join(blockhashes)
-        self._offsets['EOF'] = self._offsets['block_hash_tree'] + len(blockhashes_s)
+        self._offsets["EOF"] = self._offsets["block_hash_tree"] + len(blockhashes_s)
 
-        self._writevs.append(tuple([self._offsets['block_hash_tree'],
-                                  blockhashes_s]))
-
+        self._writevs.append(tuple([self._offsets["block_hash_tree"], blockhashes_s]))
 
     def put_sharehashes(self, sharehashes):
         """
@@ -1000,8 +1086,10 @@ class MDMFSlotWriteProxy(object):
         assert isinstance(sharehashes, dict)
         assert self._offsets
         if "share_hash_chain" not in self._offsets:
-            raise LayoutInvalid("You must put the block hash tree before "
-                                "putting the share hash chain")
+            raise LayoutInvalid(
+                "You must put the block hash tree before "
+                "putting the share hash chain"
+            )
 
         # The signature comes after the share hash chain. If the
         # signature has already been written, we must not write another
@@ -1009,15 +1097,19 @@ class MDMFSlotWriteProxy(object):
         # offset when it gets sent to the remote server, so we look for
         # that.
         if "verification_key" in self._offsets:
-            raise LayoutInvalid("You must write the share hash chain "
-                                "before you write the signature")
-        sharehashes_s = b"".join([struct.pack(">H32s", i, sharehashes[i])
-                                  for i in sorted(sharehashes.keys())])
-        self._offsets['signature'] = self._offsets['share_hash_chain'] + \
-            len(sharehashes_s)
-        self._writevs.append(tuple([self._offsets['share_hash_chain'],
-                            sharehashes_s]))
-
+            raise LayoutInvalid(
+                "You must write the share hash chain " "before you write the signature"
+            )
+        sharehashes_s = b"".join(
+            [
+                struct.pack(">H32s", i, sharehashes[i])
+                for i in sorted(sharehashes.keys())
+            ]
+        )
+        self._offsets["signature"] = self._offsets["share_hash_chain"] + len(
+            sharehashes_s
+        )
+        self._writevs.append(tuple([self._offsets["share_hash_chain"], sharehashes_s]))
 
     def put_root_hash(self, roothash):
         """
@@ -1032,8 +1124,7 @@ class MDMFSlotWriteProxy(object):
         # chain, so it's a good thing to look for in finding out whether
         # or not the share hash chain exists on the remote server.
         if len(roothash) != HASH_SIZE:
-            raise LayoutInvalid("hashes and salts must be exactly %d bytes"
-                                 % HASH_SIZE)
+            raise LayoutInvalid("hashes and salts must be exactly %d bytes" % HASH_SIZE)
         self._root_hash = roothash
         # To write both of these values, we update the checkstring on
         # the remote server, which includes them
@@ -1043,25 +1134,25 @@ class MDMFSlotWriteProxy(object):
         # to update our internal checkstring to be consistent with the
         # one on the server.
 
-
     def get_signable(self):
         """
         Get the first seven fields of the mutable file; the parts that
         are signed.
         """
         if not self._root_hash:
-            raise LayoutInvalid("You need to set the root hash "
-                                "before getting something to "
-                                "sign")
-        return struct.pack(MDMFSIGNABLEHEADER,
-                           1,
-                           self._seqnum,
-                           self._root_hash,
-                           self._required_shares,
-                           self._total_shares,
-                           self._segment_size,
-                           self._data_length)
-
+            raise LayoutInvalid(
+                "You need to set the root hash " "before getting something to " "sign"
+            )
+        return struct.pack(
+            MDMFSIGNABLEHEADER,
+            1,
+            self._seqnum,
+            self._root_hash,
+            self._required_shares,
+            self._total_shares,
+            self._segment_size,
+            self._data_length,
+        )
 
     def put_signature(self, signature):
         """
@@ -1071,26 +1162,28 @@ class MDMFSlotWriteProxy(object):
         to the grid before I will write the signature to the grid.
         """
         if "signature" not in self._offsets:
-            raise LayoutInvalid("You must put the share hash chain "
-        # It does not make sense to put a signature without first
-        # putting the root hash and the salt hash (since otherwise
-        # the signature would be incomplete), so we don't allow that.
-                       "before putting the signature")
+            raise LayoutInvalid(
+                "You must put the share hash chain "
+                # It does not make sense to put a signature without first
+                # putting the root hash and the salt hash (since otherwise
+                # the signature would be incomplete), so we don't allow that.
+                "before putting the signature"
+            )
         if not self._root_hash:
-            raise LayoutInvalid("You must complete the signed prefix "
-                                "before computing a signature")
+            raise LayoutInvalid(
+                "You must complete the signed prefix " "before computing a signature"
+            )
         # If we put the signature after we put the verification key, we
         # could end up running into the verification key, and will
         # probably screw up the offsets as well. So we don't allow that.
         if "verification_key_end" in self._offsets:
-            raise LayoutInvalid("You can't put the signature after the "
-                                "verification key")
+            raise LayoutInvalid(
+                "You can't put the signature after the " "verification key"
+            )
         # The method that writes the verification key defines the EOF
         # offset before writing the verification key, so look for that.
-        self._offsets['verification_key'] = self._offsets['signature'] +\
-            len(signature)
-        self._writevs.append(tuple([self._offsets['signature'], signature]))
-
+        self._offsets["verification_key"] = self._offsets["signature"] + len(signature)
+        self._writevs.append(tuple([self._offsets["signature"], signature]))
 
     def put_verification_key(self, verification_key):
         """
@@ -1101,31 +1194,33 @@ class MDMFSlotWriteProxy(object):
         remote server.
         """
         if "verification_key" not in self._offsets:
-            raise LayoutInvalid("You must put the signature before you "
-                                "can put the verification key")
+            raise LayoutInvalid(
+                "You must put the signature before you " "can put the verification key"
+            )
 
-        self._offsets['verification_key_end'] = \
-            self._offsets['verification_key'] + len(verification_key)
-        assert self._offsets['verification_key_end'] <= self._offsets['share_data']
-        self._writevs.append(tuple([self._offsets['verification_key'],
-                            verification_key]))
-
+        self._offsets["verification_key_end"] = self._offsets["verification_key"] + len(
+            verification_key
+        )
+        assert self._offsets["verification_key_end"] <= self._offsets["share_data"]
+        self._writevs.append(
+            tuple([self._offsets["verification_key"], verification_key])
+        )
 
     def _get_offsets_tuple(self):
         return tuple([(key, value) for key, value in self._offsets.items()])
 
-
     def get_verinfo(self):
-        return (self._seqnum,
-                self._root_hash,
-                None,
-                self._segment_size,
-                self._data_length,
-                self._required_shares,
-                self._total_shares,
-                self.get_signable(),
-                self._get_offsets_tuple())
-
+        return (
+            self._seqnum,
+            self._root_hash,
+            None,
+            self._segment_size,
+            self._data_length,
+            self._required_shares,
+            self._total_shares,
+            self.get_signable(),
+            self._get_offsets_tuple(),
+        )
 
     def finish_publishing(self):
         """
@@ -1134,28 +1229,33 @@ class MDMFSlotWriteProxy(object):
         to the remote server, ending the write process.
         """
         if "verification_key_end" not in self._offsets:
-            raise LayoutInvalid("You must put the verification key before "
-                                "you can publish the offsets")
+            raise LayoutInvalid(
+                "You must put the verification key before "
+                "you can publish the offsets"
+            )
         offsets_offset = struct.calcsize(MDMFHEADERWITHOUTOFFSETS)
-        offsets = struct.pack(MDMFOFFSETS,
-                              self._offsets['enc_privkey'],
-                              self._offsets['share_hash_chain'],
-                              self._offsets['signature'],
-                              self._offsets['verification_key'],
-                              self._offsets['verification_key_end'],
-                              self._offsets['share_data'],
-                              self._offsets['block_hash_tree'],
-                              self._offsets['EOF'])
+        offsets = struct.pack(
+            MDMFOFFSETS,
+            self._offsets["enc_privkey"],
+            self._offsets["share_hash_chain"],
+            self._offsets["signature"],
+            self._offsets["verification_key"],
+            self._offsets["verification_key_end"],
+            self._offsets["share_data"],
+            self._offsets["block_hash_tree"],
+            self._offsets["EOF"],
+        )
         self._writevs.append(tuple([offsets_offset, offsets]))
         encoding_parameters_offset = struct.calcsize(MDMFCHECKSTRING)
-        params = struct.pack(">BBQQ",
-                             self._required_shares,
-                             self._total_shares,
-                             self._segment_size,
-                             self._data_length)
+        params = struct.pack(
+            ">BBQQ",
+            self._required_shares,
+            self._total_shares,
+            self._segment_size,
+            self._data_length,
+        )
         self._writevs.append(tuple([encoding_parameters_offset, params]))
         return self._write(self._writevs)
-
 
     def _write(self, datavs, on_failure=None, on_success=None):
         """I write the data vectors in datavs to the remote slot."""
@@ -1168,9 +1268,11 @@ class MDMFSlotWriteProxy(object):
             # that we have something to check later.
             new_checkstring = self.get_checkstring()
             datavs.append((0, new_checkstring))
+
             def _first_write():
                 self._written = True
                 self._testvs = [(0, len(new_checkstring), b"eq", new_checkstring)]
+
             on_success = _first_write
         tw_vectors[self.shnum] = (self._testvs, datavs, None)
         d = self._storage_server.slot_testv_and_readv_and_writev(
@@ -1179,21 +1281,27 @@ class MDMFSlotWriteProxy(object):
             tw_vectors,
             self._readv,
         )
+
         def _result(results):
             if isinstance(results, failure.Failure) or not results[0]:
                 # Do nothing; the write was unsuccessful.
-                if on_failure: on_failure()
+                if on_failure:
+                    on_failure()
             else:
-                if on_success: on_success()
+                if on_success:
+                    on_success()
             return results
+
         d.addBoth(_result)
         return d
+
 
 def _handle_bad_struct(f):
     # struct.unpack errors mean the server didn't give us enough data, so
     # this share is bad
     f.trap(struct.error)
     raise BadShareError(f.value.args[0])
+
 
 class MDMFSlotReadProxy(object):
     """
@@ -1203,12 +1311,10 @@ class MDMFSlotReadProxy(object):
     I can be initialized with some amount of data, which I will use (if
     it is valid) to eliminate some of the need to fetch it from servers.
     """
-    def __init__(self,
-                 storage_server,
-                 storage_index,
-                 shnum,
-                 data=b"",
-                 data_is_everything=False):
+
+    def __init__(
+        self, storage_server, storage_index, shnum, data=b"", data_is_everything=False
+    ):
         # Start the initialization process.
         self._storage_server = storage_server
         self._storage_index = storage_index
@@ -1253,7 +1359,6 @@ class MDMFSlotReadProxy(object):
         if self._data == None:
             self._data = b""
 
-
     def _maybe_fetch_offsets_and_header(self, force_remote=False):
         """
         I fetch the offset table and the header from the remote slot if
@@ -1274,7 +1379,6 @@ class MDMFSlotReadProxy(object):
         d.addErrback(_handle_bad_struct)
         return d
 
-
     def _process_encoding_parameters(self, encoding_parameters):
         if self.shnum not in encoding_parameters:
             raise BadShareError("no data for shnum %d" % self.shnum)
@@ -1284,14 +1388,9 @@ class MDMFSlotReadProxy(object):
         (verno,) = struct.unpack(">B", encoding_parameters[:1])
         if verno == MDMF_VERSION:
             read_size = MDMFHEADERWITHOUTOFFSETSSIZE
-            (verno,
-             seqnum,
-             root_hash,
-             k,
-             n,
-             segsize,
-             datalen) = struct.unpack(MDMFHEADERWITHOUTOFFSETS,
-                                      encoding_parameters[:read_size])
+            (verno, seqnum, root_hash, k, n, segsize, datalen) = struct.unpack(
+                MDMFHEADERWITHOUTOFFSETS, encoding_parameters[:read_size]
+            )
             if segsize == 0 and datalen == 0:
                 # Empty file, no segments.
                 self._num_segments = 0
@@ -1300,15 +1399,9 @@ class MDMFSlotReadProxy(object):
 
         elif verno == SDMF_VERSION:
             read_size = SIGNED_PREFIX_LENGTH
-            (verno,
-             seqnum,
-             root_hash,
-             salt,
-             k,
-             n,
-             segsize,
-             datalen) = struct.unpack(">BQ32s16s BBQQ",
-                                encoding_parameters[:SIGNED_PREFIX_LENGTH])
+            (verno, seqnum, root_hash, salt, k, n, segsize, datalen) = struct.unpack(
+                ">BQ32s16s BBQQ", encoding_parameters[:SIGNED_PREFIX_LENGTH]
+            )
             self._salt = salt
             if segsize == 0 and datalen == 0:
                 # empty file
@@ -1317,10 +1410,11 @@ class MDMFSlotReadProxy(object):
                 # non-empty SDMF files have one segment.
                 self._num_segments = 1
         else:
-            raise UnknownVersionError("You asked me to read mutable file "
-                                      "version %d, but I only understand "
-                                      "%d and %d" % (verno, SDMF_VERSION,
-                                                     MDMF_VERSION))
+            raise UnknownVersionError(
+                "You asked me to read mutable file "
+                "version %d, but I only understand "
+                "%d and %d" % (verno, SDMF_VERSION, MDMF_VERSION)
+            )
 
         self._version_number = verno
         self._sequence_number = seqnum
@@ -1340,57 +1434,59 @@ class MDMFSlotReadProxy(object):
         if not tail_size:
             self._tail_block_size = self._block_size
         else:
-            self._tail_block_size = mathutil.next_multiple(tail_size,
-                                                    self._required_shares)
-            self._tail_block_size = old_div(self._tail_block_size, self._required_shares)
+            self._tail_block_size = mathutil.next_multiple(
+                tail_size, self._required_shares
+            )
+            self._tail_block_size = old_div(
+                self._tail_block_size, self._required_shares
+            )
 
         return encoding_parameters
-
 
     def _process_offsets(self, offsets):
         if self._version_number == 0:
             read_size = OFFSETS_LENGTH
             read_offset = SIGNED_PREFIX_LENGTH
             end = read_size + read_offset
-            (signature,
-             share_hash_chain,
-             block_hash_tree,
-             share_data,
-             enc_privkey,
-             EOF) = struct.unpack(">LLLLQQ",
-                                  offsets[read_offset:end])
+            (
+                signature,
+                share_hash_chain,
+                block_hash_tree,
+                share_data,
+                enc_privkey,
+                EOF,
+            ) = struct.unpack(">LLLLQQ", offsets[read_offset:end])
             self._offsets = {}
-            self._offsets['signature'] = signature
-            self._offsets['share_data'] = share_data
-            self._offsets['block_hash_tree'] = block_hash_tree
-            self._offsets['share_hash_chain'] = share_hash_chain
-            self._offsets['enc_privkey'] = enc_privkey
-            self._offsets['EOF'] = EOF
+            self._offsets["signature"] = signature
+            self._offsets["share_data"] = share_data
+            self._offsets["block_hash_tree"] = block_hash_tree
+            self._offsets["share_hash_chain"] = share_hash_chain
+            self._offsets["enc_privkey"] = enc_privkey
+            self._offsets["EOF"] = EOF
 
         elif self._version_number == 1:
             read_offset = MDMFHEADERWITHOUTOFFSETSSIZE
             read_length = MDMFOFFSETS_LENGTH
             end = read_offset + read_length
-            (encprivkey,
-             sharehashes,
-             signature,
-             verification_key,
-             verification_key_end,
-             sharedata,
-             blockhashes,
-             eof) = struct.unpack(MDMFOFFSETS,
-                                  offsets[read_offset:end])
+            (
+                encprivkey,
+                sharehashes,
+                signature,
+                verification_key,
+                verification_key_end,
+                sharedata,
+                blockhashes,
+                eof,
+            ) = struct.unpack(MDMFOFFSETS, offsets[read_offset:end])
             self._offsets = {}
-            self._offsets['enc_privkey'] = encprivkey
-            self._offsets['block_hash_tree'] = blockhashes
-            self._offsets['share_hash_chain'] = sharehashes
-            self._offsets['signature'] = signature
-            self._offsets['verification_key'] = verification_key
-            self._offsets['verification_key_end']= \
-                verification_key_end
-            self._offsets['EOF'] = eof
-            self._offsets['share_data'] = sharedata
-
+            self._offsets["enc_privkey"] = encprivkey
+            self._offsets["block_hash_tree"] = blockhashes
+            self._offsets["share_hash_chain"] = sharehashes
+            self._offsets["signature"] = signature
+            self._offsets["verification_key"] = verification_key
+            self._offsets["verification_key_end"] = verification_key_end
+            self._offsets["EOF"] = eof
+            self._offsets["share_data"] = sharedata
 
     def get_block_and_salt(self, segnum):
         """
@@ -1398,8 +1494,9 @@ class MDMFSlotReadProxy(object):
         salt is the salt used to encrypt that segment.
         """
         d = self._maybe_fetch_offsets_and_header()
+
         def _then(ignored):
-            base_share_offset = self._offsets['share_data']
+            base_share_offset = self._offsets["share_data"]
 
             if segnum + 1 > self._num_segments:
                 raise LayoutInvalid("Not a valid segment number")
@@ -1407,8 +1504,9 @@ class MDMFSlotReadProxy(object):
             if self._version_number == 0:
                 share_offset = base_share_offset + self._block_size * segnum
             else:
-                share_offset = base_share_offset + (self._block_size + \
-                                                    SALT_SIZE) * segnum
+                share_offset = (
+                    base_share_offset + (self._block_size + SALT_SIZE) * segnum
+                )
             if segnum + 1 == self._num_segments:
                 data = self._tail_block_size
             else:
@@ -1419,8 +1517,10 @@ class MDMFSlotReadProxy(object):
 
             readvs = [(share_offset, data)]
             return readvs
+
         d.addCallback(_then)
         d.addCallback(lambda readvs: self._read(readvs))
+
         def _process_results(results):
             if self.shnum not in results:
                 raise BadShareError("no data for shnum %d" % self.shnum)
@@ -1444,9 +1544,9 @@ class MDMFSlotReadProxy(object):
                     salt = salt_and_data[:SALT_SIZE]
                     data = salt_and_data[SALT_SIZE:]
             return data, salt
+
         d.addCallback(_process_results)
         return d
-
 
     def get_blockhashes(self, needed=None, force_remote=False):
         """
@@ -1470,28 +1570,32 @@ class MDMFSlotReadProxy(object):
         if needed == set([]):
             return defer.succeed([])
         d = self._maybe_fetch_offsets_and_header()
+
         def _then(ignored):
-            blockhashes_offset = self._offsets['block_hash_tree']
+            blockhashes_offset = self._offsets["block_hash_tree"]
             if self._version_number == 1:
-                blockhashes_length = self._offsets['EOF'] - blockhashes_offset
+                blockhashes_length = self._offsets["EOF"] - blockhashes_offset
             else:
-                blockhashes_length = self._offsets['share_data'] - blockhashes_offset
+                blockhashes_length = self._offsets["share_data"] - blockhashes_offset
             readvs = [(blockhashes_offset, blockhashes_length)]
             return readvs
+
         d.addCallback(_then)
-        d.addCallback(lambda readvs:
-            self._read(readvs, force_remote=force_remote))
+        d.addCallback(lambda readvs: self._read(readvs, force_remote=force_remote))
+
         def _build_block_hash_tree(results):
             if self.shnum not in results:
                 raise BadShareError("no data for shnum %d" % self.shnum)
 
             rawhashes = results[self.shnum][0]
-            results = [rawhashes[i:i+HASH_SIZE]
-                       for i in range(0, len(rawhashes), HASH_SIZE)]
+            results = [
+                rawhashes[i : i + HASH_SIZE]
+                for i in range(0, len(rawhashes), HASH_SIZE)
+            ]
             return results
+
         d.addCallback(_build_block_hash_tree)
         return d
-
 
     def get_sharehashes(self, needed=None, force_remote=False):
         """
@@ -1511,30 +1615,34 @@ class MDMFSlotReadProxy(object):
         d = self._maybe_fetch_offsets_and_header()
 
         def _make_readvs(ignored):
-            sharehashes_offset = self._offsets['share_hash_chain']
+            sharehashes_offset = self._offsets["share_hash_chain"]
             if self._version_number == 0:
-                sharehashes_length = self._offsets['block_hash_tree'] - sharehashes_offset
+                sharehashes_length = (
+                    self._offsets["block_hash_tree"] - sharehashes_offset
+                )
             else:
-                sharehashes_length = self._offsets['signature'] - sharehashes_offset
+                sharehashes_length = self._offsets["signature"] - sharehashes_offset
             readvs = [(sharehashes_offset, sharehashes_length)]
             return readvs
+
         d.addCallback(_make_readvs)
-        d.addCallback(lambda readvs:
-            self._read(readvs, force_remote=force_remote))
+        d.addCallback(lambda readvs: self._read(readvs, force_remote=force_remote))
+
         def _build_share_hash_chain(results):
             if self.shnum not in results:
                 raise BadShareError("no data for shnum %d" % self.shnum)
 
             sharehashes = results[self.shnum][0]
-            results = [sharehashes[i:i+(HASH_SIZE + 2)]
-                       for i in range(0, len(sharehashes), HASH_SIZE + 2)]
-            results = dict([struct.unpack(">H32s", data)
-                            for data in results])
+            results = [
+                sharehashes[i : i + (HASH_SIZE + 2)]
+                for i in range(0, len(sharehashes), HASH_SIZE + 2)
+            ]
+            results = dict([struct.unpack(">H32s", data) for data in results])
             return results
+
         d.addCallback(_build_share_hash_chain)
         d.addErrback(_handle_bad_struct)
         return d
-
 
     def get_encprivkey(self):
         """
@@ -1543,23 +1651,25 @@ class MDMFSlotReadProxy(object):
         d = self._maybe_fetch_offsets_and_header()
 
         def _make_readvs(ignored):
-            privkey_offset = self._offsets['enc_privkey']
+            privkey_offset = self._offsets["enc_privkey"]
             if self._version_number == 0:
-                privkey_length = self._offsets['EOF'] - privkey_offset
+                privkey_length = self._offsets["EOF"] - privkey_offset
             else:
-                privkey_length = self._offsets['share_hash_chain'] - privkey_offset
+                privkey_length = self._offsets["share_hash_chain"] - privkey_offset
             readvs = [(privkey_offset, privkey_length)]
             return readvs
+
         d.addCallback(_make_readvs)
         d.addCallback(lambda readvs: self._read(readvs))
+
         def _process_results(results):
             if self.shnum not in results:
                 raise BadShareError("no data for shnum %d" % self.shnum)
             privkey = results[self.shnum][0]
             return privkey
+
         d.addCallback(_process_results)
         return d
-
 
     def get_signature(self):
         """
@@ -1568,23 +1678,25 @@ class MDMFSlotReadProxy(object):
         d = self._maybe_fetch_offsets_and_header()
 
         def _make_readvs(ignored):
-            signature_offset = self._offsets['signature']
+            signature_offset = self._offsets["signature"]
             if self._version_number == 1:
-                signature_length = self._offsets['verification_key'] - signature_offset
+                signature_length = self._offsets["verification_key"] - signature_offset
             else:
-                signature_length = self._offsets['share_hash_chain'] - signature_offset
+                signature_length = self._offsets["share_hash_chain"] - signature_offset
             readvs = [(signature_offset, signature_length)]
             return readvs
+
         d.addCallback(_make_readvs)
         d.addCallback(lambda readvs: self._read(readvs))
+
         def _process_results(results):
             if self.shnum not in results:
                 raise BadShareError("no data for shnum %d" % self.shnum)
             signature = results[self.shnum][0]
             return signature
+
         d.addCallback(_process_results)
         return d
-
 
     def get_verification_key(self):
         """
@@ -1594,46 +1706,48 @@ class MDMFSlotReadProxy(object):
 
         def _make_readvs(ignored):
             if self._version_number == 1:
-                vk_offset = self._offsets['verification_key']
-                vk_length = self._offsets['verification_key_end'] - vk_offset
+                vk_offset = self._offsets["verification_key"]
+                vk_length = self._offsets["verification_key_end"] - vk_offset
             else:
                 vk_offset = struct.calcsize(">BQ32s16sBBQQLLLLQQ")
-                vk_length = self._offsets['signature'] - vk_offset
+                vk_length = self._offsets["signature"] - vk_offset
             readvs = [(vk_offset, vk_length)]
             return readvs
+
         d.addCallback(_make_readvs)
         d.addCallback(lambda readvs: self._read(readvs))
+
         def _process_results(results):
             if self.shnum not in results:
                 raise BadShareError("no data for shnum %d" % self.shnum)
             verification_key = results[self.shnum][0]
             return verification_key
+
         d.addCallback(_process_results)
         return d
-
 
     def get_encoding_parameters(self):
         """
         I return (k, n, segsize, datalen)
         """
         d = self._maybe_fetch_offsets_and_header()
-        d.addCallback(lambda ignored:
-            (self._required_shares,
-             self._total_shares,
-             self._segment_size,
-             self._data_length))
+        d.addCallback(
+            lambda ignored: (
+                self._required_shares,
+                self._total_shares,
+                self._segment_size,
+                self._data_length,
+            )
+        )
         return d
-
 
     def get_seqnum(self):
         """
         I return the sequence number for this share.
         """
         d = self._maybe_fetch_offsets_and_header()
-        d.addCallback(lambda ignored:
-            self._sequence_number)
+        d.addCallback(lambda ignored: self._sequence_number)
         return d
-
 
     def get_root_hash(self):
         """
@@ -1642,7 +1756,6 @@ class MDMFSlotReadProxy(object):
         d = self._maybe_fetch_offsets_and_header()
         d.addCallback(lambda ignored: self._root_hash)
         return d
-
 
     def get_checkstring(self):
         """
@@ -1656,63 +1769,68 @@ class MDMFSlotReadProxy(object):
         which my users use as a checkstring to detect other writers.
         """
         d = self._maybe_fetch_offsets_and_header()
+
         def _build_checkstring(ignored):
             if self._salt:
-                checkstring = struct.pack(PREFIX,
-                                          self._version_number,
-                                          self._sequence_number,
-                                          self._root_hash,
-                                          self._salt)
+                checkstring = struct.pack(
+                    PREFIX,
+                    self._version_number,
+                    self._sequence_number,
+                    self._root_hash,
+                    self._salt,
+                )
             else:
-                checkstring = struct.pack(MDMFCHECKSTRING,
-                                          self._version_number,
-                                          self._sequence_number,
-                                          self._root_hash)
+                checkstring = struct.pack(
+                    MDMFCHECKSTRING,
+                    self._version_number,
+                    self._sequence_number,
+                    self._root_hash,
+                )
 
             return checkstring
+
         d.addCallback(_build_checkstring)
         return d
 
-
     def get_prefix(self, force_remote):
         d = self._maybe_fetch_offsets_and_header(force_remote)
-        d.addCallback(lambda ignored:
-            self._build_prefix())
+        d.addCallback(lambda ignored: self._build_prefix())
         return d
-
 
     def _build_prefix(self):
         # The prefix is another name for the part of the remote share
         # that gets signed. It consists of everything up to and
         # including the datalength, packed by struct.
         if self._version_number == SDMF_VERSION:
-            return struct.pack(SIGNED_PREFIX,
-                           self._version_number,
-                           self._sequence_number,
-                           self._root_hash,
-                           self._salt,
-                           self._required_shares,
-                           self._total_shares,
-                           self._segment_size,
-                           self._data_length)
+            return struct.pack(
+                SIGNED_PREFIX,
+                self._version_number,
+                self._sequence_number,
+                self._root_hash,
+                self._salt,
+                self._required_shares,
+                self._total_shares,
+                self._segment_size,
+                self._data_length,
+            )
 
         else:
-            return struct.pack(MDMFSIGNABLEHEADER,
-                           self._version_number,
-                           self._sequence_number,
-                           self._root_hash,
-                           self._required_shares,
-                           self._total_shares,
-                           self._segment_size,
-                           self._data_length)
-
+            return struct.pack(
+                MDMFSIGNABLEHEADER,
+                self._version_number,
+                self._sequence_number,
+                self._root_hash,
+                self._required_shares,
+                self._total_shares,
+                self._segment_size,
+                self._data_length,
+            )
 
     def _get_offsets_tuple(self):
         # The offsets tuple is another component of the version
         # information tuple. It is basically our offsets dictionary,
         # itemized and in a tuple.
         return self._offsets.copy()
-
 
     def get_verinfo(self):
         """
@@ -1737,23 +1855,26 @@ class MDMFSlotReadProxy(object):
         16-byte IV instead of a hash of salts.
         """
         d = self._maybe_fetch_offsets_and_header()
+
         def _build_verinfo(ignored):
             if self._version_number == SDMF_VERSION:
                 salt_to_use = self._salt
             else:
                 salt_to_use = None
-            return (self._sequence_number,
-                    self._root_hash,
-                    salt_to_use,
-                    self._segment_size,
-                    self._data_length,
-                    self._required_shares,
-                    self._total_shares,
-                    self._build_prefix(),
-                    self._get_offsets_tuple())
+            return (
+                self._sequence_number,
+                self._root_hash,
+                salt_to_use,
+                self._segment_size,
+                self._data_length,
+                self._required_shares,
+                self._total_shares,
+                self._build_prefix(),
+                self._get_offsets_tuple(),
+            )
+
         d.addCallback(_build_verinfo)
         return d
-
 
     def _read(self, readvs, force_remote=False):
         unsatisfiable = [x for x in readvs if x[0] + x[1] > len(self._data)]
@@ -1762,8 +1883,9 @@ class MDMFSlotReadProxy(object):
         # requests are satisfiable before running it.
 
         if not unsatisfiable or self._data_is_everything:
-            results = [self._data[offset:offset+length]
-                       for (offset, length) in readvs]
+            results = [
+                self._data[offset : offset + length] for (offset, length) in readvs
+            ]
             results = {self.shnum: results}
             return defer.succeed(results)
         else:
@@ -1773,13 +1895,10 @@ class MDMFSlotReadProxy(object):
                 readvs,
             )
 
-
     def is_sdmf(self):
-        """I tell my caller whether or not my remote file is SDMF or MDMF
-        """
+        """I tell my caller whether or not my remote file is SDMF or MDMF"""
         d = self._maybe_fetch_offsets_and_header()
-        d.addCallback(lambda ignored:
-            self._version_number == 0)
+        d.addCallback(lambda ignored: self._version_number == 0)
         return d
 
 

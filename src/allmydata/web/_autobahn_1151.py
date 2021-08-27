@@ -12,13 +12,16 @@ from __future__ import (
 
 
 from autobahn.websocket.protocol import WebSocketProtocol
+
 _originalConnectionLost = WebSocketProtocol._connectionLost
+
 
 def _connectionLost(self, reason):
     if self.openHandshakeTimeoutCall is not None:
         self.openHandshakeTimeoutCall.cancel()
         self.openHandshakeTimeoutCall = None
     return _originalConnectionLost(self, reason)
+
 
 def patch():
     """

@@ -96,9 +96,11 @@ def render(resource, query_args):
                 result,
             ),
         )
+
     def get_body(ignored):
         complete_response = channel.transport.written.getvalue()
         header, body = complete_response.split(b"\r\n\r\n", 1)
         return body
+
     done.addCallback(get_body)
     return done

@@ -10,9 +10,31 @@ from __future__ import division
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
     # open is not here because we want to use native strings on Py2
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import sys, os, stat, tempfile, time, binascii
 import six
@@ -20,8 +42,16 @@ from collections import namedtuple
 from errno import ENOENT
 
 if sys.platform == "win32":
-    from ctypes import WINFUNCTYPE, WinError, windll, POINTER, byref, c_ulonglong, \
-        create_unicode_buffer, get_last_error
+    from ctypes import (
+        WINFUNCTYPE,
+        WinError,
+        windll,
+        POINTER,
+        byref,
+        c_ulonglong,
+        create_unicode_buffer,
+        get_last_error,
+    )
     from ctypes.wintypes import BOOL, DWORD, LPCWSTR, LPWSTR, LPVOID
 
 from twisted.python import log
@@ -31,7 +61,7 @@ from allmydata.util.assertutil import _assert
 
 
 def rename(src, dst, tries=4, basedelay=0.1):
-    """ Here is a superkludge to workaround the fact that occasionally on
+    """Here is a superkludge to workaround the fact that occasionally on
     Windows some other process (e.g. an anti-virus scanner, a local search
     engine, etc.) is looking at your file when you want to delete or move it,
     and hence you can't.  The horrible workaround is to sit and spin, trying
@@ -44,18 +74,27 @@ def rename(src, dst, tries=4, basedelay=0.1):
     as long as the previous wait
     @param basedelay: how long to wait before the second try
     """
-    for i in range(tries-1):
+    for i in range(tries - 1):
         try:
             return os.rename(src, dst)
         except EnvironmentError as le:
             # XXX Tighten this to check if this is a permission denied error (possibly due to another Windows process having the file open and execute the superkludge only in this case.
-            log.msg("XXX KLUDGE Attempting to move file %s => %s; got %s; sleeping %s seconds" % (src, dst, le, basedelay,))
+            log.msg(
+                "XXX KLUDGE Attempting to move file %s => %s; got %s; sleeping %s seconds"
+                % (
+                    src,
+                    dst,
+                    le,
+                    basedelay,
+                )
+            )
             time.sleep(basedelay)
             basedelay *= 2
-    return os.rename(src, dst) # The last try.
+    return os.rename(src, dst)  # The last try.
+
 
 def remove(f, tries=4, basedelay=0.1):
-    """ Here is a superkludge to workaround the fact that occasionally on
+    """Here is a superkludge to workaround the fact that occasionally on
     Windows some other process (e.g. an anti-virus scanner, a local search
     engine, etc.) is looking at your file when you want to delete or move it,
     and hence you can't.  The horrible workaround is to sit and spin, trying
@@ -72,17 +111,25 @@ def remove(f, tries=4, basedelay=0.1):
         os.chmod(f, stat.S_IWRITE | stat.S_IEXEC | stat.S_IREAD)
     except:
         pass
-    for i in range(tries-1):
+    for i in range(tries - 1):
         try:
             return os.remove(f)
         except EnvironmentError as le:
             # XXX Tighten this to check if this is a permission denied error (possibly due to another Windows process having the file open and execute the superkludge only in this case.
             if not os.path.exists(f):
                 return
-            log.msg("XXX KLUDGE Attempting to remove file %s; got %s; sleeping %s seconds" % (f, le, basedelay,))
+            log.msg(
+                "XXX KLUDGE Attempting to remove file %s; got %s; sleeping %s seconds"
+                % (
+                    f,
+                    le,
+                    basedelay,
+                )
+            )
             time.sleep(basedelay)
             basedelay *= 2
-    return os.remove(f) # The last try.
+    return os.remove(f)  # The last try.
+
 
 class ReopenableNamedTemporaryFile(object):
     """
@@ -92,6 +139,7 @@ class ReopenableNamedTemporaryFile(object):
     ReopenableNamedTemporaryFile instance is garbage collected or its shutdown()
     method is called, it deletes the file.
     """
+
     def __init__(self, *args, **kwargs):
         fd, self.name = tempfile.mkstemp(*args, **kwargs)
         os.close(fd)
@@ -107,6 +155,7 @@ class ReopenableNamedTemporaryFile(object):
 
     def shutdown(self):
         remove(self.name)
+
 
 class EncryptedTemporaryFile(object):
     # not implemented: next, readline, readlines, xreadlines, writelines
@@ -157,6 +206,7 @@ class EncryptedTemporaryFile(object):
         old end-of-file are unspecified. The file position after this operation is unspecified."""
         self.file.truncate(newsize)
 
+
 def make_dirs_with_absolute_mode(parent, dirname, mode):
     """
     Make directory `dirname` and chmod it to `mode` afterwards.
@@ -173,7 +223,10 @@ def make_dirs_with_absolute_mode(parent, dirname, mode):
         os.chmod(dirname, mode)
         # FIXME: doesn't seem to work on Windows for long paths
         old_dirname, dirname = dirname, os.path.dirname(dirname)
-        _assert(len(dirname) < len(old_dirname), dirname=dirname, old_dirname=old_dirname)
+        _assert(
+            len(dirname) < len(old_dirname), dirname=dirname, old_dirname=old_dirname
+        )
+
 
 def is_ancestor_path(parent, dirname):
     while dirname != parent:
@@ -182,6 +235,7 @@ def is_ancestor_path(parent, dirname):
         if len(dirname) >= len(old_dirname):
             return False
     return True
+
 
 def make_dirs(dirname, mode=0o777):
     """
@@ -200,7 +254,11 @@ def make_dirs(dirname, mode=0o777):
     if not os.path.isdir(dirname):
         if tx:
             raise tx
-        raise IOError("unknown error prevented creation of directory, or deleted the directory immediately after creation: %s" % dirname) # careful not to construct an IOError with a 2-tuple, as that has a special meaning...
+        raise IOError(
+            "unknown error prevented creation of directory, or deleted the directory immediately after creation: %s"
+            % dirname
+        )  # careful not to construct an IOError with a 2-tuple, as that has a special meaning...
+
 
 def rm_dir(dirname):
     """
@@ -243,6 +301,7 @@ def remove_if_possible(f):
     except:
         pass
 
+
 def du(basedir):
     size = 0
 
@@ -253,6 +312,7 @@ def du(basedir):
 
     return size
 
+
 def move_into_place(source, dest):
     """Atomically replace a file, or as near to it as the platform allows.
     The dest file may or may not exist."""
@@ -262,13 +322,19 @@ def move_into_place(source, dest):
         remove_if_possible(dest)
     os.rename(source, dest)
 
+
 def write_atomically(target, contents, mode="b"):
     assert (
-        isinstance(contents, bytes) and "b" in mode or
-        isinstance(contents, str) and "t" in mode or mode == ""), (type(contents), mode)
-    with open(target+".tmp", "w"+mode) as f:
+        isinstance(contents, bytes)
+        and "b" in mode
+        or isinstance(contents, str)
+        and "t" in mode
+        or mode == ""
+    ), (type(contents), mode)
+    with open(target + ".tmp", "w" + mode) as f:
         f.write(contents)
-    move_into_place(target+".tmp", target)
+    move_into_place(target + ".tmp", target)
+
 
 def write(path, data, mode="wb"):
     if "b" in mode and isinstance(data, str):
@@ -276,9 +342,11 @@ def write(path, data, mode="wb"):
     with open(path, mode) as f:
         f.write(data)
 
+
 def read(path, mode="rb"):
     with open(path, mode) as rf:
         return rf.read()
+
 
 def put_file(path, inf):
     precondition_abspath(path)
@@ -291,6 +359,7 @@ def put_file(path, inf):
                 break
             outf.write(data)
 
+
 def precondition_abspath(path):
     if not isinstance(path, str):
         raise AssertionError("an abspath must be a Unicode string")
@@ -299,11 +368,16 @@ def precondition_abspath(path):
         # This intentionally doesn't view absolute paths starting with a drive specification, or
         # paths relative to the current drive, as acceptable.
         if not path.startswith("\\\\"):
-            raise AssertionError("an abspath should be normalized using abspath_expanduser_unicode")
+            raise AssertionError(
+                "an abspath should be normalized using abspath_expanduser_unicode"
+            )
     else:
         # This intentionally doesn't view the path '~' or paths starting with '~/' as acceptable.
         if not os.path.isabs(path):
-            raise AssertionError("an abspath should be normalized using abspath_expanduser_unicode")
+            raise AssertionError(
+                "an abspath should be normalized using abspath_expanduser_unicode"
+            )
+
 
 # Work around <http://bugs.python.org/issue3426>. This code is adapted from
 # <http://svn.python.org/view/python/trunk/Lib/ntpath.py?revision=78247&view=markup>
@@ -314,6 +388,7 @@ try:
     from nt import _getfullpathname
 except ImportError:
     pass
+
 
 def abspath_expanduser_unicode(path, base=None, long_path=True):
     """
@@ -337,7 +412,7 @@ def abspath_expanduser_unicode(path, base=None, long_path=True):
         # e.g. "\\". See <http://bugs.python.org/issue1669539>.
         try:
             if base is None:
-                path = _getfullpathname(path or u".")
+                path = _getfullpathname(path or ".")
             else:
                 path = _getfullpathname(os.path.join(base, path))
         except OSError:
@@ -347,7 +422,7 @@ def abspath_expanduser_unicode(path, base=None, long_path=True):
         if base is None:
             cwd = os.getcwd()
             if PY2:
-                cwd = cwd.decode('utf8')
+                cwd = cwd.decode("utf8")
             path = os.path.join(cwd, path)
         else:
             path = os.path.join(base, path)
@@ -361,29 +436,29 @@ def abspath_expanduser_unicode(path, base=None, long_path=True):
 
     return path
 
+
 def to_windows_long_path(path):
     # '/' is normally a perfectly valid path component separator in Windows.
     # However, when using the "\\?\" syntax it is not recognized, so we
     # replace it with '\' here.
-    path = path.replace(u"/", u"\\")
+    path = path.replace("/", "\\")
 
     # Note that other normalizations such as removing '.' and '..' should
     # be done outside this function.
 
-    if path.startswith(u"\\\\?\\") or path.startswith(u"\\\\.\\"):
+    if path.startswith("\\\\?\\") or path.startswith("\\\\.\\"):
         return path
-    elif path.startswith(u"\\\\"):
-        return u"\\\\?\\UNC\\" + path[2 :]
+    elif path.startswith("\\\\"):
+        return "\\\\?\\UNC\\" + path[2:]
     else:
-        return u"\\\\?\\" + path
+        return "\\\\?\\" + path
 
 
 have_GetDiskFreeSpaceExW = False
 if sys.platform == "win32":
     # <http://msdn.microsoft.com/en-us/library/windows/desktop/ms683188%28v=vs.85%29.aspx>
     GetEnvironmentVariableW = WINFUNCTYPE(
-        DWORD,  LPCWSTR, LPWSTR, DWORD,
-        use_last_error=True
+        DWORD, LPCWSTR, LPWSTR, DWORD, use_last_error=True
     )(("GetEnvironmentVariableW", windll.kernel32))
 
     try:
@@ -392,14 +467,20 @@ if sys.platform == "win32":
 
         # <http://msdn.microsoft.com/en-us/library/aa364937%28VS.85%29.aspx>
         GetDiskFreeSpaceExW = WINFUNCTYPE(
-            BOOL,  LPCWSTR, PULARGE_INTEGER, PULARGE_INTEGER, PULARGE_INTEGER,
-            use_last_error=True
+            BOOL,
+            LPCWSTR,
+            PULARGE_INTEGER,
+            PULARGE_INTEGER,
+            PULARGE_INTEGER,
+            use_last_error=True,
         )(("GetDiskFreeSpaceExW", windll.kernel32))
 
         have_GetDiskFreeSpaceExW = True
     except Exception:
         import traceback
+
         traceback.print_exc()
+
 
 def expanduser(path):
     # os.path.expanduser is hopelessly broken for Unicode paths on Windows (ticket #1674).
@@ -408,27 +489,32 @@ def expanduser(path):
     else:
         return os.path.expanduser(path)
 
+
 def windows_expanduser(path):
-    if not path.startswith('~'):
+    if not path.startswith("~"):
         return path
 
-    home_dir = windows_getenv(u'USERPROFILE')
+    home_dir = windows_getenv("USERPROFILE")
     if home_dir is None:
-        home_drive = windows_getenv(u'HOMEDRIVE')
-        home_path = windows_getenv(u'HOMEPATH')
+        home_drive = windows_getenv("HOMEDRIVE")
+        home_path = windows_getenv("HOMEPATH")
         if home_drive is None or home_path is None:
-            raise OSError("Could not find home directory: neither %USERPROFILE% nor (%HOMEDRIVE% and %HOMEPATH%) are set.")
+            raise OSError(
+                "Could not find home directory: neither %USERPROFILE% nor (%HOMEDRIVE% and %HOMEPATH%) are set."
+            )
         home_dir = os.path.join(home_drive, home_path)
 
-    if path == '~':
+    if path == "~":
         return home_dir
-    elif path.startswith('~/') or path.startswith('~\\'):
-        return os.path.join(home_dir, path[2 :])
+    elif path.startswith("~/") or path.startswith("~\\"):
+        return os.path.join(home_dir, path[2:])
     else:
         return path
 
+
 # <https://msdn.microsoft.com/en-us/library/windows/desktop/ms681382%28v=vs.85%29.aspx>
 ERROR_ENVVAR_NOT_FOUND = 203
+
 
 def windows_getenv(name):
     # Based on <http://stackoverflow.com/questions/2608200/problems-with-umlauts-in-python-appdata-environvent-variable/2608368#2608368>,
@@ -442,26 +528,33 @@ def windows_getenv(name):
         err = get_last_error()
         if err == ERROR_ENVVAR_NOT_FOUND:
             return None
-        raise OSError("WinError: %s\n attempting to read size of environment variable %r"
-                      % (WinError(err), name))
+        raise OSError(
+            "WinError: %s\n attempting to read size of environment variable %r"
+            % (WinError(err), name)
+        )
     if n == 1:
         # Avoid an ambiguity between a zero-length string and an error in the return value of the
         # call to GetEnvironmentVariableW below.
-        return u""
+        return ""
 
-    buf = create_unicode_buffer(u'\0'*n)
+    buf = create_unicode_buffer("\0" * n)
     retval = GetEnvironmentVariableW(name, buf, n)
     if retval == 0:
         err = get_last_error()
         if err == ERROR_ENVVAR_NOT_FOUND:
             return None
-        raise OSError("WinError: %s\n attempting to read environment variable %r"
-                      % (WinError(err), name))
+        raise OSError(
+            "WinError: %s\n attempting to read environment variable %r"
+            % (WinError(err), name)
+        )
     if retval >= n:
-        raise OSError("Unexpected result %d (expected less than %d) from GetEnvironmentVariableW attempting to read environment variable %r"
-                      % (retval, n, name))
+        raise OSError(
+            "Unexpected result %d (expected less than %d) from GetEnvironmentVariableW attempting to read environment variable %r"
+            % (retval, n, name)
+        )
 
     return buf.value
+
 
 def get_disk_stats(whichdir, reserved_space=0):
     """Return disk statistics for the storage disk, in the form of a dict
@@ -492,17 +585,19 @@ def get_disk_stats(whichdir, reserved_space=0):
         # which we do in allmydata.windows.fixups.initialize().)
 
         n_free_for_nonroot = c_ulonglong(0)
-        n_total            = c_ulonglong(0)
-        n_free_for_root    = c_ulonglong(0)
-        retval = GetDiskFreeSpaceExW(whichdir, byref(n_free_for_nonroot),
-                                               byref(n_total),
-                                               byref(n_free_for_root))
+        n_total = c_ulonglong(0)
+        n_free_for_root = c_ulonglong(0)
+        retval = GetDiskFreeSpaceExW(
+            whichdir, byref(n_free_for_nonroot), byref(n_total), byref(n_free_for_root)
+        )
         if retval == 0:
-            raise OSError("WinError: %s\n attempting to get disk statistics for %r"
-                          % (WinError(get_last_error()), whichdir))
+            raise OSError(
+                "WinError: %s\n attempting to get disk statistics for %r"
+                % (WinError(get_last_error()), whichdir)
+            )
         free_for_nonroot = n_free_for_nonroot.value
-        total            = n_total.value
-        free_for_root    = n_free_for_root.value
+        total = n_total.value
+        free_for_root = n_free_for_root.value
     else:
         # For Unix-like systems.
         # <http://docs.python.org/library/os.html#os.statvfs>
@@ -528,12 +623,14 @@ def get_disk_stats(whichdir, reserved_space=0):
     used = total - free_for_root
     avail = max(free_for_nonroot - reserved_space, 0)
 
-    return { 'total': total,
-             'free_for_root': free_for_root,
-             'free_for_nonroot': free_for_nonroot,
-             'used': used,
-             'avail': avail,
-           }
+    return {
+        "total": total,
+        "free_for_root": free_for_root,
+        "free_for_nonroot": free_for_nonroot,
+        "used": used,
+        "avail": avail,
+    }
+
 
 def get_available_space(whichdir, reserved_space):
     """Returns available space for share storage in bytes, or None if no
@@ -548,7 +645,7 @@ def get_available_space(whichdir, reserved_space):
     filesystem as reserved_space.
     """
     try:
-        return get_disk_stats(whichdir, reserved_space)['avail']
+        return get_disk_stats(whichdir, reserved_space)["avail"]
     except AttributeError:
         return None
     except EnvironmentError:
@@ -573,8 +670,7 @@ def reraise(wrapper):
 if sys.platform == "win32":
     # <https://msdn.microsoft.com/en-us/library/windows/desktop/aa365512%28v=vs.85%29.aspx>
     ReplaceFileW = WINFUNCTYPE(
-        BOOL,  LPCWSTR, LPCWSTR, LPCWSTR, DWORD, LPVOID, LPVOID,
-        use_last_error=True
+        BOOL, LPCWSTR, LPCWSTR, LPCWSTR, DWORD, LPVOID, LPVOID, use_last_error=True
     )(("ReplaceFileW", windll.kernel32))
 
     REPLACEFILE_IGNORE_MERGE_ERRORS = 0x00000002
@@ -591,8 +687,14 @@ if sys.platform == "win32":
 
         # no "backup" path (the first None) because we don't want to
         # create a backup file
-        r = ReplaceFileW(replaced_path, replacement_path, None,
-                         REPLACEFILE_IGNORE_MERGE_ERRORS, None, None)
+        r = ReplaceFileW(
+            replaced_path,
+            replacement_path,
+            None,
+            REPLACEFILE_IGNORE_MERGE_ERRORS,
+            None,
+            None,
+        )
         if r == 0:
             # The UnableToUnlinkReplacementError case does not happen on Windows;
             # all errors should be treated as signalling a conflict.
@@ -604,7 +706,10 @@ if sys.platform == "win32":
                 move_into_place(replacement_path, replaced_path)
             except EnvironmentError:
                 reraise(ConflictError)
+
+
 else:
+
     def rename_no_overwrite(source_path, dest_path):
         # link will fail with EEXIST if there is already something at dest_path.
         os.link(source_path, dest_path)
@@ -629,33 +734,37 @@ else:
             reraise(ConflictError)
 
 
-PathInfo = namedtuple('PathInfo', 'isdir isfile islink exists size mtime_ns ctime_ns')
+PathInfo = namedtuple("PathInfo", "isdir isfile islink exists size mtime_ns ctime_ns")
+
 
 def seconds_to_ns(t):
     return int(t * 1000000000)
+
 
 def get_pathinfo(path_u, now_ns=None):
     try:
         statinfo = os.lstat(path_u)
         mode = statinfo.st_mode
-        return PathInfo(isdir   =stat.S_ISDIR(mode),
-                        isfile  =stat.S_ISREG(mode),
-                        islink  =stat.S_ISLNK(mode),
-                        exists  =True,
-                        size    =statinfo.st_size,
-                        mtime_ns=seconds_to_ns(statinfo.st_mtime),
-                        ctime_ns=seconds_to_ns(statinfo.st_ctime),
-                       )
+        return PathInfo(
+            isdir=stat.S_ISDIR(mode),
+            isfile=stat.S_ISREG(mode),
+            islink=stat.S_ISLNK(mode),
+            exists=True,
+            size=statinfo.st_size,
+            mtime_ns=seconds_to_ns(statinfo.st_mtime),
+            ctime_ns=seconds_to_ns(statinfo.st_ctime),
+        )
     except OSError as e:
         if e.errno == ENOENT:
             if now_ns is None:
                 now_ns = seconds_to_ns(time.time())
-            return PathInfo(isdir   =False,
-                            isfile  =False,
-                            islink  =False,
-                            exists  =False,
-                            size    =None,
-                            mtime_ns=now_ns,
-                            ctime_ns=now_ns,
-                           )
+            return PathInfo(
+                isdir=False,
+                isfile=False,
+                islink=False,
+                exists=False,
+                size=None,
+                mtime_ns=now_ns,
+                ctime_ns=now_ns,
+            )
         raise

@@ -11,10 +11,27 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2, native_str
+
 if PY2:
     # Don't import object/str/dict/etc. types, so we don't break any
     # interfaces. Not importing open() because it triggers bogus flake8 error.
-    from builtins import filter, map, zip, ascii, chr, hex, input, next, oct, pow, round, super, range, max, min  # noqa: F401
+    from builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        pow,
+        round,
+        super,
+        range,
+        max,
+        min,
+    )  # noqa: F401
 
 from past.builtins import long
 
@@ -22,39 +39,50 @@ from zope.interface import Interface, Attribute
 from twisted.plugin import (
     IPlugin,
 )
-from foolscap.api import StringConstraint, ListOf, TupleOf, SetOf, DictOf, \
-     ChoiceOf, IntegerConstraint, Any, RemoteInterface, Referenceable
+from foolscap.api import (
+    StringConstraint,
+    ListOf,
+    TupleOf,
+    SetOf,
+    DictOf,
+    ChoiceOf,
+    IntegerConstraint,
+    Any,
+    RemoteInterface,
+    Referenceable,
+)
 
-HASH_SIZE=32
-SALT_SIZE=16
+HASH_SIZE = 32
+SALT_SIZE = 16
 
-SDMF_VERSION=0
-MDMF_VERSION=1
+SDMF_VERSION = 0
+MDMF_VERSION = 1
 
-Hash = StringConstraint(maxLength=HASH_SIZE,
-                        minLength=HASH_SIZE)# binary format 32-byte SHA256 hash
-Nodeid = StringConstraint(maxLength=20,
-                          minLength=20) # binary format 20-byte SHA1 hash
+Hash = StringConstraint(
+    maxLength=HASH_SIZE, minLength=HASH_SIZE
+)  # binary format 32-byte SHA256 hash
+Nodeid = StringConstraint(maxLength=20, minLength=20)  # binary format 20-byte SHA1 hash
 FURL = StringConstraint(1000)
 StorageIndex = StringConstraint(16)
-URI = StringConstraint(300) # kind of arbitrary
+URI = StringConstraint(300)  # kind of arbitrary
 
 MAX_BUCKETS = 256  # per peer -- zfec offers at most 256 shares per file
 
-DEFAULT_MAX_SEGMENT_SIZE = 128*1024
+DEFAULT_MAX_SEGMENT_SIZE = 128 * 1024
 
 ShareData = StringConstraint(None)
 URIExtensionData = StringConstraint(1000)
-Number = IntegerConstraint(8) # 2**(8*8) == 16EiB ~= 18e18 ~= 18 exabytes
+Number = IntegerConstraint(8)  # 2**(8*8) == 16EiB ~= 18e18 ~= 18 exabytes
 Offset = Number
-ReadSize = int # the 'int' constraint is 2**31 == 2Gib -- large files are processed in not-so-large increments
-WriteEnablerSecret = Hash # used to protect mutable share modifications
-LeaseRenewSecret = Hash # used to protect lease renewal requests
-LeaseCancelSecret = Hash # was used to protect lease cancellation requests
+ReadSize = int  # the 'int' constraint is 2**31 == 2Gib -- large files are processed in not-so-large increments
+WriteEnablerSecret = Hash  # used to protect mutable share modifications
+LeaseRenewSecret = Hash  # used to protect lease renewal requests
+LeaseCancelSecret = Hash  # was used to protect lease cancellation requests
 
 
 class RIBucketWriter(RemoteInterface):
-    """ Objects of this kind live on the server side. """
+    """Objects of this kind live on the server side."""
+
     def write(offset=Offset, data=ShareData):
         return None
 
@@ -67,8 +95,7 @@ class RIBucketWriter(RemoteInterface):
         return None
 
     def abort():
-        """Abandon all the data that has been written.
-        """
+        """Abandon all the data that has been written."""
         return None
 
 
@@ -96,11 +123,14 @@ TestVector = ListOf(TupleOf(Offset, ReadSize, bytes, bytes))
 # you should use length==len(specimen) for everything except nop
 DataVector = ListOf(TupleOf(Offset, ShareData))
 # (offset, data). This limits us to 30 writes of 1MiB each per call
-TestAndWriteVectorsForShares = DictOf(int,
-                                      TupleOf(TestVector,
-                                              DataVector,
-                                              ChoiceOf(None, Offset), # new_length
-                                              ))
+TestAndWriteVectorsForShares = DictOf(
+    int,
+    TupleOf(
+        TestVector,
+        DataVector,
+        ChoiceOf(None, Offset),  # new_length
+    ),
+)
 ReadVector = ListOf(TupleOf(Offset, ReadSize))
 ReadData = ListOf(ShareData)
 # returns data[offset:offset+length] for each element of TestVector
@@ -115,11 +145,14 @@ class RIStorageServer(RemoteInterface):
         """
         return DictOf(bytes, Any())
 
-    def allocate_buckets(storage_index=StorageIndex,
-                         renew_secret=LeaseRenewSecret,
-                         cancel_secret=LeaseCancelSecret,
-                         sharenums=SetOf(int, maxLength=MAX_BUCKETS),
-                         allocated_size=Offset, canary=Referenceable):
+    def allocate_buckets(
+        storage_index=StorageIndex,
+        renew_secret=LeaseRenewSecret,
+        cancel_secret=LeaseCancelSecret,
+        sharenums=SetOf(int, maxLength=MAX_BUCKETS),
+        allocated_size=Offset,
+        canary=Referenceable,
+    ):
         """
         @param storage_index: the index of the bucket to be created or
                               increfed.
@@ -139,12 +172,16 @@ class RIStorageServer(RemoteInterface):
                  already have and allocated is what we hereby agree to accept.
                  New leases are added for shares in both lists.
         """
-        return TupleOf(SetOf(int, maxLength=MAX_BUCKETS),
-                       DictOf(int, RIBucketWriter, maxKeys=MAX_BUCKETS))
+        return TupleOf(
+            SetOf(int, maxLength=MAX_BUCKETS),
+            DictOf(int, RIBucketWriter, maxKeys=MAX_BUCKETS),
+        )
 
-    def add_lease(storage_index=StorageIndex,
-                  renew_secret=LeaseRenewSecret,
-                  cancel_secret=LeaseCancelSecret):
+    def add_lease(
+        storage_index=StorageIndex,
+        renew_secret=LeaseRenewSecret,
+        cancel_secret=LeaseCancelSecret,
+    ):
         """
         Add a new lease on the given bucket. If the renew_secret matches an
         existing lease, that lease will be renewed instead. If there is no
@@ -152,7 +189,7 @@ class RIStorageServer(RemoteInterface):
         tahoe-1.3.0 and earlier, IndexError was raised if there was no
         bucket)
         """
-        return Any() # returns None now, but future versions might change
+        return Any()  # returns None now, but future versions might change
 
     def renew_lease(storage_index=StorageIndex, renew_secret=LeaseRenewSecret):
         """
@@ -171,22 +208,18 @@ class RIStorageServer(RemoteInterface):
     def get_buckets(storage_index=StorageIndex):
         return DictOf(int, RIBucketReader, maxKeys=MAX_BUCKETS)
 
-
-
-    def slot_readv(storage_index=StorageIndex,
-                   shares=ListOf(int), readv=ReadVector):
+    def slot_readv(storage_index=StorageIndex, shares=ListOf(int), readv=ReadVector):
         """Read a vector from the numbered shares associated with the given
         storage index. An empty shares list means to return data from all
         known shares. Returns a dictionary with one key per share."""
-        return DictOf(int, ReadData) # shnum -> results
+        return DictOf(int, ReadData)  # shnum -> results
 
-    def slot_testv_and_readv_and_writev(storage_index=StorageIndex,
-                                        secrets=TupleOf(WriteEnablerSecret,
-                                                        LeaseRenewSecret,
-                                                        LeaseCancelSecret),
-                                        tw_vectors=TestAndWriteVectorsForShares,
-                                        r_vector=ReadVector,
-                                        ):
+    def slot_testv_and_readv_and_writev(
+        storage_index=StorageIndex,
+        secrets=TupleOf(WriteEnablerSecret, LeaseRenewSecret, LeaseCancelSecret),
+        tw_vectors=TestAndWriteVectorsForShares,
+        r_vector=ReadVector,
+    ):
         """
         General-purpose test-read-and-set operation for mutable slots:
         (1) For submitted shnums, compare the test vectors against extant
@@ -295,8 +328,9 @@ class RIStorageServer(RemoteInterface):
         """
         return TupleOf(bool, DictOf(int, ReadData))
 
-    def advise_corrupt_share(share_type=bytes, storage_index=StorageIndex,
-                             shnum=int, reason=bytes):
+    def advise_corrupt_share(
+        share_type=bytes, storage_index=StorageIndex, shnum=int, reason=bytes
+    ):
         """Clients who discover hash failures in shares that they have
         downloaded from me will use this method to inform me about the
         failures. I will record their concern so that my operator can
@@ -317,71 +351,72 @@ class IStorageServer(Interface):
     """
     An object capable of storing shares for a storage client.
     """
+
     def get_version():
         """
         :see: ``RIStorageServer.get_version``
         """
 
     def allocate_buckets(
-            storage_index,
-            renew_secret,
-            cancel_secret,
-            sharenums,
-            allocated_size,
-            canary,
+        storage_index,
+        renew_secret,
+        cancel_secret,
+        sharenums,
+        allocated_size,
+        canary,
     ):
         """
         :see: ``RIStorageServer.allocate_buckets``
         """
 
     def add_lease(
-            storage_index,
-            renew_secret,
-            cancel_secret,
+        storage_index,
+        renew_secret,
+        cancel_secret,
     ):
         """
         :see: ``RIStorageServer.add_lease``
         """
 
     def renew_lease(
-            storage_index,
-            renew_secret,
+        storage_index,
+        renew_secret,
     ):
         """
         :see: ``RIStorageServer.renew_lease``
         """
 
     def get_buckets(
-            storage_index,
+        storage_index,
     ):
         """
         :see: ``RIStorageServer.get_buckets``
         """
 
     def slot_readv(
-            storage_index,
-            shares,
-            readv,
+        storage_index,
+        shares,
+        readv,
     ):
         """
         :see: ``RIStorageServer.slot_readv``
         """
 
     def slot_testv_and_readv_and_writev(
-            storage_index,
-            secrets,
-            tw_vectors,
-            r_vector,
+        storage_index,
+        secrets,
+        tw_vectors,
+        r_vector,
     ):
         """
         :see: ``RIStorageServer.slot_testv_readv_and_writev``
         """
 
     def advise_corrupt_share(
-            share_type,
-            storage_index,
-            shnum,
-            reason,
+        share_type,
+        storage_index,
+        shnum,
+        reason,
     ):
         """
         :see: ``RIStorageServer.advise_corrupt_share``
@@ -392,6 +427,7 @@ class IStorageBucketWriter(Interface):
     """
     Objects of this kind live on the client side.
     """
+
     def put_block(segmentnum, data):
         """
         @param segmentnum=int
@@ -483,18 +519,22 @@ class IStorageBroker(Interface):
         """
         @return: list of IServer instances
         """
+
     def get_connected_servers():
         """
         @return: frozenset of connected IServer instances
         """
+
     def get_known_servers():
         """
         @return: frozenset of IServer instances
         """
+
     def get_all_serverids():
         """
         @return: frozenset of serverid strings
         """
+
     def get_nickname_for_serverid(serverid):
         """
         @return: unicode nickname, or None
@@ -556,6 +596,7 @@ class IDisplayableServer(Interface):
 
 class IServer(IDisplayableServer):
     """I live in the client, and represent a single server."""
+
     def start_connecting(trigger_cb):
         pass
 
@@ -589,6 +630,7 @@ class IMutableSlotWriter(Interface):
     """
     The interface for a writer around a mutable slot on a remote server.
     """
+
     def set_checkstring(seqnum_or_checkstring, root_hash=None, salt=None):
         """
         Set the checkstring that I will pass to the remote server when
@@ -704,6 +746,7 @@ class IDirnodeURI(Interface):
 
 class IFileURI(Interface):
     """I am a URI that represents a filenode."""
+
     def get_size():
         """Return the length (in bytes) of the file that I represent."""
 
@@ -711,11 +754,14 @@ class IFileURI(Interface):
 class IImmutableFileURI(IFileURI):
     pass
 
+
 class IMutableFileURI(Interface):
     pass
 
+
 class IDirectoryURI(Interface):
     pass
+
 
 class IReadonlyDirectoryURI(Interface):
     pass
@@ -724,15 +770,18 @@ class IReadonlyDirectoryURI(Interface):
 class CapConstraintError(Exception):
     """A constraint on a cap was violated."""
 
+
 class MustBeDeepImmutableError(CapConstraintError):
     """Mutable children cannot be added to an immutable directory.
     Also, caps obtained from an immutable directory can trigger this error
     if they are later found to refer to a mutable object and then used."""
 
+
 class MustBeReadonlyError(CapConstraintError):
     """Known write caps cannot be specified in a ro_uri field. Also,
     caps obtained from a ro_uri field can trigger this error if they
     are later found to be write caps and then used."""
+
 
 class MustNotBeUnknownRWError(CapConstraintError):
     """Cannot add an unknown child cap specified in a rw_uri field."""
@@ -749,9 +798,7 @@ class IProgress(Interface):
     :class:`allmydata.util.progress.PercentProgress`
     """
 
-    progress = Attribute(
-        "Current amount of progress (in percentage)"
-    )
+    progress = Attribute("Current amount of progress (in percentage)")
 
     def set_progress(self, value):
         """
@@ -844,6 +891,7 @@ class IReadable(Interface):
         download-to-memory consumer.
         """
 
+
 class IPeerSelector(Interface):
     """
     I select peers for an upload, maximizing some measure of health.
@@ -857,6 +905,7 @@ class IPeerSelector(Interface):
     healthy. I keep track of failures during the process and update my
     conclusions appropriately.
     """
+
     def add_peer_with_share(peerid, shnum):
         """
         Update my internal state to reflect the fact that peer peerid
@@ -903,6 +952,7 @@ class IWriteable(Interface):
     I define methods that callers can use to update SDMF and MDMF
     mutable files on a Tahoe-LAFS grid.
     """
+
     # XXX: For the moment, we have only this. It is possible that we
     #      want to move overwrite() and modify() in here too.
     def update(data, offset):
@@ -1002,6 +1052,7 @@ class IMutableFileVersion(IReadable):
 #    IMutableFileNode
 #    IImmutableFileNode
 #   IDirectoryNode
+
 
 class IFilesystemNode(Interface):
     def get_cap():
@@ -1104,6 +1155,7 @@ class IFilesystemNode(Interface):
 class IFileNode(IFilesystemNode):
     """I am a node that represents a file: a sequence of bytes. I am not a
     container, like IDirectoryNode."""
+
     def get_best_readable_version():
         """Return a Deferred that fires with an IReadable for the 'best'
         available version of the file. The IReadable provides only read
@@ -1204,6 +1256,7 @@ class IMutableFileNode(IFileNode):
     only be retrieved and updated all-at-once, as a single big string. Future
     versions of our mutable files will remove this restriction.
     """
+
     def get_best_mutable_version():
         """Return a Deferred that fires with an IMutableFileVersion for
         the 'best' available version of the file. The best version is
@@ -1314,32 +1367,41 @@ class IMutableFileNode(IFileNode):
 class NotEnoughSharesError(Exception):
     """Download was unable to get enough shares"""
 
+
 class NoSharesError(Exception):
     """Download was unable to get any shares at all."""
+
 
 class DownloadStopped(Exception):
     pass
 
+
 class UploadUnhappinessError(Exception):
     """Upload was unable to satisfy 'servers_of_happiness'"""
+
 
 class UnableToFetchCriticalDownloadDataError(Exception):
     """I was unable to fetch some piece of critical data that is supposed to
     be identically present in all shares."""
 
+
 class NoServersError(Exception):
     """Upload wasn't given any servers to work with, usually indicating a
     network or Introducer problem."""
+
 
 class ExistingChildError(Exception):
     """A directory node was asked to add or replace a child that already
     exists, and overwrite= was set to False."""
 
+
 class NoSuchChildError(Exception):
     """A directory node was asked to fetch a child that does not exist."""
+
     def __str__(self):
         # avoid UnicodeEncodeErrors when converting to str
         return self.__repr__()
+
 
 class ChildOfWrongTypeError(Exception):
     """An operation was attempted on a child of the wrong type (file or directory)."""
@@ -1501,8 +1563,14 @@ class IDirectoryNode(IFilesystemNode):
         is a file, or if must_be_file is True and the child is a directory,
         I raise ChildOfWrongTypeError."""
 
-    def create_subdirectory(name, initial_children={}, overwrite=True,
-                            mutable=True, mutable_version=None, metadata=None):
+    def create_subdirectory(
+        name,
+        initial_children={},
+        overwrite=True,
+        mutable=True,
+        mutable_version=None,
+        metadata=None,
+    ):
         """I create and attach a directory at the given name. The new
         directory can be empty, or it can be populated with children
         according to 'initial_children', which takes a dictionary in the same
@@ -1511,8 +1579,9 @@ class IDirectoryNode(IFilesystemNode):
         a Deferred that fires (with the new directory node) when the
         operation finishes."""
 
-    def move_child_to(current_child_name, new_parent, new_child_name=None,
-                      overwrite=True):
+    def move_child_to(
+        current_child_name, new_parent, new_child_name=None, overwrite=True
+    ):
         """I take one of my children and move them to a new parent. The child
         is referenced by name. On the new parent, the child will live under
         'new_child_name', which defaults to 'current_child_name'. TODO: what
@@ -1634,8 +1703,7 @@ class ICodecEncoder(Interface):
         """
 
     def get_block_size():
-        """Return the length of the shares that encode() will produce.
-        """
+        """Return the length of the shares that encode() will produce."""
 
     def encode_proposal(data, desired_share_ids=None):
         """Encode some data.
@@ -2015,8 +2083,7 @@ class IEncryptedUploadable(Interface):
         """
 
     def get_storage_index():
-        """Return a Deferred that fires with a 16-byte storage index.
-        """
+        """Return a Deferred that fires with a 16-byte storage index."""
 
     def read_encrypted(length, hash_only):
         """This behaves just like IUploadable.read(), but returns crypttext
@@ -2130,6 +2197,7 @@ class IMutableUploadable(Interface):
     """
     I represent content that is due to be uploaded to a mutable filecap.
     """
+
     # This is somewhat simpler than the IUploadable interface above
     # because mutable files do not need to be concerned with possibly
     # generating a CHK, nor with per-file keys. It is a subset of the
@@ -2345,8 +2413,7 @@ class IDeepCheckable(Interface):
 
 
 class ICheckResults(Interface):
-    """I contain the detailed results of a check/verify operation.
-    """
+    """I contain the detailed results of a check/verify operation."""
 
     def get_storage_index():
         """Return a string with the (binary) storage index."""
@@ -2424,8 +2491,8 @@ class ICheckResults(Interface):
         healthy file, this will equal 1."""
 
     def get_version_counter_unrecoverable():
-         """Return the number of unrecoverable versions of the file. For a
-         healthy file, this will be 0."""
+        """Return the number of unrecoverable versions of the file. For a
+        healthy file, this will be 0."""
 
     def get_sharemap():
         """Return a dict mapping share identifier to list of IServer objects.
@@ -2488,14 +2555,14 @@ class IDeepCheckResults(Interface):
     def get_counters():
         """Return a dictionary with the following keys::
 
-             count-objects-checked: count of how many objects were checked
-             count-objects-healthy: how many of those objects were completely
-                                    healthy
-             count-objects-unhealthy: how many were damaged in some way
-             count-objects-unrecoverable: how many were unrecoverable
-             count-corrupt-shares: how many shares were found to have
-                                   corruption, summed over all objects
-                                   examined
+        count-objects-checked: count of how many objects were checked
+        count-objects-healthy: how many of those objects were completely
+                               healthy
+        count-objects-unhealthy: how many were damaged in some way
+        count-objects-unrecoverable: how many were unrecoverable
+        count-corrupt-shares: how many shares were found to have
+                              corruption, summed over all objects
+                              examined
         """
 
     def get_corrupt_shares():
@@ -2530,37 +2597,37 @@ class IDeepCheckAndRepairResults(Interface):
     def get_counters():
         """Return a dictionary with the following keys::
 
-             count-objects-checked: count of how many objects were checked
-             count-objects-healthy-pre-repair: how many of those objects were
-                                               completely healthy (before any
-                                               repair)
-             count-objects-unhealthy-pre-repair: how many were damaged in
-                                                 some way
-             count-objects-unrecoverable-pre-repair: how many were unrecoverable
-             count-objects-healthy-post-repair: how many of those objects were
-                                                completely healthy (after any
-                                                repair)
-             count-objects-unhealthy-post-repair: how many were damaged in
-                                                  some way
-             count-objects-unrecoverable-post-repair: how many were
-                                                      unrecoverable
-             count-repairs-attempted: repairs were attempted on this many
-                                      objects. The count-repairs- keys will
-                                      always be provided, however unless
-                                      repair=true is present, they will all
-                                      be zero.
-             count-repairs-successful: how many repairs resulted in healthy
-                                       objects
-             count-repairs-unsuccessful: how many repairs resulted did not
-                                         results in completely healthy objects
-             count-corrupt-shares-pre-repair: how many shares were found to
-                                              have corruption, summed over all
-                                              objects examined (before any
-                                              repair)
-             count-corrupt-shares-post-repair: how many shares were found to
-                                               have corruption, summed over all
-                                               objects examined (after any
-                                               repair)
+        count-objects-checked: count of how many objects were checked
+        count-objects-healthy-pre-repair: how many of those objects were
+                                          completely healthy (before any
+                                          repair)
+        count-objects-unhealthy-pre-repair: how many were damaged in
+                                            some way
+        count-objects-unrecoverable-pre-repair: how many were unrecoverable
+        count-objects-healthy-post-repair: how many of those objects were
+                                           completely healthy (after any
+                                           repair)
+        count-objects-unhealthy-post-repair: how many were damaged in
+                                             some way
+        count-objects-unrecoverable-post-repair: how many were
+                                                 unrecoverable
+        count-repairs-attempted: repairs were attempted on this many
+                                 objects. The count-repairs- keys will
+                                 always be provided, however unless
+                                 repair=true is present, they will all
+                                 be zero.
+        count-repairs-successful: how many repairs resulted in healthy
+                                  objects
+        count-repairs-unsuccessful: how many repairs resulted did not
+                                    results in completely healthy objects
+        count-corrupt-shares-pre-repair: how many shares were found to
+                                         have corruption, summed over all
+                                         objects examined (before any
+                                         repair)
+        count-corrupt-shares-post-repair: how many shares were found to
+                                          have corruption, summed over all
+                                          objects examined (after any
+                                          repair)
         """
 
     def get_stats():
@@ -2572,12 +2639,14 @@ class IDeepCheckAndRepairResults(Interface):
         that were found to be corrupt before any repair was attempted.
         storage_index is binary.
         """
+
     def get_remaining_corrupt_shares():
         """Return a set of (IServer, storage_index, sharenum) for all shares
         that were found to be corrupt after any repair was completed.
         storage_index is binary. These are shares that need manual inspection
         and probably deletion.
         """
+
     def get_all_results():
         """Return a dictionary mapping pathname (a tuple of strings, ready to
         be slash-joined) to an ICheckAndRepairResults instance, one for each
@@ -2613,6 +2682,7 @@ class IRepairable(Interface):
 
 class IRepairResults(Interface):
     """I contain the results of a repair operation."""
+
     def get_successful():
         """Returns a boolean: True if the repair made the file healthy, False
         if not. Repair failure generally indicates a file that has been
@@ -2687,7 +2757,9 @@ class INodeMaker(Interface):
     create simplified/mocked forms for testing purposes.
     """
 
-    def create_from_cap(writecap, readcap=None, deep_immutable=False, name=u"<unknown name>"):
+    def create_from_cap(
+        writecap, readcap=None, deep_immutable=False, name="<unknown name>"
+    ):
         """I create an IFilesystemNode from the given writecap/readcap. I can
         only provide nodes for existing file/directory objects: use my other
         methods to create new objects. I return synchronously."""
@@ -2748,6 +2820,7 @@ class IUploadStatus(Interface):
         """Return an integer with the number of bytes that will eventually
         be uploaded for this file. Returns None if the size is not yet known.
         """
+
     def using_helper():
         """Return True if this upload is using a Helper, False if not."""
 
@@ -2820,8 +2893,10 @@ class IDownloadStatus(Interface):
 class IServermapUpdaterStatus(Interface):
     pass
 
+
 class IPublishStatus(Interface):
     pass
+
 
 class IRetrieveStatus(Interface):
     pass
@@ -2829,6 +2904,7 @@ class IRetrieveStatus(Interface):
 
 class NotCapableError(Exception):
     """You have tried to write to a read-only node."""
+
 
 class BadWriteEnablerError(Exception):
     pass
@@ -2877,7 +2953,7 @@ class RIControlClient(RemoteInterface):
         return DictOf(str, float)
 
 
-UploadResults = Any() #DictOf(bytes, bytes)
+UploadResults = Any()  # DictOf(bytes, bytes)
 
 
 class RIEncryptedUploadable(RemoteInterface):
@@ -2975,13 +3051,14 @@ class IStatsProducer(Interface):
         to be monitored, and numeric values.
         """
 
+
 class FileTooLargeError(Exception):
     pass
 
 
 class IValidatedThingProxy(Interface):
     def start():
-        """ Acquire a thing and validate it. Return a deferred that is
+        """Acquire a thing and validate it. Return a deferred that is
         eventually fired with self if the thing is valid or errbacked if it
         can't be acquired or validated."""
 
@@ -2992,11 +3069,12 @@ class InsufficientVersionError(Exception):
         self.got = got
 
     def __repr__(self):
-        return "InsufficientVersionError(need '%s', got %s)" % (self.needed,
-                                                                self.got)
+        return "InsufficientVersionError(need '%s', got %s)" % (self.needed, self.got)
+
 
 class EmptyPathnameComponentError(Exception):
     """The webapi disallows empty pathname components."""
+
 
 class IConnectionStatus(Interface):
     """
@@ -3014,7 +3092,8 @@ class IConnectionStatus(Interface):
         """
         True if we appear to be connected: we've been successful in
         communicating with our target at some point in the past, and we
-        haven't experienced any errors since then.""")
+        haven't experienced any errors since then."""
+    )
 
     last_connection_time = Attribute(
         """
@@ -3022,7 +3101,8 @@ class IConnectionStatus(Interface):
         when we last transitioned from 'not connected' to 'connected', such
         as when a TCP connect() operation completed and subsequent
         negotiation was successful. Otherwise it is None.
-        """)
+        """
+    )
 
     summary = Attribute(
         """
@@ -3030,14 +3110,16 @@ class IConnectionStatus(Interface):
         display on an informational page. The more complete text from
         last_connection_description would be appropriate for a tool-tip
         popup.
-        """)
+        """
+    )
 
     last_received_time = Attribute(
         """
         A timestamp (seconds-since-epoch) describing the last time we heard
         anything (including low-level keep-alives or inbound requests) from
         the other side.
-        """)
+        """
+    )
 
     non_connected_statuses = Attribute(
         """
@@ -3048,8 +3130,8 @@ class IConnectionStatus(Interface):
         This maps a connection description string (for foolscap this is a
         connection hint and the handler it is using) to the status string
         (pending, connected, refused, or other errors).
-        """)
-
+        """
+    )
 
 
 class IFoolscapStoragePlugin(IPlugin):
@@ -3069,6 +3151,7 @@ class IFoolscapStoragePlugin(IPlugin):
       - cryptocurrencies (ideally, paying for each API call)
       - anonymous tokens (payment for service, but without identities)
     """
+
     name = Attribute(
         """
         A name for referring to this plugin.  This name is both user-facing

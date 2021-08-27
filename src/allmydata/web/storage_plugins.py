@@ -8,10 +8,12 @@ from twisted.web.resource import (
     NoResource,
 )
 
+
 class StoragePlugins(Resource, object):
     """
     The parent resource of all enabled storage client plugins' web resources.
     """
+
     def __init__(self, client):
         """
         :param _Client client: The Tahoe-LAFS client node object which will be

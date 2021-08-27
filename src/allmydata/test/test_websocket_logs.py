@@ -5,7 +5,11 @@ from twisted.internet.defer import inlineCallbacks
 
 from eliot import log_call
 
-from autobahn.twisted.testing import create_memory_agent, MemoryReactorClockResolver, create_pumper
+from autobahn.twisted.testing import (
+    create_memory_agent,
+    MemoryReactorClockResolver,
+    create_pumper,
+)
 
 from allmydata.web.logs import TokenAuthenticatedWebSocketServerProtocol
 
@@ -18,7 +22,9 @@ class TestStreamingLogs(unittest.TestCase):
     def setUp(self):
         self.reactor = MemoryReactorClockResolver()
         self.pumper = create_pumper()
-        self.agent = create_memory_agent(self.reactor, self.pumper, TokenAuthenticatedWebSocketServerProtocol)
+        self.agent = create_memory_agent(
+            self.reactor, self.pumper, TokenAuthenticatedWebSocketServerProtocol
+        )
         return self.pumper.start()
 
     def tearDown(self):
@@ -36,8 +42,10 @@ class TestStreamingLogs(unittest.TestCase):
         )
 
         messages = []
+
         def got_message(msg, is_binary=False):
             messages.append(json.loads(msg))
+
         proto.on("message", got_message)
 
         @log_call(action_type=u"test:cli:some-exciting-action")

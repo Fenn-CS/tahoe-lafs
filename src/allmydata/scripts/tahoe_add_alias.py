@@ -26,13 +26,14 @@ def add_line_to_aliasfile(aliasfile, alias, cap):
     else:
         aliases = ""
     aliases += "%s: %s\n" % (alias, cap)
-    f = codecs.open(aliasfile+".tmp", "w", "utf-8")
+    f = codecs.open(aliasfile + ".tmp", "w", "utf-8")
     f.write(aliases)
     f.close()
-    move_into_place(aliasfile+".tmp", aliasfile)
+    move_into_place(aliasfile + ".tmp", aliasfile)
+
 
 def add_alias(options):
-    nodedir = options['node-directory']
+    nodedir = options["node-directory"]
     alias = options.alias
     precondition(isinstance(alias, unicode), alias=alias)
     cap = options.cap
@@ -58,9 +59,10 @@ def add_alias(options):
     print("Alias %s added" % quote_output(alias), file=stdout)
     return 0
 
+
 def create_alias(options):
     # mkdir+add_alias
-    nodedir = options['node-directory']
+    nodedir = options["node-directory"]
     alias = options.alias
     precondition(isinstance(alias, unicode), alias=alias)
     stdout = options.stdout
@@ -80,7 +82,7 @@ def create_alias(options):
 
     aliasfile = os.path.join(nodedir, "private", "aliases")
 
-    nodeurl = options['node-url']
+    nodeurl = options["node-url"]
     if not nodeurl.endswith("/"):
         nodeurl += "/"
     url = nodeurl + "uri?t=mkdir"
@@ -112,7 +114,7 @@ def _get_alias_details(nodedir):
 
 
 def list_aliases(options):
-    nodedir = options['node-directory']
+    nodedir = options["node-directory"]
     stdout = options.stdout
     stderr = options.stderr
 
@@ -122,23 +124,35 @@ def list_aliases(options):
     fmt = "%" + str(max_width) + "s: %s"
     rc = 0
 
-    if options['json']:
+    if options["json"]:
         try:
             # XXX why are we presuming utf-8 output?
-            print(json.dumps(data, indent=4).decode('utf-8'), file=stdout)
+            print(json.dumps(data, indent=4).decode("utf-8"), file=stdout)
         except (UnicodeEncodeError, UnicodeDecodeError):
             print(json.dumps(data, indent=4), file=stderr)
             rc = 1
     else:
         for name, details in data.items():
-            dircap = details['readonly'] if options['readonly-uri'] else details['readwrite']
+            dircap = (
+                details["readonly"] if options["readonly-uri"] else details["readwrite"]
+            )
             try:
-                print(fmt % (unicode_to_output(name), unicode_to_output(dircap.decode('utf-8'))), file=stdout)
+                print(
+                    fmt
+                    % (
+                        unicode_to_output(name),
+                        unicode_to_output(dircap.decode("utf-8")),
+                    ),
+                    file=stdout,
+                )
             except (UnicodeEncodeError, UnicodeDecodeError):
                 print(fmt % (quote_output(name), quote_output(dircap)), file=stderr)
                 rc = 1
 
     if rc == 1:
-        print("\nThis listing included aliases or caps that could not be converted to the terminal" \
-                        "\noutput encoding. These are shown using backslash escapes and in quotes.", file=stderr)
+        print(
+            "\nThis listing included aliases or caps that could not be converted to the terminal"
+            "\noutput encoding. These are shown using backslash escapes and in quotes.",
+            file=stderr,
+        )
     return rc

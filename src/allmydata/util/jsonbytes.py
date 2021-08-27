@@ -10,8 +10,31 @@ from __future__ import division
 from __future__ import print_function
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 
 import json
@@ -23,6 +46,7 @@ class BytesJSONEncoder(json.JSONEncoder):
 
     The bytes are assumed to be UTF-8 encoded Unicode strings.
     """
+
     def default(self, o):
         if isinstance(o, bytes):
             return o.decode("utf-8")

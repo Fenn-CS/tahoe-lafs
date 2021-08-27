@@ -17,13 +17,37 @@ from __future__ import division
 from __future__ import print_function
 
 from future.utils import PY2
+
 if PY2:
-    from builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 from allmydata.util.mathutil import round_sigfigs
 import math
 from functools import reduce
 import sys
+
 
 def pr_file_loss(p_list, k):
     """
@@ -47,6 +71,7 @@ def pr_file_loss(p_list, k):
     # Sum elements 0 through k-1 of the share set PMF to get the
     # probability that less than k shares survived.
     return sum(survival_pmf(p_list)[0:k])
+
 
 def survival_pmf(p_list):
     """
@@ -77,6 +102,7 @@ def survival_pmf(p_list):
     assert valid_pmf(pmf)
     return pmf
 
+
 def survival_pmf_via_bd(p_list):
     """
     Compute share survival PMF using the binomial distribution PMF as
@@ -91,9 +117,9 @@ def survival_pmf_via_bd(p_list):
     Note that this function does little to no error checking and is
     intended for internal use and testing only.
     """
-    pmf_list = [ binomial_distribution_pmf(p_list.count(p), p)
-                 for p in set(p_list) ]
+    pmf_list = [binomial_distribution_pmf(p_list.count(p), p) for p in set(p_list)]
     return list(reduce(convolve, pmf_list))
+
 
 def survival_pmf_via_conv(p_list):
     """
@@ -103,8 +129,9 @@ def survival_pmf_via_conv(p_list):
     Note that this function does little to no error checking and is
     intended for internal use and testing only.
     """
-    pmf_list = [ [1 - p, p] for p in p_list ];
+    pmf_list = [[1 - p, p] for p in p_list]
     return list(reduce(convolve, pmf_list))
+
 
 def print_pmf(pmf, n=4, out=sys.stdout):
     """
@@ -113,6 +140,7 @@ def print_pmf(pmf, n=4, out=sys.stdout):
     """
     for k, p in enumerate(pmf):
         print("i=" + str(k) + ":", round_sigfigs(p, n), file=out)
+
 
 def pr_backup_file_loss(p_list, backup_p, k):
     """
@@ -141,6 +169,7 @@ def find_k(p_list, target_loss_prob):
     pmf = survival_pmf(p_list)
     return find_k_from_pmf(pmf, target_loss_prob)
 
+
 def find_k_from_pmf(pmf, target_loss_prob):
     """
     Find the highest k value that achieves the targeted loss
@@ -159,6 +188,7 @@ def find_k_from_pmf(pmf, target_loss_prob):
     k = len(pmf) - 1
     return k
 
+
 def repair_count_pmf(survival_pmf, k):
     """
     Return Pr[D=d], where D represents the number of shares that have
@@ -169,22 +199,24 @@ def repair_count_pmf(survival_pmf, k):
 
     # Probability of 0 to repair is the probability of all shares
     # surviving plus the probability of less than k surviving.
-    pmf = [ survival_pmf[n] + sum(survival_pmf[0:k]) ]
+    pmf = [survival_pmf[n] + sum(survival_pmf[0:k])]
 
     # Probability of more than 0, up to N-k to repair
-    for i in range(1, n-k+1):
-        pmf.append(survival_pmf[n-i])
+    for i in range(1, n - k + 1):
+        pmf.append(survival_pmf[n - i])
 
     # Probability of more than N-k to repair is 0, because that means
     # there are less than k available and the file is irreparable.
-    for i in range(n-k+1, n+1):
+    for i in range(n - k + 1, n + 1):
         pmf.append(0.0)
 
-    assert(valid_pmf(pmf))
+    assert valid_pmf(pmf)
     return pmf
+
 
 def bandwidth_cost_function(file_size, shares, k, ul_dl_ratio):
     return file_size + float(file_size) / k * shares * ul_dl_ratio
+
 
 def mean_repair_cost(cost_function, file_size, survival_pmf, k, ul_dl_ratio):
     """
@@ -193,13 +225,19 @@ def mean_repair_cost(cost_function, file_size, survival_pmf, k, ul_dl_ratio):
     'ul_dl_ratio' times download cost.
     """
     repair_pmf = repair_count_pmf(survival_pmf, k)
-    expected_cost = sum([cost_function(file_size, new_shares, k, ul_dl_ratio)
-                         * repair_pmf[new_shares]
-                         for new_shares in range(1, len(repair_pmf))])
+    expected_cost = sum(
+        [
+            cost_function(file_size, new_shares, k, ul_dl_ratio)
+            * repair_pmf[new_shares]
+            for new_shares in range(1, len(repair_pmf))
+        ]
+    )
     return expected_cost
 
-def eternal_repair_cost(cost_function, file_size, survival_pmf, k,
-                        discount_rate=0, ul_dl_ratio=1.0):
+
+def eternal_repair_cost(
+    cost_function, file_size, survival_pmf, k, discount_rate=0, ul_dl_ratio=1.0
+):
     """
     Calculate the eternal repair cost for a file that is aggressively
     repaired, i.e. the sum of repair costs until the file is dead.
@@ -208,7 +246,8 @@ def eternal_repair_cost(cost_function, file_size, survival_pmf, k,
     f = 1 - sum(survival_pmf[0:k])
     r = float(discount_rate)
 
-    return (c * (1-r)) / (1 - (1-r) * f)
+    return (c * (1 - r)) / (1 - (1 - r) * f)
+
 
 def valid_pmf(pmf):
     """
@@ -217,7 +256,8 @@ def valid_pmf(pmf):
 
     Returns true if the elements of pmf sum to 1.
     """
-    return round(sum(pmf),5) == 1.0
+    return round(sum(pmf), 5) == 1.0
+
 
 def valid_probability_list(p_list):
     """
@@ -228,6 +268,7 @@ def valid_probability_list(p_list):
             return False
 
     return True
+
 
 def convolve(list_a, list_b):
     """
@@ -247,12 +288,13 @@ def convolve(list_a, list_b):
         lower = max(0, i - n + 1)
         upper = min(m - 1, i)
 
-        for j in range(lower, upper+1):
-            sum += list_a[i-j] * list_b[j]
+        for j in range(lower, upper + 1):
+            sum += list_a[i - j] * list_b[j]
 
         result.append(sum)
 
     return result
+
 
 def binomial_distribution_pmf(n, p):
     """
@@ -264,17 +306,16 @@ def binomial_distribution_pmf(n, p):
     survive, when placed on n independent servers with survival
     probability p.
     """
-    assert p >= 0 and p <= 1, 'p=%s must be in the range [0,1]'%p
+    assert p >= 0 and p <= 1, "p=%s must be in the range [0,1]" % p
     assert n > 0
 
     result = []
-    for k in range(n+1):
-        result.append(math.pow(p    , k    ) *
-                      math.pow(1 - p, n - k) *
-                      binomial_coeff(n, k))
+    for k in range(n + 1):
+        result.append(math.pow(p, k) * math.pow(1 - p, n - k) * binomial_coeff(n, k))
 
     assert valid_pmf(result)
-    return result;
+    return result
+
 
 def binomial_coeff(n, k):
     """
@@ -283,11 +324,11 @@ def binomial_coeff(n, k):
     """
     assert n >= k
 
-    if k > n/2:
+    if k > n / 2:
         k = n - k
 
     accum = 1.0
-    for i in range(1, k+1):
-        accum = accum * (n - k + i) // i;
+    for i in range(1, k + 1):
+        accum = accum * (n - k + i) // i
 
     return int(accum + 0.5)

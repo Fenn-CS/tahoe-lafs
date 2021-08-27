@@ -6,14 +6,23 @@ import json
 from collections import defaultdict
 from six.moves import cStringIO as StringIO
 from twisted.python.failure import Failure
-from allmydata.scripts.common import get_alias, escape_path, \
-                                     DefaultAliasMarker, TahoeError
+from allmydata.scripts.common import (
+    get_alias,
+    escape_path,
+    DefaultAliasMarker,
+    TahoeError,
+)
 from allmydata.scripts.common_http import do_http, HTTPError
 from allmydata import uri
 from allmydata.util import fileutil
 from allmydata.util.fileutil import abspath_expanduser_unicode, precondition_abspath
-from allmydata.util.encodingutil import unicode_to_url, listdir_unicode, quote_output, \
-    quote_local_unicode_path, to_bytes
+from allmydata.util.encodingutil import (
+    unicode_to_url,
+    listdir_unicode,
+    quote_output,
+    quote_local_unicode_path,
+    to_bytes,
+)
 from allmydata.util.assertutil import precondition, _assert
 
 
@@ -21,14 +30,23 @@ class MissingSourceError(TahoeError):
     def __init__(self, name, quotefn=quote_output):
         TahoeError.__init__(self, "No such file or directory %s" % quotefn(name))
 
+
 class FilenameWithTrailingSlashError(TahoeError):
     def __init__(self, name, quotefn=quote_output):
-        TahoeError.__init__(self, "source '%s' is not a directory, but ends with a slash" % quotefn(name))
+        TahoeError.__init__(
+            self,
+            "source '%s' is not a directory, but ends with a slash" % quotefn(name),
+        )
+
 
 class WeirdSourceError(TahoeError):
     def __init__(self, absname):
         quoted = quote_local_unicode_path(absname)
-        TahoeError.__init__(self, "source '%s' is neither a file nor a directory, I can't handle it" % quoted)
+        TahoeError.__init__(
+            self,
+            "source '%s' is neither a file nor a directory, I can't handle it" % quoted,
+        )
+
 
 def GET_to_file(url):
     resp = do_http("GET", url)
@@ -36,9 +54,11 @@ def GET_to_file(url):
         return resp
     raise HTTPError("Error during GET", resp)
 
+
 def GET_to_string(url):
     f = GET_to_file(url)
     return f.read()
+
 
 def PUT(url, data):
     resp = do_http("PUT", url, data)
@@ -46,11 +66,13 @@ def PUT(url, data):
         return resp.read()
     raise HTTPError("Error during PUT", resp)
 
+
 def POST(url, data):
     resp = do_http("POST", url, data)
     if resp.status in (200, 201):
         return resp.read()
     raise HTTPError("Error during POST", resp)
+
 
 def mkdir(targeturl):
     url = targeturl + "?t=mkdir"
@@ -59,11 +81,19 @@ def mkdir(targeturl):
         return resp.read().strip()
     raise HTTPError("Error during mkdir", resp)
 
+
 def make_tahoe_subdirectory(nodeurl, parent_writecap, name):
-    url = nodeurl + "/".join(["uri",
-                              urllib.quote(parent_writecap),
-                              urllib.quote(unicode_to_url(name)),
-                              ]) + "?t=mkdir"
+    url = (
+        nodeurl
+        + "/".join(
+            [
+                "uri",
+                urllib.quote(parent_writecap),
+                urllib.quote(unicode_to_url(name)),
+            ]
+        )
+        + "?t=mkdir"
+    )
     resp = do_http("POST", url)
     if resp.status in (200, 201):
         return resp.read().strip()
@@ -85,6 +115,7 @@ class LocalFileSource(object):
     def open(self, caps_only):
         return open(self.pathname, "rb")
 
+
 class LocalFileTarget(object):
     def __init__(self, pathname):
         precondition_abspath(pathname)
@@ -93,6 +124,7 @@ class LocalFileTarget(object):
     def put_file(self, inf):
         fileutil.put_file(self.pathname, inf)
 
+
 class LocalMissingTarget(object):
     def __init__(self, pathname):
         precondition_abspath(pathname)
@@ -100,6 +132,7 @@ class LocalMissingTarget(object):
 
     def put_file(self, inf):
         fileutil.put_file(self.pathname, inf)
+
 
 class LocalDirectorySource(object):
     def __init__(self, progressfunc, pathname, basename):
@@ -118,8 +151,8 @@ class LocalDirectorySource(object):
             return
         self.children = {}
         children = listdir_unicode(self.pathname)
-        for i,n in enumerate(children):
-            self.progressfunc("examining %d of %d" % (i+1, len(children)))
+        for i, n in enumerate(children):
+            self.progressfunc("examining %d of %d" % (i + 1, len(children)))
             pn = os.path.join(self.pathname, n)
             if os.path.isdir(pn):
                 child = LocalDirectorySource(self.progressfunc, pn, n)
@@ -132,6 +165,7 @@ class LocalDirectorySource(object):
                 # Could be dangling symlink; probably not copy-able.
                 # TODO: output a warning
                 pass
+
 
 class LocalDirectoryTarget(object):
     def __init__(self, progressfunc, pathname):
@@ -146,8 +180,8 @@ class LocalDirectoryTarget(object):
             return
         self.children = {}
         children = listdir_unicode(self.pathname)
-        for i,n in enumerate(children):
-            self.progressfunc("examining %d of %d" % (i+1, len(children)))
+        for i, n in enumerate(children):
+            self.progressfunc("examining %d of %d" % (i + 1, len(children)))
             pn = os.path.join(self.pathname, n)
             if os.path.isdir(pn):
                 child = LocalDirectoryTarget(self.progressfunc, pn)
@@ -160,7 +194,7 @@ class LocalDirectoryTarget(object):
 
     def get_child_target(self, name):
         precondition(isinstance(name, unicode), name)
-        precondition(len(name), name) # don't want ""
+        precondition(len(name), name)  # don't want ""
         if self.children is None:
             self.populate(recurse=False)
         if name in self.children:
@@ -186,7 +220,7 @@ class TahoeFileSource(object):
         self.mutable = mutable
         self.writecap = writecap
         self.readcap = readcap
-        self._basename = basename # unicode, or None for raw filecaps
+        self._basename = basename  # unicode, or None for raw filecaps
 
     def basename(self):
         return self._basename
@@ -204,6 +238,7 @@ class TahoeFileSource(object):
 
     def bestcap(self):
         return self.writecap or self.readcap
+
 
 class TahoeFileTarget(object):
     def __init__(self, nodeurl, mutable, writecap, readcap, url):
@@ -225,12 +260,13 @@ class TahoeFileTarget(object):
         # to always create mutable files, or to copy mutable files into new
         # mutable files. ticket #835
 
+
 class TahoeDirectorySource(object):
     def __init__(self, nodeurl, cache, progressfunc, basename):
         self.nodeurl = nodeurl
         self.cache = cache
         self.progressfunc = progressfunc
-        self._basename = basename # unicode, or None for raw dircaps
+        self._basename = basename  # unicode, or None for raw dircaps
 
     def basename(self):
         return self._basename
@@ -246,34 +282,35 @@ class TahoeDirectorySource(object):
         parsed = json.loads(resp.read())
         nodetype, d = parsed
         assert nodetype == "dirnode"
-        self.mutable = d.get("mutable", False) # older nodes don't provide it
-        self.children_d = dict( [(unicode(name),value)
-                                 for (name,value)
-                                 in d["children"].iteritems()] )
+        self.mutable = d.get("mutable", False)  # older nodes don't provide it
+        self.children_d = dict(
+            [(unicode(name), value) for (name, value) in d["children"].iteritems()]
+        )
         self.children = None
 
     def init_from_parsed(self, parsed):
         nodetype, d = parsed
         self.writecap = to_bytes(d.get("rw_uri"))
         self.readcap = to_bytes(d.get("ro_uri"))
-        self.mutable = d.get("mutable", False) # older nodes don't provide it
-        self.children_d = dict( [(unicode(name),value)
-                                 for (name,value)
-                                 in d["children"].iteritems()] )
+        self.mutable = d.get("mutable", False)  # older nodes don't provide it
+        self.children_d = dict(
+            [(unicode(name), value) for (name, value) in d["children"].iteritems()]
+        )
         self.children = None
 
     def populate(self, recurse):
         if self.children is not None:
             return
         self.children = {}
-        for i,(name, data) in enumerate(self.children_d.items()):
-            self.progressfunc("examining %d of %d" % (i+1, len(self.children_d)))
+        for i, (name, data) in enumerate(self.children_d.items()):
+            self.progressfunc("examining %d of %d" % (i + 1, len(self.children_d)))
             if data[0] == "filenode":
                 mutable = data[1].get("mutable", False)
                 writecap = to_bytes(data[1].get("rw_uri"))
                 readcap = to_bytes(data[1].get("ro_uri"))
-                self.children[name] = TahoeFileSource(self.nodeurl, mutable,
-                                                      writecap, readcap, name)
+                self.children[name] = TahoeFileSource(
+                    self.nodeurl, mutable, writecap, readcap, name
+                )
             elif data[0] == "dirnode":
                 writecap = to_bytes(data[1].get("rw_uri"))
                 readcap = to_bytes(data[1].get("ro_uri"))
@@ -282,8 +319,9 @@ class TahoeDirectorySource(object):
                 elif readcap and readcap in self.cache:
                     child = self.cache[readcap]
                 else:
-                    child = TahoeDirectorySource(self.nodeurl, self.cache,
-                                                 self.progressfunc, name)
+                    child = TahoeDirectorySource(
+                        self.nodeurl, self.cache, self.progressfunc, name
+                    )
                     child.init_from_grid(writecap, readcap)
                     if writecap:
                         self.cache[writecap] = child
@@ -294,9 +332,12 @@ class TahoeDirectorySource(object):
                 self.children[name] = child
             else:
                 # TODO: there should be an option to skip unknown nodes.
-                raise TahoeError("Cannot copy unknown nodes (ticket #839). "
-                                 "You probably need to use a later version of "
-                                 "Tahoe-LAFS to copy this directory.")
+                raise TahoeError(
+                    "Cannot copy unknown nodes (ticket #839). "
+                    "You probably need to use a later version of "
+                    "Tahoe-LAFS to copy this directory."
+                )
+
 
 class TahoeMissingTarget(object):
     def __init__(self, url):
@@ -315,6 +356,7 @@ class TahoeMissingTarget(object):
         # I'm not sure this will always work
         return PUT(self.url + "?t=uri", filecap)
 
+
 class TahoeDirectoryTarget(object):
     def __init__(self, nodeurl, cache, progressfunc):
         self.nodeurl = nodeurl
@@ -326,10 +368,10 @@ class TahoeDirectoryTarget(object):
         nodetype, d = parsed
         self.writecap = to_bytes(d.get("rw_uri"))
         self.readcap = to_bytes(d.get("ro_uri"))
-        self.mutable = d.get("mutable", False) # older nodes don't provide it
-        self.children_d = dict( [(unicode(name),value)
-                                 for (name,value)
-                                 in d["children"].iteritems()] )
+        self.mutable = d.get("mutable", False)  # older nodes don't provide it
+        self.children_d = dict(
+            [(unicode(name), value) for (name, value) in d["children"].iteritems()]
+        )
         self.children = None
 
     def init_from_grid(self, writecap, readcap):
@@ -343,10 +385,10 @@ class TahoeDirectoryTarget(object):
         parsed = json.loads(resp.read())
         nodetype, d = parsed
         assert nodetype == "dirnode"
-        self.mutable = d.get("mutable", False) # older nodes don't provide it
-        self.children_d = dict( [(unicode(name),value)
-                                 for (name,value)
-                                 in d["children"].iteritems()] )
+        self.mutable = d.get("mutable", False)  # older nodes don't provide it
+        self.children_d = dict(
+            [(unicode(name), value) for (name, value) in d["children"].iteritems()]
+        )
         self.children = None
 
     def just_created(self, writecap):
@@ -361,19 +403,24 @@ class TahoeDirectoryTarget(object):
         if self.children is not None:
             return
         self.children = {}
-        for i,(name, data) in enumerate(self.children_d.items()):
-            self.progressfunc("examining %d of %d" % (i+1, len(self.children_d)))
+        for i, (name, data) in enumerate(self.children_d.items()):
+            self.progressfunc("examining %d of %d" % (i + 1, len(self.children_d)))
             if data[0] == "filenode":
                 mutable = data[1].get("mutable", False)
                 writecap = to_bytes(data[1].get("rw_uri"))
                 readcap = to_bytes(data[1].get("ro_uri"))
                 url = None
                 if self.writecap:
-                    url = self.nodeurl + "/".join(["uri",
-                                                   urllib.quote(self.writecap),
-                                                   urllib.quote(unicode_to_url(name))])
-                self.children[name] = TahoeFileTarget(self.nodeurl, mutable,
-                                                      writecap, readcap, url)
+                    url = self.nodeurl + "/".join(
+                        [
+                            "uri",
+                            urllib.quote(self.writecap),
+                            urllib.quote(unicode_to_url(name)),
+                        ]
+                    )
+                self.children[name] = TahoeFileTarget(
+                    self.nodeurl, mutable, writecap, readcap, url
+                )
             elif data[0] == "dirnode":
                 writecap = to_bytes(data[1].get("rw_uri"))
                 readcap = to_bytes(data[1].get("ro_uri"))
@@ -382,8 +429,9 @@ class TahoeDirectoryTarget(object):
                 elif readcap and readcap in self.cache:
                     child = self.cache[readcap]
                 else:
-                    child = TahoeDirectoryTarget(self.nodeurl, self.cache,
-                                                 self.progressfunc)
+                    child = TahoeDirectoryTarget(
+                        self.nodeurl, self.cache, self.progressfunc
+                    )
                     child.init_from_grid(writecap, readcap)
                     if writecap:
                         self.cache[writecap] = child
@@ -394,9 +442,11 @@ class TahoeDirectoryTarget(object):
                 self.children[name] = child
             else:
                 # TODO: there should be an option to skip unknown nodes.
-                raise TahoeError("Cannot copy unknown nodes (ticket #839). "
-                                 "You probably need to use a later version of "
-                                 "Tahoe-LAFS to copy this directory.")
+                raise TahoeError(
+                    "Cannot copy unknown nodes (ticket #839). "
+                    "You probably need to use a later version of "
+                    "Tahoe-LAFS to copy this directory."
+                )
 
     def get_child_target(self, name):
         # return a new target for a named subdirectory of this dir
@@ -406,8 +456,7 @@ class TahoeDirectoryTarget(object):
         if name in self.children:
             return self.children[name]
         writecap = make_tahoe_subdirectory(self.nodeurl, self.writecap, name)
-        child = TahoeDirectoryTarget(self.nodeurl, self.cache,
-                                     self.progressfunc)
+        child = TahoeDirectoryTarget(self.nodeurl, self.cache, self.progressfunc)
         child.just_created(writecap)
         self.children[name] = child
         return child
@@ -439,8 +488,7 @@ class TahoeDirectoryTarget(object):
     def set_children(self):
         if not self.new_children:
             return
-        url = (self.nodeurl + "uri/" + urllib.quote(self.writecap)
-               + "?t=set_children")
+        url = self.nodeurl + "uri/" + urllib.quote(self.writecap) + "?t=set_children"
         set_data = {}
         for (name, filecap) in self.new_children.items():
             # it just so happens that ?t=set_children will accept both file
@@ -453,23 +501,24 @@ class TahoeDirectoryTarget(object):
         body = json.dumps(set_data)
         POST(url, body)
 
+
 FileSources = (LocalFileSource, TahoeFileSource)
 DirectorySources = (LocalDirectorySource, TahoeDirectorySource)
 FileTargets = (LocalFileTarget, TahoeFileTarget)
 DirectoryTargets = (LocalDirectoryTarget, TahoeDirectoryTarget)
 MissingTargets = (LocalMissingTarget, TahoeMissingTarget)
 
-class Copier(object):
 
+class Copier(object):
     def do_copy(self, options, progressfunc=None):
-        if options['quiet']:
+        if options["quiet"]:
             verbosity = 0
-        elif options['verbose']:
+        elif options["verbose"]:
             verbosity = 2
         else:
             verbosity = 1
 
-        nodeurl = options['node-url']
+        nodeurl = options["node-url"]
         if nodeurl[-1] != "/":
             nodeurl += "/"
         self.nodeurl = nodeurl
@@ -480,8 +529,10 @@ class Copier(object):
         self.stdout = options.stdout
         self.stderr = options.stderr
         if verbosity >= 2 and not self.progressfunc:
+
             def progress(message):
                 print(message, file=self.stderr)
+
             self.progressfunc = progress
         self.caps_only = options["caps-only"]
         self.cache = {}
@@ -506,10 +557,12 @@ class Copier(object):
         recursive = self.options["recursive"]
 
         target = self.get_target_info(destination_spec)
-        precondition(isinstance(target, FileTargets + DirectoryTargets + MissingTargets), target)
+        precondition(
+            isinstance(target, FileTargets + DirectoryTargets + MissingTargets), target
+        )
         target_has_trailing_slash = destination_spec.endswith("/")
 
-        sources = [] # list of source objects
+        sources = []  # list of source objects
         for ss in source_specs:
             try:
                 si = self.get_source_info(ss)
@@ -527,19 +580,18 @@ class Copier(object):
         # if target is a file, source must be a single file
         # if target is directory, sources must be named or a dir
 
-        have_source_dirs = any([isinstance(s, DirectorySources)
-                                for s in sources])
+        have_source_dirs = any([isinstance(s, DirectorySources) for s in sources])
         if have_source_dirs and not recursive:
             # 'cp dir target' without -r: error
             self.to_stderr("cannot copy directories without --recursive")
             return 1
-        del recursive # -r is only used for signalling errors
+        del recursive  # -r is only used for signalling errors
 
         if isinstance(target, FileTargets):
             target_is_file = True
         elif isinstance(target, DirectoryTargets):
             target_is_file = False
-        else: # isinstance(target, MissingTargets)
+        else:  # isinstance(target, MissingTargets)
             if len(sources) == 1 and isinstance(sources[0], FileSources):
                 target_is_file = True
             else:
@@ -575,7 +627,10 @@ class Copier(object):
 
         for source in sources:
             if isinstance(source, FileSources) and source.basename() is None:
-                self.to_stderr("when copying into a directory, all source files must have names, but %s is unnamed" % quote_output(source_specs[0]))
+                self.to_stderr(
+                    "when copying into a directory, all source files must have names, but %s is unnamed"
+                    % quote_output(source_specs[0])
+                )
                 return 1
         return self.copy_things_to_directory(sources, target)
 
@@ -600,7 +655,7 @@ class Copier(object):
                 # TODO: should this be _assert? what happens if the target is
                 # a special file?
                 assert os.path.isfile(pathname), pathname
-                t = LocalFileTarget(pathname) # non-empty
+                t = LocalFileTarget(pathname)  # non-empty
         else:
             # this is a tahoe object
             url = self.nodeurl + "uri/%s" % urllib.quote(rootcap)
@@ -615,18 +670,17 @@ class Copier(object):
                 parsed = json.loads(resp.read())
                 nodetype, d = parsed
                 if nodetype == "dirnode":
-                    t = TahoeDirectoryTarget(self.nodeurl, self.cache,
-                                             self.progress)
+                    t = TahoeDirectoryTarget(self.nodeurl, self.cache, self.progress)
                     t.init_from_parsed(parsed)
                 else:
                     writecap = to_bytes(d.get("rw_uri"))
                     readcap = to_bytes(d.get("ro_uri"))
                     mutable = d.get("mutable", False)
-                    t = TahoeFileTarget(self.nodeurl, mutable,
-                                        writecap, readcap, url)
+                    t = TahoeFileTarget(self.nodeurl, mutable, writecap, readcap, url)
             else:
-                raise HTTPError("Error examining target %s"
-                                 % quote_output(destination_spec), resp)
+                raise HTTPError(
+                    "Error examining target %s" % quote_output(destination_spec), resp
+                )
         return t
 
     def get_source_info(self, source_spec):
@@ -649,11 +703,12 @@ class Copier(object):
                 t = LocalDirectorySource(self.progress, pathname, name)
             else:
                 if had_trailing_slash:
-                    raise FilenameWithTrailingSlashError(source_spec,
-                                                         quotefn=quote_local_unicode_path)
+                    raise FilenameWithTrailingSlashError(
+                        source_spec, quotefn=quote_local_unicode_path
+                    )
                 if not os.path.isfile(pathname):
                     raise WeirdSourceError(pathname)
-                t = LocalFileSource(pathname, name) # non-empty
+                t = LocalFileSource(pathname, name)  # non-empty
         else:
             # this is a tahoe object
             url = self.nodeurl + "uri/%s" % urllib.quote(rootcap)
@@ -665,29 +720,28 @@ class Copier(object):
                 last_slash = path.rfind(u"/")
                 name = path
                 if last_slash != -1:
-                    name = path[last_slash+1:]
+                    name = path[last_slash + 1 :]
 
             resp = do_http("GET", url + "?t=json")
             if resp.status == 404:
                 raise MissingSourceError(source_spec)
             elif resp.status != 200:
-                raise HTTPError("Error examining source %s" % quote_output(source_spec),
-                                resp)
+                raise HTTPError(
+                    "Error examining source %s" % quote_output(source_spec), resp
+                )
             parsed = json.loads(resp.read())
             nodetype, d = parsed
             if nodetype == "dirnode":
-                t = TahoeDirectorySource(self.nodeurl, self.cache,
-                                         self.progress, name)
+                t = TahoeDirectorySource(self.nodeurl, self.cache, self.progress, name)
                 t.init_from_parsed(parsed)
             else:
                 if had_trailing_slash:
                     raise FilenameWithTrailingSlashError(source_spec)
                 writecap = to_bytes(d.get("rw_uri"))
                 readcap = to_bytes(d.get("ro_uri"))
-                mutable = d.get("mutable", False) # older nodes don't provide it
+                mutable = d.get("mutable", False)  # older nodes don't provide it
                 t = TahoeFileSource(self.nodeurl, mutable, writecap, readcap, name)
         return t
-
 
     def need_to_copy_bytes(self, source, target):
         if source.need_to_copy_bytes:
@@ -748,9 +802,11 @@ class Copier(object):
                 else:
                     target_names[name] = source
         if collisions:
-            self.to_stderr("cannot copy multiple files with the same name into the same target directory")
+            self.to_stderr(
+                "cannot copy multiple files with the same name into the same target directory"
+            )
             # I'm not sure how to show where the collisions are coming from
-            #for (target, source1, source2) in collisions:
+            # for (target, source1, source2) in collisions:
             #    self.to_stderr(source1.basename())
             return 1
 
@@ -767,21 +823,19 @@ class Copier(object):
             target = LocalDirectoryTarget(self.progress, target.pathname)
         elif isinstance(target, TahoeMissingTarget):
             writecap = mkdir(target.url)
-            target = TahoeDirectoryTarget(self.nodeurl, self.cache,
-                                          self.progress)
+            target = TahoeDirectoryTarget(self.nodeurl, self.cache, self.progress)
             target.just_created(writecap)
         # afterwards, or otherwise, it will be a directory
         precondition(isinstance(target, DirectoryTargets), target)
         return target
 
     def build_targetmap(self, sources, target):
-        num_source_files = len([s for s in sources
-                                if isinstance(s, FileSources)])
-        num_source_dirs = len([s for s in sources
-                               if isinstance(s, DirectorySources)])
-        self.progress("attaching sources to targets, "
-                      "%d files / %d dirs in root" %
-                      (num_source_files, num_source_dirs))
+        num_source_files = len([s for s in sources if isinstance(s, FileSources)])
+        num_source_dirs = len([s for s in sources if isinstance(s, DirectorySources)])
+        self.progress(
+            "attaching sources to targets, "
+            "%d files / %d dirs in root" % (num_source_files, num_source_dirs)
+        )
 
         # this maps each target directory to a list of source files that need
         # to be copied into it. All source files have names.
@@ -801,8 +855,10 @@ class Copier(object):
                     new_target = target
                 self.assign_targets(targetmap, s, new_target)
 
-        self.progress("targets assigned, %s dirs, %s files" %
-                      (len(targetmap), self.count_files_to_copy(targetmap)))
+        self.progress(
+            "targets assigned, %s dirs, %s files"
+            % (len(targetmap), self.count_files_to_copy(targetmap))
+        )
         return targetmap
 
     def assign_targets(self, targetmap, source, target):
@@ -819,8 +875,9 @@ class Copier(object):
 
     def copy_to_targetmap(self, targetmap):
         files_to_copy = self.count_files_to_copy(targetmap)
-        self.progress("starting copy, %d files, %d directories" %
-                      (files_to_copy, len(targetmap)))
+        self.progress(
+            "starting copy, %d files, %d directories" % (files_to_copy, len(targetmap))
+        )
         files_copied = 0
         targets_finished = 0
 
@@ -830,13 +887,13 @@ class Copier(object):
                 _assert(isinstance(source, FileSources), source)
                 self.copy_file_into_dir(source, source.basename(), target)
                 files_copied += 1
-                self.progress("%d/%d files, %d/%d directories" %
-                              (files_copied, files_to_copy,
-                               targets_finished, len(targetmap)))
+                self.progress(
+                    "%d/%d files, %d/%d directories"
+                    % (files_copied, files_to_copy, targets_finished, len(targetmap))
+                )
             target.set_children()
             targets_finished += 1
-            self.progress("%d/%d directories" %
-                          (targets_finished, len(targetmap)))
+            self.progress("%d/%d directories" % (targets_finished, len(targetmap)))
 
     def count_files_to_copy(self, targetmap):
         return sum([len(sources) for sources in targetmap.values()])
@@ -856,15 +913,15 @@ class Copier(object):
         # so we can just make a link
         target.put_uri(name, source.bestcap())
 
-
     def progress(self, message):
-        #print(message)
+        # print(message)
         if self.progressfunc:
             self.progressfunc(message)
 
 
 def copy(options):
     return Copier().do_copy(options)
+
 
 # error cases that need improvement:
 #  local-file-in-the-way

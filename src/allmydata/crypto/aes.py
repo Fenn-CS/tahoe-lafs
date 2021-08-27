@@ -15,8 +15,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import six
 
@@ -33,7 +56,7 @@ from zope.interface import (
 )
 
 
-DEFAULT_IV = b'\x00' * 16
+DEFAULT_IV = b"\x00" * 16
 
 
 class IEncryptor(Interface):
@@ -88,7 +111,7 @@ def encrypt_data(encryptor, plaintext):
 
     _validate_cryptor(encryptor, encrypt=True)
     if not isinstance(plaintext, six.binary_type):
-        raise ValueError('Plaintext must be bytes')
+        raise ValueError("Plaintext must be bytes")
 
     return encryptor.update(plaintext)
 
@@ -127,7 +150,7 @@ def decrypt_data(decryptor, plaintext):
 
     _validate_cryptor(decryptor, encrypt=False)
     if not isinstance(plaintext, six.binary_type):
-        raise ValueError('Plaintext must be bytes')
+        raise ValueError("Plaintext must be bytes")
 
     return decryptor.update(plaintext)
 
@@ -140,11 +163,7 @@ def _create_cryptor(key, iv):
     """
     key = _validate_key(key)
     iv = _validate_iv(iv)
-    cipher = Cipher(
-        algorithms.AES(key),
-        modes.CTR(iv),
-        backend=default_backend()
-    )
+    cipher = Cipher(algorithms.AES(key), modes.CTR(iv), backend=default_backend())
     return cipher.encryptor()
 
 
@@ -155,13 +174,9 @@ def _validate_cryptor(cryptor, encrypt=True):
     klass = IEncryptor if encrypt else IDecryptor
     name = "encryptor" if encrypt else "decryptor"
     if not isinstance(cryptor, CipherContext):
-        raise ValueError(
-            "'{}' must be a CipherContext".format(name)
-        )
+        raise ValueError("'{}' must be a CipherContext".format(name))
     if not klass.providedBy(cryptor):
-        raise ValueError(
-            "'{}' must be created with create_{}()".format(name, name)
-        )
+        raise ValueError("'{}' must be created with create_{}()".format(name, name))
 
 
 def _validate_key(key):
@@ -169,9 +184,9 @@ def _validate_key(key):
     confirm `key` is suitable for AES encryption, or raise ValueError
     """
     if not isinstance(key, six.binary_type):
-        raise TypeError('Key must be bytes')
+        raise TypeError("Key must be bytes")
     if len(key) not in (16, 32):
-        raise ValueError('Key must be 16 or 32 bytes long')
+        raise ValueError("Key must be 16 or 32 bytes long")
     return key
 
 
@@ -184,7 +199,7 @@ def _validate_iv(iv):
     if iv is None:
         return DEFAULT_IV
     if not isinstance(iv, six.binary_type):
-        raise TypeError('IV must be bytes')
+        raise TypeError("IV must be bytes")
     if len(iv) != 16:
-        raise ValueError('IV must be 16 bytes long')
+        raise ValueError("IV must be 16 bytes long")
     return iv

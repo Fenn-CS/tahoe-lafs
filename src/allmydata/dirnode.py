@@ -13,11 +13,19 @@ from allmydata.deep_stats import DeepStats
 from allmydata.mutable.common import NotWriteableError
 from allmydata.mutable.filenode import MutableFileNode
 from allmydata.unknown import UnknownNode, strip_prefix_for_ro
-from allmydata.interfaces import IFilesystemNode, IDirectoryNode, IFileNode, \
-     ExistingChildError, NoSuchChildError, ICheckable, IDeepCheckable, \
-     MustBeDeepImmutableError, CapConstraintError, ChildOfWrongTypeError
-from allmydata.check_results import DeepCheckResults, \
-     DeepCheckAndRepairResults
+from allmydata.interfaces import (
+    IFilesystemNode,
+    IDirectoryNode,
+    IFileNode,
+    ExistingChildError,
+    NoSuchChildError,
+    ICheckable,
+    IDeepCheckable,
+    MustBeDeepImmutableError,
+    CapConstraintError,
+    ChildOfWrongTypeError,
+)
+from allmydata.check_results import DeepCheckResults, DeepCheckAndRepairResults
 from allmydata.monitor import Monitor
 from allmydata.util import hashutil, base32, log
 from allmydata.util.encodingutil import quote_output, normalize
@@ -61,6 +69,7 @@ ADD_FILE = ActionType(
     u"Add a new file as a child of a directory.",
 )
 
+
 def update_metadata(metadata, new_metadata, now):
     """Updates 'metadata' in-place with the information in 'new_metadata'.
 
@@ -71,34 +80,34 @@ def update_metadata(metadata, new_metadata, now):
         metadata = {}
 
     old_ctime = None
-    if 'ctime' in metadata:
-        old_ctime = metadata['ctime']
+    if "ctime" in metadata:
+        old_ctime = metadata["ctime"]
 
     if new_metadata is not None:
         # Overwrite all metadata.
         newmd = new_metadata.copy()
 
         # Except 'tahoe'.
-        if 'tahoe' in newmd:
-            del newmd['tahoe']
-        if 'tahoe' in metadata:
-            newmd['tahoe'] = metadata['tahoe']
+        if "tahoe" in newmd:
+            del newmd["tahoe"]
+        if "tahoe" in metadata:
+            newmd["tahoe"] = metadata["tahoe"]
 
         metadata = newmd
 
     # update timestamps
-    sysmd = metadata.get('tahoe', {})
-    if 'linkcrtime' not in sysmd:
+    sysmd = metadata.get("tahoe", {})
+    if "linkcrtime" not in sysmd:
         # In Tahoe < 1.4.0 we used the word 'ctime' to mean what Tahoe >= 1.4.0
         # calls 'linkcrtime'. This field is only used if it was in the old metadata,
         # and 'tahoe:linkcrtime' was not.
         if old_ctime is not None:
-            sysmd['linkcrtime'] = old_ctime
+            sysmd["linkcrtime"] = old_ctime
         else:
-            sysmd['linkcrtime'] = now
+            sysmd["linkcrtime"] = now
 
-    sysmd['linkmotime'] = now
-    metadata['tahoe'] = sysmd
+    sysmd["linkmotime"] = now
+    metadata["tahoe"] = sysmd
 
     return metadata
 
@@ -107,8 +116,11 @@ def update_metadata(metadata, new_metadata, now):
 # contents and end by repacking them. It might be better to apply them to
 # the unpacked contents.
 
+
 class Deleter(object):
-    def __init__(self, node, namex, must_exist=True, must_be_directory=False, must_be_file=False):
+    def __init__(
+        self, node, namex, must_exist=True, must_be_directory=False, must_be_file=False
+    ):
         self.node = node
         self.name = normalize(namex)
         self.must_exist = must_exist
@@ -152,7 +164,7 @@ class MetadataSetter(object):
         child = children[name][0]
 
         metadata = update_metadata(children[name][1].copy(), self.metadata, now)
-        if self.create_readonly_node and metadata.get('no-write', False):
+        if self.create_readonly_node and metadata.get("no-write", False):
             child = self.create_readonly_node(child, name)
 
         children[name] = (child, metadata)
@@ -190,19 +202,27 @@ class Adder(object):
             metadata = None
             if name in children:
                 if not self.overwrite:
-                    raise ExistingChildError("child %s already exists" % quote_output(name, encoding='utf-8'))
+                    raise ExistingChildError(
+                        "child %s already exists" % quote_output(name, encoding="utf-8")
+                    )
 
-                if self.overwrite == "only-files" and IDirectoryNode.providedBy(children[name][0]):
-                    raise ExistingChildError("child %s already exists as a directory" % quote_output(name, encoding='utf-8'))
+                if self.overwrite == "only-files" and IDirectoryNode.providedBy(
+                    children[name][0]
+                ):
+                    raise ExistingChildError(
+                        "child %s already exists as a directory"
+                        % quote_output(name, encoding="utf-8")
+                    )
                 metadata = children[name][1].copy()
 
             metadata = update_metadata(metadata, new_metadata, now)
-            if self.create_readonly_node and metadata.get('no-write', False):
+            if self.create_readonly_node and metadata.get("no-write", False):
                 child = self.create_readonly_node(child, name)
 
             children[name] = (child, metadata)
         new_contents = self.node._pack_contents(children)
         return new_contents
+
 
 def _encrypt_rw_uri(writekey, rw_uri):
     precondition(isinstance(rw_uri, str), rw_uri)
@@ -218,18 +238,26 @@ def _encrypt_rw_uri(writekey, rw_uri):
     # The MAC is not checked by readers in Tahoe >= 1.3.0, but we still
     # produce it for the sake of older readers.
 
+
 def pack_children(childrenx, writekey, deep_immutable=False):
     # initial_children must have metadata (i.e. {} instead of None)
     children = {}
     for (namex, (node, metadata)) in childrenx.iteritems():
-        precondition(isinstance(metadata, dict),
-                     "directory creation requires metadata to be a dict, not None", metadata)
+        precondition(
+            isinstance(metadata, dict),
+            "directory creation requires metadata to be a dict, not None",
+            metadata,
+        )
         children[normalize(namex)] = (node, metadata)
 
-    return _pack_normalized_children(children, writekey=writekey, deep_immutable=deep_immutable)
+    return _pack_normalized_children(
+        children, writekey=writekey, deep_immutable=deep_immutable
+    )
 
 
-ZERO_LEN_NETSTR=netstring(b'')
+ZERO_LEN_NETSTR = netstring(b"")
+
+
 def _pack_normalized_children(children, writekey, deep_immutable=False):
     """Take a dict that maps:
          children[unicode_nfc_name] = (IFileSystemNode, metadata_dict)
@@ -255,12 +283,15 @@ def _pack_normalized_children(children, writekey, deep_immutable=False):
         (child, metadata) = children[name]
         child.raise_error()
         if deep_immutable and not child.is_allowed_in_immutable_directory():
-            raise MustBeDeepImmutableError("child %s is not allowed in an immutable directory" %
-                                           quote_output(name, encoding='utf-8'), name)
+            raise MustBeDeepImmutableError(
+                "child %s is not allowed in an immutable directory"
+                % quote_output(name, encoding="utf-8"),
+                name,
+            )
         if has_aux:
             entry = children.get_aux(name)
         if not entry:
-            assert IFilesystemNode.providedBy(child), (name,child)
+            assert IFilesystemNode.providedBy(child), (name, child)
             assert isinstance(metadata, dict)
             rw_uri = child.get_write_uri()
             if rw_uri is None:
@@ -278,12 +309,17 @@ def _pack_normalized_children(children, writekey, deep_immutable=False):
                 writecap = netstring(_encrypt_rw_uri(writekey, rw_uri))
             else:
                 writecap = ZERO_LEN_NETSTR
-            entry = "".join([netstring(name.encode("utf-8")),
-                             netstring(strip_prefix_for_ro(ro_uri, deep_immutable)),
-                             writecap,
-                             netstring(json.dumps(metadata))])
+            entry = "".join(
+                [
+                    netstring(name.encode("utf-8")),
+                    netstring(strip_prefix_for_ro(ro_uri, deep_immutable)),
+                    writecap,
+                    netstring(json.dumps(metadata)),
+                ]
+            )
         entries.append(netstring(entry))
     return "".join(entries)
+
 
 @implementer(IDirectoryNode, ICheckable, IDeepCheckable)
 class DirectoryNode(object):
@@ -299,10 +335,12 @@ class DirectoryNode(object):
         self._uploader = uploader
 
     def __repr__(self):
-        return "<%s %s-%s %s>" % (self.__class__.__name__,
-                                  self.is_readonly() and "RO" or "RW",
-                                  self.is_mutable() and "MUT" or "IMM",
-                                  hasattr(self, '_uri') and self._uri.abbrev())
+        return "<%s %s-%s %s>" % (
+            self.__class__.__name__,
+            self.is_readonly() and "RO" or "RW",
+            self.is_mutable() and "MUT" or "IMM",
+            hasattr(self, "_uri") and self._uri.abbrev(),
+        )
 
     def get_size(self):
         """Return the size of our backing mutable file, in bytes, if we've
@@ -333,9 +371,9 @@ class DirectoryNode(object):
 
     def _create_and_validate_node(self, rw_uri, ro_uri, name):
         # name is just for error reporting
-        node = self._nodemaker.create_from_cap(rw_uri, ro_uri,
-                                               deep_immutable=not self.is_mutable(),
-                                               name=name)
+        node = self._nodemaker.create_from_cap(
+            rw_uri, ro_uri, deep_immutable=not self.is_mutable(), name=name
+        )
         node.raise_error()
         return node
 
@@ -363,9 +401,13 @@ class DirectoryNode(object):
         while position < len(data):
             entries, position = split_netstring(data, 1, position)
             entry = entries[0]
-            (namex_utf8, ro_uri, rwcapdata, metadata_s), subpos = split_netstring(entry, 4)
+            (namex_utf8, ro_uri, rwcapdata, metadata_s), subpos = split_netstring(
+                entry, 4
+            )
             if not mutable and len(rwcapdata) > 0:
-                raise ValueError("the rwcapdata field of a dirnode in an immutable directory was not empty")
+                raise ValueError(
+                    "the rwcapdata field of a dirnode in an immutable directory was not empty"
+                )
 
             # A name containing characters that are unassigned in one version of Unicode might
             # not be normalized wrt a later version. See the note in section 'Normalization Stability'
@@ -384,8 +426,8 @@ class DirectoryNode(object):
             # ro_uri is treated in the same way for consistency.
             # rw_uri and ro_uri will be either None or a non-empty string.
 
-            rw_uri = rw_uri.rstrip(' ') or None
-            ro_uri = ro_uri.rstrip(' ') or None
+            rw_uri = rw_uri.rstrip(" ") or None
+            ro_uri = ro_uri.rstrip(" ") or None
 
             try:
                 child = self._create_and_validate_node(rw_uri, ro_uri, name)
@@ -395,13 +437,21 @@ class DirectoryNode(object):
                     children[name] = (child, metadata)
                     children.set_with_aux(name, (child, metadata), auxilliary=entry)
                 else:
-                    log.msg(format="mutable cap for child %(name)s unpacked from an immutable directory",
-                            name=quote_output(name, encoding='utf-8'),
-                            facility="tahoe.webish", level=log.UNUSUAL)
+                    log.msg(
+                        format="mutable cap for child %(name)s unpacked from an immutable directory",
+                        name=quote_output(name, encoding="utf-8"),
+                        facility="tahoe.webish",
+                        level=log.UNUSUAL,
+                    )
             except CapConstraintError as e:
-                log.msg(format="unmet constraint on cap for child %(name)s unpacked from a directory:\n"
-                               "%(message)s", message=e.args[0], name=quote_output(name, encoding='utf-8'),
-                               facility="tahoe.webish", level=log.UNUSUAL)
+                log.msg(
+                    format="unmet constraint on cap for child %(name)s unpacked from a directory:\n"
+                    "%(message)s",
+                    message=e.args[0],
+                    name=quote_output(name, encoding="utf-8"),
+                    facility="tahoe.webish",
+                    level=log.UNUSUAL,
+                )
 
         return children
 
@@ -446,7 +496,7 @@ class DirectoryNode(object):
 
     def get_repair_cap(self):
         if self._node.is_readonly():
-            return None # readonly (mutable) dirnodes are not yet repairable
+            return None  # readonly (mutable) dirnodes are not yet repairable
         return self._uri
 
     def get_storage_index(self):
@@ -455,6 +505,7 @@ class DirectoryNode(object):
     def check(self, monitor, verify=False, add_lease=False):
         """Perform a file check. See IChecker.check for details."""
         return self._node.check(monitor, verify, add_lease)
+
     def check_and_repair(self, monitor, verify=False, add_lease=False):
         return self._node.check_and_repair(monitor, verify, add_lease)
 
@@ -511,8 +562,9 @@ class DirectoryNode(object):
         if self.is_readonly():
             return defer.fail(NotWriteableError())
         assert isinstance(metadata, dict)
-        s = MetadataSetter(self, name, metadata,
-                           create_readonly_node=self._create_readonly_node)
+        s = MetadataSetter(
+            self, name, metadata, create_readonly_node=self._create_readonly_node
+        )
         d = self._node.modify(s.modify)
         d.addCallback(lambda res: self)
         return d
@@ -548,15 +600,16 @@ class DirectoryNode(object):
         remaining_pathx = pathx[1:]
         if remaining_pathx:
             d = self.get(childnamex)
-            d.addCallback(lambda node:
-                          node.get_child_and_metadata_at_path(remaining_pathx))
+            d.addCallback(
+                lambda node: node.get_child_and_metadata_at_path(remaining_pathx)
+            )
             return d
         d = self.get_child_and_metadata(childnamex)
         return d
 
     def set_uri(self, namex, writecap, readcap, metadata=None, overwrite=True):
-        precondition(isinstance(writecap, (str,type(None))), writecap)
-        precondition(isinstance(readcap, (str,type(None))), readcap)
+        precondition(isinstance(writecap, (str, type(None))), writecap)
+        precondition(isinstance(readcap, (str, type(None))), readcap)
 
         # We now allow packing unknown nodes, provided they are valid
         # for this type of directory.
@@ -567,8 +620,9 @@ class DirectoryNode(object):
 
     def set_children(self, entries, overwrite=True):
         # this takes URIs
-        a = Adder(self, overwrite=overwrite,
-                  create_readonly_node=self._create_readonly_node)
+        a = Adder(
+            self, overwrite=overwrite, create_readonly_node=self._create_readonly_node
+        )
         for (namex, e) in entries.iteritems():
             assert isinstance(namex, unicode), namex
             if len(e) == 2:
@@ -577,8 +631,8 @@ class DirectoryNode(object):
             else:
                 assert len(e) == 3
                 writecap, readcap, metadata = e
-            precondition(isinstance(writecap, (str,type(None))), writecap)
-            precondition(isinstance(readcap, (str,type(None))), readcap)
+            precondition(isinstance(writecap, (str, type(None))), writecap)
+            precondition(isinstance(readcap, (str, type(None))), readcap)
 
             # We now allow packing unknown nodes, provided they are valid
             # for this type of directory.
@@ -602,8 +656,9 @@ class DirectoryNode(object):
         if self.is_readonly():
             return defer.fail(NotWriteableError())
         assert IFilesystemNode.providedBy(child), child
-        a = Adder(self, overwrite=overwrite,
-                  create_readonly_node=self._create_readonly_node)
+        a = Adder(
+            self, overwrite=overwrite, create_readonly_node=self._create_readonly_node
+        )
         a.set_node(namex, child, metadata)
         d = self._node.modify(a.modify)
         d.addCallback(lambda res: child)
@@ -613,12 +668,15 @@ class DirectoryNode(object):
         precondition(isinstance(entries, dict), entries)
         if self.is_readonly():
             return defer.fail(NotWriteableError())
-        a = Adder(self, entries, overwrite=overwrite,
-                  create_readonly_node=self._create_readonly_node)
+        a = Adder(
+            self,
+            entries,
+            overwrite=overwrite,
+            create_readonly_node=self._create_readonly_node,
+        )
         d = self._node.modify(a.modify)
         d.addCallback(lambda res: self)
         return d
-
 
     def add_file(self, namex, uploadable, metadata=None, overwrite=True, progress=None):
         """I upload a file (using the given IUploadable), then attach the
@@ -631,54 +689,81 @@ class DirectoryNode(object):
                 d = DeferredContext(defer.fail(NotWriteableError()))
             else:
                 # XXX should pass reactor arg
-                d = DeferredContext(self._uploader.upload(uploadable, progress=progress))
-                d.addCallback(lambda results:
-                              self._create_and_validate_node(results.get_uri(), None,
-                                                             name))
-                d.addCallback(lambda node:
-                              self.set_node(name, node, metadata, overwrite))
+                d = DeferredContext(
+                    self._uploader.upload(uploadable, progress=progress)
+                )
+                d.addCallback(
+                    lambda results: self._create_and_validate_node(
+                        results.get_uri(), None, name
+                    )
+                )
+                d.addCallback(
+                    lambda node: self.set_node(name, node, metadata, overwrite)
+                )
 
         return d.addActionFinish()
 
-    def delete(self, namex, must_exist=True, must_be_directory=False, must_be_file=False):
+    def delete(
+        self, namex, must_exist=True, must_be_directory=False, must_be_file=False
+    ):
         """I remove the child at the specific name. I return a Deferred that
         fires (with the node just removed) when the operation finishes."""
         if self.is_readonly():
             return defer.fail(NotWriteableError())
-        deleter = Deleter(self, namex, must_exist=must_exist,
-                          must_be_directory=must_be_directory, must_be_file=must_be_file)
+        deleter = Deleter(
+            self,
+            namex,
+            must_exist=must_exist,
+            must_be_directory=must_be_directory,
+            must_be_file=must_be_file,
+        )
         d = self._node.modify(deleter.modify)
         d.addCallback(lambda res: deleter.old_child)
         return d
 
     # XXX: Too many arguments? Worthwhile to break into mutable/immutable?
-    def create_subdirectory(self, namex, initial_children={}, overwrite=True,
-                            mutable=True, mutable_version=None, metadata=None):
+    def create_subdirectory(
+        self,
+        namex,
+        initial_children={},
+        overwrite=True,
+        mutable=True,
+        mutable_version=None,
+        metadata=None,
+    ):
         name = normalize(namex)
         if self.is_readonly():
             return defer.fail(NotWriteableError())
         if mutable:
             if mutable_version:
-                d = self._nodemaker.create_new_mutable_directory(initial_children,
-                                                                 version=mutable_version)
+                d = self._nodemaker.create_new_mutable_directory(
+                    initial_children, version=mutable_version
+                )
             else:
                 d = self._nodemaker.create_new_mutable_directory(initial_children)
         else:
             # mutable version doesn't make sense for immmutable directories.
             assert mutable_version is None
             d = self._nodemaker.create_immutable_directory(initial_children)
+
         def _created(child):
             entries = {name: (child, metadata)}
-            a = Adder(self, entries, overwrite=overwrite,
-                      create_readonly_node=self._create_readonly_node)
+            a = Adder(
+                self,
+                entries,
+                overwrite=overwrite,
+                create_readonly_node=self._create_readonly_node,
+            )
             d = self._node.modify(a.modify)
             d.addCallback(lambda res: child)
             return d
+
         d.addCallback(_created)
         return d
 
-    def move_child_to(self, current_child_namex, new_parent,
-                      new_child_namex=None, overwrite=True):
+    def move_child_to(
+        self, current_child_namex, new_parent, new_child_namex=None, overwrite=True
+    ):
         """
         I take one of my child links and move it to a new parent. The child
         link is referenced by name. In the new parent, the child link will live
@@ -700,19 +785,24 @@ class DirectoryNode(object):
             new_child_name = normalize(new_child_namex)
 
         from_uri = self.get_write_uri()
-        if new_parent.get_write_uri() == from_uri and new_child_name == current_child_name:
+        if (
+            new_parent.get_write_uri() == from_uri
+            and new_child_name == current_child_name
+        ):
             # needed for correctness, otherwise we would delete the child
             return defer.succeed("redundant rename/relink")
 
         d = self.get_child_and_metadata(current_child_name)
+
         def _got_child(child_and_metadata):
             (child, metadata) = child_and_metadata
-            return new_parent.set_node(new_child_name, child, metadata,
-                                       overwrite=overwrite)
+            return new_parent.set_node(
+                new_child_name, child, metadata, overwrite=overwrite
+            )
+
         d.addCallback(_got_child)
         d.addCallback(lambda child: self.delete(current_child_name))
         return d
-
 
     def deep_traverse(self, walker):
         """Perform a recursive walk, using this dirnode as a root, notifying
@@ -765,12 +855,14 @@ class DirectoryNode(object):
         monitor.raise_if_cancelled()
         d = defer.maybeDeferred(walker.add_node, node, path)
         d.addCallback(lambda ignored: node.list())
-        d.addCallback(self._deep_traverse_dirnode_children, node, path,
-                      walker, monitor, found)
+        d.addCallback(
+            self._deep_traverse_dirnode_children, node, path, walker, monitor, found
+        )
         return d
 
-    def _deep_traverse_dirnode_children(self, children, parent, path,
-                                        walker, monitor, found):
+    def _deep_traverse_dirnode_children(
+        self, children, parent, path, walker, monitor, found
+    ):
         monitor.raise_if_cancelled()
         d = defer.maybeDeferred(walker.enter_directory, parent, children)
         # we process file-like children first, so we can drop their FileNode
@@ -790,12 +882,15 @@ class DirectoryNode(object):
                 continue
             found.add(verifier)
             if IDirectoryNode.providedBy(child):
-                dirkids.append( (child, childpath) )
+                dirkids.append((child, childpath))
             else:
-                filekids.append( (child, childpath) )
+                filekids.append((child, childpath))
         for i, (child, childpath) in enumerate(filekids):
-            d.addCallback(lambda ignored, child=child, childpath=childpath:
-                          walker.add_node(child, childpath))
+            d.addCallback(
+                lambda ignored, child=child, childpath=childpath: walker.add_node(
+                    child, childpath
+                )
+            )
             # to work around the Deferred tail-recursion problem
             # (specifically the defer.succeed flavor) requires us to avoid
             # doing more than 158 LIT files in a row. We insert a turn break
@@ -805,12 +900,12 @@ class DirectoryNode(object):
             if i % 100 == 99:
                 d.addCallback(lambda ignored: fireEventually())
         for (child, childpath) in dirkids:
-            d.addCallback(lambda ignored, child=child, childpath=childpath:
-                          self._deep_traverse_dirnode(child, childpath,
-                                                      walker, monitor,
-                                                      found))
+            d.addCallback(
+                lambda ignored, child=child, childpath=childpath: self._deep_traverse_dirnode(
+                    child, childpath, walker, monitor, found
+                )
+            )
         return d
-
 
     def build_manifest(self):
         """Return a Monitor, with a ['status'] that will be a list of (path,
@@ -825,10 +920,14 @@ class DirectoryNode(object):
         return self.deep_traverse(DeepStats(self))
 
     def start_deep_check(self, verify=False, add_lease=False):
-        return self.deep_traverse(DeepChecker(self, verify, repair=False, add_lease=add_lease))
+        return self.deep_traverse(
+            DeepChecker(self, verify, repair=False, add_lease=add_lease)
+        )
 
     def start_deep_check_and_repair(self, verify=False, add_lease=False):
-        return self.deep_traverse(DeepChecker(self, verify, repair=True, add_lease=add_lease))
+        return self.deep_traverse(
+            DeepChecker(self, verify, repair=True, add_lease=add_lease)
+        )
 
 
 class ManifestWalker(DeepStats):
@@ -839,7 +938,7 @@ class ManifestWalker(DeepStats):
         self.verifycaps = set()
 
     def add_node(self, node, path):
-        self.manifest.append( (tuple(path), node.get_uri()) )
+        self.manifest.append((tuple(path), node.get_uri()))
         si = node.get_storage_index()
         if si:
             self.storage_index_strings.add(base32.b2a(si))
@@ -850,11 +949,12 @@ class ManifestWalker(DeepStats):
 
     def get_results(self):
         stats = DeepStats.get_results(self)
-        return {"manifest": self.manifest,
-                "verifycaps": self.verifycaps,
-                "storage-index": self.storage_index_strings,
-                "stats": stats,
-                }
+        return {
+            "manifest": self.manifest,
+            "verifycaps": self.verifycaps,
+            "storage-index": self.storage_index_strings,
+            "stats": stats,
+        }
 
 
 class DeepChecker(object):
@@ -864,9 +964,13 @@ class DeepChecker(object):
             root_si_base32 = base32.b2a(root_si)
         else:
             root_si_base32 = ""
-        self._lp = log.msg(format="deep-check starting (%(si)s),"
-                           " verify=%(verify)s, repair=%(repair)s",
-                           si=root_si_base32, verify=verify, repair=repair)
+        self._lp = log.msg(
+            format="deep-check starting (%(si)s),"
+            " verify=%(verify)s, repair=%(repair)s",
+            si=root_si_base32,
+            verify=verify,
+            repair=repair,
+        )
         self._verify = verify
         self._repair = repair
         self._add_lease = add_lease

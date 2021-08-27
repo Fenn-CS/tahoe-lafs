@@ -56,6 +56,7 @@ class TahoeLAFSRequestTests(SyncTestCase):
     """
     Tests for ``TahoeLAFSRequest``.
     """
+
     def _fields_test(self, method, request_headers, request_body, match_fields):
         channel = DummyChannel()
         request = TahoeLAFSRequest(
@@ -85,29 +86,31 @@ class TahoeLAFSRequestTests(SyncTestCase):
         When a ``POST`` request is received, form fields are parsed into
         ``TahoeLAFSRequest.fields``.
         """
-        form_data, boundary = multipart_formdata([
-            [param(u"name", u"foo"),
-             body(u"bar"),
-            ],
-            [param(u"name", u"baz"),
-             param(u"filename", u"quux"),
-             body(u"some file contents"),
-            ],
-        ])
+        form_data, boundary = multipart_formdata(
+            [
+                [
+                    param(u"name", u"foo"),
+                    body(u"bar"),
+                ],
+                [
+                    param(u"name", u"baz"),
+                    param(u"filename", u"quux"),
+                    body(u"some file contents"),
+                ],
+            ]
+        )
         self._fields_test(
             b"POST",
             {b"content-type": b"multipart/form-data; boundary={}".format(boundary)},
             form_data.encode("ascii"),
             AfterPreprocessing(
-                lambda fs: {
-                    k: fs.getvalue(k)
-                    for k
-                    in fs.keys()
-                },
-                Equals({
-                    b"foo": b"bar",
-                    b"baz": b"some file contents",
-                }),
+                lambda fs: {k: fs.getvalue(k) for k in fs.keys()},
+                Equals(
+                    {
+                        b"foo": b"bar",
+                        b"baz": b"some file contents",
+                    }
+                ),
             ),
         )
 
@@ -116,6 +119,7 @@ class TahoeLAFSSiteTests(SyncTestCase):
     """
     Tests for ``TahoeLAFSSite``.
     """
+
     def _test_censoring(self, path, censored):
         """
         Verify that the event logged for a request for ``path`` does not include

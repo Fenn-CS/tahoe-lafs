@@ -7,8 +7,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2, bchr
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 from past.builtins import long
 
@@ -29,15 +52,18 @@ from ..common import (
     EMPTY_CLIENT_CONFIG,
 )
 
+
 def eventuaaaaaly(res=None):
     d = fireEventually(res)
     d.addCallback(fireEventually)
     d.addCallback(fireEventually)
     return d
 
+
 # this "FakeStorage" exists to put the share data in RAM and avoid using real
 # network connections, both to speed up the tests and to reduce the amount of
 # non-mutable.py code being exercised.
+
 
 class FakeStorage(object):
     # this class replaces the collection of storage servers, allowing the
@@ -47,7 +73,6 @@ class FakeStorage(object):
     #
     # Note that we ignore the storage index: this FakeStorage instance can
     # only be used for a single storage index.
-
 
     def __init__(self):
         self._peers = {}
@@ -70,7 +95,7 @@ class FakeStorage(object):
             self._pending_timer = reactor.callLater(1.0, self._fire_readers)
         if peerid not in self._pending:
             self._pending[peerid] = []
-        self._pending[peerid].append( (d, shares) )
+        self._pending[peerid].append((d, shares))
         return d
 
     def _fire_readers(self):
@@ -97,7 +122,6 @@ class FakeStorage(object):
 
 
 class FakeStorageServer(object):
-
     def __init__(self, peerid, storage):
         self.peerid = peerid
         self.storage = storage
@@ -105,9 +129,11 @@ class FakeStorageServer(object):
 
     def callRemote(self, methname, *args, **kwargs):
         self.queries += 1
+
         def _call():
             meth = getattr(self, methname)
             return meth(*args, **kwargs)
+
         d = fireEventually()
         d.addCallback(lambda res: _call())
         return d
@@ -123,6 +149,7 @@ class FakeStorageServer(object):
 
     def slot_readv(self, storage_index, shnums, readv):
         d = self.storage.read(self.peerid, storage_index)
+
         def _read(shares):
             response = {}
             for shnum in shares:
@@ -132,13 +159,15 @@ class FakeStorageServer(object):
                 for (offset, length) in readv:
                     assert isinstance(offset, (int, long)), offset
                     assert isinstance(length, (int, long)), length
-                    vector.append(shares[shnum][offset:offset+length])
+                    vector.append(shares[shnum][offset : offset + length])
             return response
+
         d.addCallback(_read)
         return d
 
-    def slot_testv_and_readv_and_writev(self, storage_index, secrets,
-                                        tw_vectors, read_vector):
+    def slot_testv_and_readv_and_writev(
+        self, storage_index, secrets, tw_vectors, read_vector
+    ):
         # always-pass: parrot the test vectors back to them.
         readv = {}
         for shnum, (testv, writev, new_length) in list(tw_vectors.items()):
@@ -146,27 +175,30 @@ class FakeStorageServer(object):
                 assert op in (b"le", b"eq", b"ge")
             # TODO: this isn't right, the read is controlled by read_vector,
             # not by testv
-            readv[shnum] = [ specimen
-                             for (offset, length, op, specimen)
-                             in testv ]
+            readv[shnum] = [specimen for (offset, length, op, specimen) in testv]
             for (offset, data) in writev:
-                self.storage.write(self.peerid, storage_index, shnum,
-                                   offset, data)
+                self.storage.write(self.peerid, storage_index, shnum, offset, data)
         answer = (True, readv)
         return fireEventually(answer)
 
 
 def flip_bit(original, byte_offset):
-    return (original[:byte_offset] +
-            bchr(ord(original[byte_offset:byte_offset+1]) ^ 0x01) +
-            original[byte_offset+1:])
+    return (
+        original[:byte_offset]
+        + bchr(ord(original[byte_offset : byte_offset + 1]) ^ 0x01)
+        + original[byte_offset + 1 :]
+    )
+
 
 def add_two(original, byte_offset):
     # It isn't enough to simply flip the bit for the version number,
     # because 1 is a valid version number. So we add two instead.
-    return (original[:byte_offset] +
-            bchr(ord(original[byte_offset:byte_offset+1]) ^ 0x02) +
-            original[byte_offset+1:])
+    return (
+        original[:byte_offset]
+        + bchr(ord(original[byte_offset : byte_offset + 1]) ^ 0x02)
+        + original[byte_offset + 1 :]
+    )
+
 
 def corrupt(res, s, offset, shnums_to_corrupt=None, offset_offset=0):
     # if shnums_to_corrupt is None, corrupt all shares. Otherwise it is a
@@ -175,8 +207,7 @@ def corrupt(res, s, offset, shnums_to_corrupt=None, offset_offset=0):
     for peerid in s._peers:
         shares = s._peers[peerid]
         for shnum in shares:
-            if (shnums_to_corrupt is not None
-                and shnum not in shnums_to_corrupt):
+            if shnums_to_corrupt is not None and shnum not in shnums_to_corrupt:
                 continue
             data = shares[shnum]
             # We're feeding the reader all of the share data, so it
@@ -186,13 +217,9 @@ def corrupt(res, s, offset, shnums_to_corrupt=None, offset_offset=0):
             reader = MDMFSlotReadProxy(None, None, shnum, data)
             # We need to get the offsets for the next part.
             d = reader.get_verinfo()
+
             def _do_corruption(verinfo, data, shnum, shares):
-                (seqnum,
-                 root_hash,
-                 IV,
-                 segsize,
-                 datalen,
-                 k, n, prefix, o) = verinfo
+                (seqnum, root_hash, IV, segsize, datalen, k, n, prefix, o) = verinfo
                 if isinstance(offset, tuple):
                     offset1, offset2 = offset
                 else:
@@ -206,22 +233,25 @@ def corrupt(res, s, offset, shnums_to_corrupt=None, offset_offset=0):
                     real_offset = offset1
                 real_offset = int(real_offset) + offset2 + offset_offset
                 assert isinstance(real_offset, int), offset
-                if offset1 == 0: # verbyte
+                if offset1 == 0:  # verbyte
                     f = add_two
                 else:
                     f = flip_bit
                 shares[shnum] = f(data, real_offset)
+
             d.addCallback(_do_corruption, data, shnum, shares)
             ds.append(d)
     dl = defer.DeferredList(ds)
     dl.addCallback(lambda ignored: res)
     return dl
 
+
 @attr.s
 class Peer(object):
     peerid = attr.ib()
     storage_server = attr.ib()
     announcement = attr.ib()
+
 
 def make_peer(s, i):
     """
@@ -315,9 +345,9 @@ def make_nodemaker_with_storage_broker(storage_broker, keysize):
     keygen = client.KeyGenerator()
     if keysize:
         keygen.set_default_keysize(keysize)
-    nodemaker = NodeMaker(storage_broker, sh, None,
-                          None, None,
-                          {"k": 3, "n": 10}, SDMF_VERSION, keygen)
+    nodemaker = NodeMaker(
+        storage_broker, sh, None, None, None, {"k": 3, "n": 10}, SDMF_VERSION, keygen
+    )
     return nodemaker
 
 
@@ -331,9 +361,11 @@ class PublishMixin(object):
         self._nodemaker = make_nodemaker(self._storage)
         self._storage_broker = self._nodemaker.storage_broker
         d = self._nodemaker.create_mutable_file(self.uploadable)
+
         def _created(node):
             self._fn = node
             self._fn2 = self._nodemaker.create_from_cap(node.get_uri())
+
         d.addCallback(_created)
         return d
 
@@ -349,12 +381,13 @@ class PublishMixin(object):
         self._nodemaker = make_nodemaker(self._storage)
         self._storage_broker = self._nodemaker.storage_broker
         d = self._nodemaker.create_mutable_file(self.uploadable, version=MDMF_VERSION)
+
         def _created(node):
             self._fn = node
             self._fn2 = self._nodemaker.create_from_cap(node.get_uri())
+
         d.addCallback(_created)
         return d
-
 
     def publish_sdmf(self, data=None):
         # like publish_one, except that the result is guaranteed to be
@@ -367,47 +400,53 @@ class PublishMixin(object):
         self._nodemaker = make_nodemaker(self._storage)
         self._storage_broker = self._nodemaker.storage_broker
         d = self._nodemaker.create_mutable_file(self.uploadable, version=SDMF_VERSION)
+
         def _created(node):
             self._fn = node
             self._fn2 = self._nodemaker.create_from_cap(node.get_uri())
+
         d.addCallback(_created)
         return d
 
-
     def publish_multiple(self, version=0):
-        self.CONTENTS = [b"Contents 0",
-                         b"Contents 1",
-                         b"Contents 2",
-                         b"Contents 3a",
-                         b"Contents 3b"]
+        self.CONTENTS = [
+            b"Contents 0",
+            b"Contents 1",
+            b"Contents 2",
+            b"Contents 3a",
+            b"Contents 3b",
+        ]
         self.uploadables = [MutableData(d) for d in self.CONTENTS]
         self._copied_shares = {}
         self._storage = FakeStorage()
         self._nodemaker = make_nodemaker(self._storage)
-        d = self._nodemaker.create_mutable_file(self.uploadables[0], version=version) # seqnum=1
+        d = self._nodemaker.create_mutable_file(
+            self.uploadables[0], version=version
+        )  # seqnum=1
+
         def _created(node):
             self._fn = node
             # now create multiple versions of the same file, and accumulate
             # their shares, so we can mix and match them later.
             d = defer.succeed(None)
             d.addCallback(self._copy_shares, 0)
-            d.addCallback(lambda res: node.overwrite(self.uploadables[1])) #s2
+            d.addCallback(lambda res: node.overwrite(self.uploadables[1]))  # s2
             d.addCallback(self._copy_shares, 1)
-            d.addCallback(lambda res: node.overwrite(self.uploadables[2])) #s3
+            d.addCallback(lambda res: node.overwrite(self.uploadables[2]))  # s3
             d.addCallback(self._copy_shares, 2)
-            d.addCallback(lambda res: node.overwrite(self.uploadables[3])) #s4a
+            d.addCallback(lambda res: node.overwrite(self.uploadables[3]))  # s4a
             d.addCallback(self._copy_shares, 3)
             # now we replace all the shares with version s3, and upload a new
             # version to get s4b.
-            rollback = dict([(i,2) for i in range(10)])
+            rollback = dict([(i, 2) for i in range(10)])
             d.addCallback(lambda res: self._set_versions(rollback))
-            d.addCallback(lambda res: node.overwrite(self.uploadables[4])) #s4b
+            d.addCallback(lambda res: node.overwrite(self.uploadables[4]))  # s4b
             d.addCallback(self._copy_shares, 4)
             # we leave the storage in state 4
             return d
+
         d.addCallback(_created)
         return d
-
 
     def _copy_shares(self, ignored, index):
         shares = self._storage._peers
@@ -431,6 +470,7 @@ class PublishMixin(object):
                     index = versionmap[shnum]
                     shares[peerid][shnum] = oldshares[index][peerid][shnum]
 
+
 class CheckerMixin(object):
     def check_good(self, r, where):
         self.failUnless(r.is_healthy(), where)
@@ -443,9 +483,12 @@ class CheckerMixin(object):
     def check_expected_failure(self, r, expected_exception, substring, where):
         for (peerid, storage_index, shnum, f) in r.get_share_problems():
             if f.check(expected_exception):
-                self.failUnless(substring in str(f),
-                                "%s: substring '%s' not in '%s'" %
-                                (where, substring, str(f)))
+                self.failUnless(
+                    substring in str(f),
+                    "%s: substring '%s' not in '%s'" % (where, substring, str(f)),
+                )
                 return
-        self.fail("%s: didn't see expected exception %s in problems %s" %
-                  (where, expected_exception, r.get_share_problems()))
+        self.fail(
+            "%s: didn't see expected exception %s in problems %s"
+            % (where, expected_exception, r.get_share_problems())
+        )

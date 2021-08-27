@@ -4,13 +4,19 @@ import urllib, json
 from twisted.protocols.basic import LineOnlyReceiver
 from allmydata.util.abbreviate import abbreviate_space_both
 from allmydata.scripts.slow_operation import SlowOperationRunner
-from allmydata.scripts.common import get_alias, DEFAULT_ALIAS, escape_path, \
-                                     UnknownAliasError
+from allmydata.scripts.common import (
+    get_alias,
+    DEFAULT_ALIAS,
+    escape_path,
+    UnknownAliasError,
+)
 from allmydata.scripts.common_http import do_http, format_http_error
 from allmydata.util.encodingutil import quote_output, quote_path
 
+
 class FakeTransport(object):
     disconnecting = False
+
 
 class ManifestStreamer(LineOnlyReceiver, object):
     delimiter = "\n"
@@ -23,7 +29,7 @@ class ManifestStreamer(LineOnlyReceiver, object):
         stdout = options.stdout
         stderr = options.stderr
         self.options = options
-        nodeurl = options['node-url']
+        nodeurl = options["node-url"]
         if not nodeurl.endswith("/"):
             nodeurl += "/"
         self.nodeurl = nodeurl
@@ -33,8 +39,8 @@ class ManifestStreamer(LineOnlyReceiver, object):
         except UnknownAliasError as e:
             e.display(stderr)
             return 1
-        if path == '/':
-            path = ''
+        if path == "/":
+            path = ""
         url = nodeurl + "uri/%s" % urllib.quote(rootcap)
         if path:
             url += "/" + escape_path(path)
@@ -44,7 +50,7 @@ class ManifestStreamer(LineOnlyReceiver, object):
         if resp.status not in (200, 302):
             print(format_http_error("ERROR", resp), file=stderr)
             return 1
-        #print("RESP", dir(resp))
+        # print("RESP", dir(resp))
         # use Twisted to split this into lines
         self.in_error = False
         while True:
@@ -70,9 +76,12 @@ class ManifestStreamer(LineOnlyReceiver, object):
             return
 
         try:
-            d = json.loads(line.decode('utf-8'))
+            d = json.loads(line.decode("utf-8"))
         except Exception as e:
-            print("ERROR could not decode/parse %s\nERROR  %r" % (quote_output(line), e), file=stderr)
+            print(
+                "ERROR could not decode/parse %s\nERROR  %r" % (quote_output(line), e),
+                file=stderr,
+            )
         else:
             if d["type"] in ("file", "directory"):
                 if self.options["storage-index"]:
@@ -88,31 +97,39 @@ class ManifestStreamer(LineOnlyReceiver, object):
                     if vc:
                         print(quote_output(vc, quotemarks=False), file=stdout)
                 else:
-                    print("%s %s" % (quote_output(d["cap"], quotemarks=False),
-                                               quote_path(d["path"], quotemarks=False)), file=stdout)
+                    print(
+                        "%s %s"
+                        % (
+                            quote_output(d["cap"], quotemarks=False),
+                            quote_path(d["path"], quotemarks=False),
+                        ),
+                        file=stdout,
+                    )
+
 
 def manifest(options):
     return ManifestStreamer().run(options)
 
-class StatsGrabber(SlowOperationRunner):
 
+class StatsGrabber(SlowOperationRunner):
     def make_url(self, base, ophandle):
         return base + "?t=start-deep-stats&ophandle=" + ophandle
 
     def write_results(self, data):
         stdout = self.options.stdout
-        keys = ("count-immutable-files",
-                "count-mutable-files",
-                "count-literal-files",
-                "count-files",
-                "count-directories",
-                "size-immutable-files",
-                "size-mutable-files",
-                "size-literal-files",
-                "size-directories",
-                "largest-directory",
-                "largest-immutable-file",
-                )
+        keys = (
+            "count-immutable-files",
+            "count-mutable-files",
+            "count-literal-files",
+            "count-files",
+            "count-directories",
+            "size-immutable-files",
+            "size-mutable-files",
+            "size-literal-files",
+            "size-directories",
+            "largest-directory",
+            "largest-immutable-file",
+        )
         width = max([len(k) for k in keys])
         print("Counts and Total Sizes:", file=stdout)
         for k in keys:
@@ -127,22 +144,31 @@ class StatsGrabber(SlowOperationRunner):
         if data["size-files-histogram"]:
             print("Size Histogram:", file=stdout)
             prevmax = None
-            maxlen = max([len(str(maxsize))
-                          for (minsize, maxsize, count)
-                          in data["size-files-histogram"]])
-            maxcountlen = max([len(str(count))
-                               for (minsize, maxsize, count)
-                               in data["size-files-histogram"]])
+            maxlen = max(
+                [
+                    len(str(maxsize))
+                    for (minsize, maxsize, count) in data["size-files-histogram"]
+                ]
+            )
+            maxcountlen = max(
+                [
+                    len(str(count))
+                    for (minsize, maxsize, count) in data["size-files-histogram"]
+                ]
+            )
             minfmt = "%" + str(maxlen) + "d"
             maxfmt = "%-" + str(maxlen) + "d"
             countfmt = "%-" + str(maxcountlen) + "d"
             linefmt = minfmt + "-" + maxfmt + " : " + countfmt + "    %s"
             for (minsize, maxsize, count) in data["size-files-histogram"]:
-                if prevmax is not None and minsize != prevmax+1:
-                    print(" "*(maxlen-1) + "...", file=stdout)
+                if prevmax is not None and minsize != prevmax + 1:
+                    print(" " * (maxlen - 1) + "...", file=stdout)
                 prevmax = maxsize
-                print(linefmt % (minsize, maxsize, count,
-                                           abbreviate_space_both(maxsize)), file=stdout)
+                print(
+                    linefmt % (minsize, maxsize, count, abbreviate_space_both(maxsize)),
+                    file=stdout,
+                )
+
 
 def stats(options):
     return StatsGrabber().run(options)

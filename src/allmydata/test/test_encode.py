@@ -7,8 +7,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 from past.builtins import chr as byteschr, long
 
 from zope.interface import implementer
@@ -24,11 +47,14 @@ from allmydata.util.consumer import download_to_data
 from allmydata.interfaces import IStorageBucketWriter, IStorageBucketReader
 from allmydata.test.no_network import GridTestMixin
 
+
 class LostPeerError(Exception):
     pass
 
-def flip_bit(good): # flips the last bit
+
+def flip_bit(good):  # flips the last bit
     return good[:-1] + byteschr(ord(good[-1]) ^ 0x01)
+
 
 @implementer(IStorageBucketWriter, IStorageBucketReader)
 class FakeBucketReaderWriterProxy(object):
@@ -59,12 +85,14 @@ class FakeBucketReaderWriterProxy(object):
         if self.mode == "lost-early":
             f = Failure(LostPeerError("I went away early"))
             return fireEventually(f)
+
         def _try():
             assert not self.closed
             assert segmentnum not in self.blocks
             if self.mode == "lost" and segmentnum >= 1:
                 raise LostPeerError("I'm going away now")
             self.blocks[segmentnum] = data
+
         return defer.maybeDeferred(_try)
 
     def put_crypttext_hashes(self, hashes):
@@ -72,6 +100,7 @@ class FakeBucketReaderWriterProxy(object):
             assert not self.closed
             assert not self.crypttext_hashes
             self.crypttext_hashes = hashes
+
         return defer.maybeDeferred(_try)
 
     def put_block_hashes(self, blockhashes):
@@ -79,6 +108,7 @@ class FakeBucketReaderWriterProxy(object):
             assert not self.closed
             assert self.block_hashes is None
             self.block_hashes = blockhashes
+
         return defer.maybeDeferred(_try)
 
     def put_share_hashes(self, sharehashes):
@@ -86,18 +116,21 @@ class FakeBucketReaderWriterProxy(object):
             assert not self.closed
             assert self.share_hashes is None
             self.share_hashes = sharehashes
+
         return defer.maybeDeferred(_try)
 
     def put_uri_extension(self, uri_extension):
         def _try():
             assert not self.closed
             self.uri_extension = uri_extension
+
         return defer.maybeDeferred(_try)
 
     def close(self):
         def _try():
             assert not self.closed
             self.closed = True
+
         return defer.maybeDeferred(_try)
 
     def abort(self):
@@ -105,24 +138,29 @@ class FakeBucketReaderWriterProxy(object):
 
     def get_block_data(self, blocknum, blocksize, size):
         d = self._start()
+
         def _try(unused=None):
             assert isinstance(blocknum, (int, long))
             if self.mode == "bad block":
                 return flip_bit(self.blocks[blocknum])
             return self.blocks[blocknum]
+
         d.addCallback(_try)
         return d
 
     def get_plaintext_hashes(self):
         d = self._start()
+
         def _try(unused=None):
             hashes = self.plaintext_hashes[:]
             return hashes
+
         d.addCallback(_try)
         return d
 
     def get_crypttext_hashes(self):
         d = self._start()
+
         def _try(unused=None):
             hashes = self.crypttext_hashes[:]
             if self.mode == "bad crypttext hashroot":
@@ -130,22 +168,26 @@ class FakeBucketReaderWriterProxy(object):
             if self.mode == "bad crypttext hash":
                 hashes[1] = flip_bit(hashes[1])
             return hashes
+
         d.addCallback(_try)
         return d
 
     def get_block_hashes(self, at_least_these=()):
         d = self._start()
+
         def _try(unused=None):
             if self.mode == "bad blockhash":
                 hashes = self.block_hashes[:]
                 hashes[1] = flip_bit(hashes[1])
                 return hashes
             return self.block_hashes
+
         d.addCallback(_try)
         return d
 
     def get_share_hashes(self, at_least_these=()):
         d = self._start()
+
         def _try(unused=None):
             if self.mode == "bad sharehash":
                 hashes = self.share_hashes[:]
@@ -157,15 +199,18 @@ class FakeBucketReaderWriterProxy(object):
                 # download.py is supposed to guard against this case.
                 return []
             return self.share_hashes
+
         d.addCallback(_try)
         return d
 
     def get_uri_extension(self):
         d = self._start()
+
         def _try(unused=None):
             if self.mode == "bad uri_extension":
                 return flip_bit(self.uri_extension)
             return self.uri_extension
+
         d.addCallback(_try)
         return d
 
@@ -175,54 +220,71 @@ def make_data(length):
     assert length <= len(data)
     return data[:length]
 
+
 class ValidatedExtendedURIProxy(unittest.TestCase):
     K = 4
     M = 10
     SIZE = 200
     SEGSIZE = 72
-    _TMP = SIZE%SEGSIZE
+    _TMP = SIZE % SEGSIZE
     if _TMP == 0:
         _TMP = SEGSIZE
     if _TMP % K != 0:
-        _TMP += (K - (_TMP % K))
+        _TMP += K - (_TMP % K)
     TAIL_SEGSIZE = _TMP
     _TMP = SIZE // SEGSIZE
     if SIZE % SEGSIZE != 0:
         _TMP += 1
     NUM_SEGMENTS = _TMP
-    mindict = { 'segment_size': SEGSIZE,
-                'crypttext_root_hash': b'0'*hashutil.CRYPTO_VAL_SIZE,
-                'share_root_hash': b'1'*hashutil.CRYPTO_VAL_SIZE }
-    optional_consistent = { 'crypttext_hash': b'2'*hashutil.CRYPTO_VAL_SIZE,
-                            'codec_name': b"crs",
-                            'codec_params': b"%d-%d-%d" % (SEGSIZE, K, M),
-                            'tail_codec_params': b"%d-%d-%d" % (TAIL_SEGSIZE, K, M),
-                            'num_segments': NUM_SEGMENTS,
-                            'size': SIZE,
-                            'needed_shares': K,
-                            'total_shares': M,
-                            'plaintext_hash': b"anything",
-                            'plaintext_root_hash': b"anything", }
+    mindict = {
+        "segment_size": SEGSIZE,
+        "crypttext_root_hash": b"0" * hashutil.CRYPTO_VAL_SIZE,
+        "share_root_hash": b"1" * hashutil.CRYPTO_VAL_SIZE,
+    }
+    optional_consistent = {
+        "crypttext_hash": b"2" * hashutil.CRYPTO_VAL_SIZE,
+        "codec_name": b"crs",
+        "codec_params": b"%d-%d-%d" % (SEGSIZE, K, M),
+        "tail_codec_params": b"%d-%d-%d" % (TAIL_SEGSIZE, K, M),
+        "num_segments": NUM_SEGMENTS,
+        "size": SIZE,
+        "needed_shares": K,
+        "total_shares": M,
+        "plaintext_hash": b"anything",
+        "plaintext_root_hash": b"anything",
+    }
     # optional_inconsistent = { 'crypttext_hash': ('2'*(hashutil.CRYPTO_VAL_SIZE-1), "", 77),
-    optional_inconsistent = { 'crypttext_hash': (77,),
-                              'codec_name': (b"digital fountain", b""),
-                              'codec_params': (b"%d-%d-%d" % (SEGSIZE, K-1, M),
-                                               b"%d-%d-%d" % (SEGSIZE-1, K, M),
-                                               b"%d-%d-%d" % (SEGSIZE, K, M-1)),
-                              'tail_codec_params': (b"%d-%d-%d" % (TAIL_SEGSIZE, K-1, M),
-                                               b"%d-%d-%d" % (TAIL_SEGSIZE-1, K, M),
-                                               b"%d-%d-%d" % (TAIL_SEGSIZE, K, M-1)),
-                              'num_segments': (NUM_SEGMENTS-1,),
-                              'size': (SIZE-1,),
-                              'needed_shares': (K-1,),
-                              'total_shares': (M-1,), }
+    optional_inconsistent = {
+        "crypttext_hash": (77,),
+        "codec_name": (b"digital fountain", b""),
+        "codec_params": (
+            b"%d-%d-%d" % (SEGSIZE, K - 1, M),
+            b"%d-%d-%d" % (SEGSIZE - 1, K, M),
+            b"%d-%d-%d" % (SEGSIZE, K, M - 1),
+        ),
+        "tail_codec_params": (
+            b"%d-%d-%d" % (TAIL_SEGSIZE, K - 1, M),
+            b"%d-%d-%d" % (TAIL_SEGSIZE - 1, K, M),
+            b"%d-%d-%d" % (TAIL_SEGSIZE, K, M - 1),
+        ),
+        "num_segments": (NUM_SEGMENTS - 1,),
+        "size": (SIZE - 1,),
+        "needed_shares": (K - 1,),
+        "total_shares": (M - 1,),
+    }
 
     def _test(self, uebdict):
         uebstring = uri.pack_extension(uebdict)
         uebhash = hashutil.uri_extension_hash(uebstring)
         fb = FakeBucketReaderWriterProxy()
         fb.put_uri_extension(uebstring)
-        verifycap = uri.CHKFileVerifierURI(storage_index=b'x'*16, uri_extension_hash=uebhash, needed_shares=self.K, total_shares=self.M, size=self.SIZE)
+        verifycap = uri.CHKFileVerifierURI(
+            storage_index=b"x" * 16,
+            uri_extension_hash=uebhash,
+            needed_shares=self.K,
+            total_shares=self.M,
+            size=self.SIZE,
+        )
         vup = checker.ValidatedExtendedURIProxy(fb, verifycap)
         return vup.start()
 
@@ -233,7 +295,9 @@ class ValidatedExtendedURIProxy(unittest.TestCase):
         if isinstance(res, Failure):
             res.trap(*expected_failures)
         else:
-            self.fail("was supposed to raise %s, not get '%s'" % (expected_failures, res))
+            self.fail(
+                "was supposed to raise %s, not get '%s'" % (expected_failures, res)
+            )
 
     def _test_reject(self, uebdict):
         d = self._test(uebdict)
@@ -271,28 +335,43 @@ class ValidatedExtendedURIProxy(unittest.TestCase):
                 dl.append(d)
         return defer.DeferredList(dl)
 
+
 class Encode(unittest.TestCase):
-    def do_encode(self, max_segment_size, datalen, NUM_SHARES, NUM_SEGMENTS,
-                  expected_block_hashes, expected_share_hashes):
+    def do_encode(
+        self,
+        max_segment_size,
+        datalen,
+        NUM_SHARES,
+        NUM_SEGMENTS,
+        expected_block_hashes,
+        expected_share_hashes,
+    ):
         data = make_data(datalen)
         # force use of multiple segments
         e = encode.Encoder()
         u = upload.Data(data, convergence=b"some convergence string")
-        u.set_default_encoding_parameters({'max_segment_size': max_segment_size,
-                                           'k': 25, 'happy': 75, 'n': 100})
+        u.set_default_encoding_parameters(
+            {"max_segment_size": max_segment_size, "k": 25, "happy": 75, "n": 100}
+        )
         eu = upload.EncryptAnUploadable(u)
         d = e.set_encrypted_uploadable(eu)
 
         all_shareholders = []
+
         def _ready(res):
-            k,happy,n = e.get_param("share_counts")
-            _assert(n == NUM_SHARES) # else we'll be completely confused
+            k, happy, n = e.get_param("share_counts")
+            _assert(n == NUM_SHARES)  # else we'll be completely confused
             numsegs = e.get_param("num_segments")
             _assert(numsegs == NUM_SEGMENTS, numsegs, NUM_SEGMENTS)
             segsize = e.get_param("segment_size")
-            _assert( (NUM_SEGMENTS-1)*segsize < len(data) <= NUM_SEGMENTS*segsize,
-                     NUM_SEGMENTS, segsize,
-                     (NUM_SEGMENTS-1)*segsize, len(data), NUM_SEGMENTS*segsize)
+            _assert(
+                (NUM_SEGMENTS - 1) * segsize < len(data) <= NUM_SEGMENTS * segsize,
+                NUM_SEGMENTS,
+                segsize,
+                (NUM_SEGMENTS - 1) * segsize,
+                len(data),
+                NUM_SEGMENTS * segsize,
+            )
 
             shareholders = {}
             servermap = {}
@@ -303,28 +382,28 @@ class Encode(unittest.TestCase):
                 all_shareholders.append(peer)
             e.set_shareholders(shareholders, servermap)
             return e.start()
+
         d.addCallback(_ready)
 
         def _check(res):
             verifycap = res
             self.failUnless(isinstance(verifycap.uri_extension_hash, bytes))
             self.failUnlessEqual(len(verifycap.uri_extension_hash), 32)
-            for i,peer in enumerate(all_shareholders):
+            for i, peer in enumerate(all_shareholders):
                 self.failUnless(peer.closed)
                 self.failUnlessEqual(len(peer.blocks), NUM_SEGMENTS)
                 # each peer gets a full tree of block hashes. For 3 or 4
                 # segments, that's 7 hashes. For 5 segments it's 15 hashes.
-                self.failUnlessEqual(len(peer.block_hashes),
-                                     expected_block_hashes)
+                self.failUnlessEqual(len(peer.block_hashes), expected_block_hashes)
                 for h in peer.block_hashes:
                     self.failUnlessEqual(len(h), 32)
                 # each peer also gets their necessary chain of share hashes.
                 # For 100 shares (rounded up to 128 leaves), that's 8 hashes
-                self.failUnlessEqual(len(peer.share_hashes),
-                                     expected_share_hashes)
+                self.failUnlessEqual(len(peer.share_hashes), expected_share_hashes)
                 for (hashnum, h) in peer.share_hashes:
                     self.failUnless(isinstance(hashnum, int))
                     self.failUnlessEqual(len(h), 32)
+
         d.addCallback(_check)
 
         return d
@@ -332,9 +411,11 @@ class Encode(unittest.TestCase):
     def test_send_74(self):
         # 3 segments (25, 25, 24)
         return self.do_encode(25, 74, 100, 3, 7, 8)
+
     def test_send_75(self):
         # 3 segments (25, 25, 25)
         return self.do_encode(25, 75, 100, 3, 7, 8)
+
     def test_send_51(self):
         # 3 segments (25, 25, 1)
         return self.do_encode(25, 51, 100, 3, 7, 8)
@@ -342,9 +423,11 @@ class Encode(unittest.TestCase):
     def test_send_76(self):
         # encode a 76 byte file (in 4 segments: 25,25,25,1) to 100 shares
         return self.do_encode(25, 76, 100, 4, 7, 8)
+
     def test_send_99(self):
         # 4 segments: 25,25,25,24
         return self.do_encode(25, 99, 100, 4, 7, 8)
+
     def test_send_100(self):
         # 4 segments: 25,25,25,25
         return self.do_encode(25, 100, 100, 4, 7, 8)
@@ -352,9 +435,11 @@ class Encode(unittest.TestCase):
     def test_send_124(self):
         # 5 segments: 25, 25, 25, 25, 24
         return self.do_encode(25, 124, 100, 5, 15, 8)
+
     def test_send_125(self):
         # 5 segments: 25, 25, 25, 25, 25
         return self.do_encode(25, 125, 100, 5, 15, 8)
+
     def test_send_101(self):
         # 5 segments: 25, 25, 25, 25, 1
         return self.do_encode(25, 101, 100, 5, 15, 8)
@@ -386,15 +471,32 @@ class Roundtrip(GridTestMixin, unittest.TestCase):
     # trees and 7 blockhashes. 5-segment files will get 8-leaf block hash
     # trees, which gets 15 blockhashes.
 
-    def test_74(self): return self.do_test_size(74)
-    def test_75(self): return self.do_test_size(75)
-    def test_51(self): return self.do_test_size(51)
-    def test_99(self): return self.do_test_size(99)
-    def test_100(self): return self.do_test_size(100)
-    def test_76(self): return self.do_test_size(76)
-    def test_124(self): return self.do_test_size(124)
-    def test_125(self): return self.do_test_size(125)
-    def test_101(self): return self.do_test_size(101)
+    def test_74(self):
+        return self.do_test_size(74)
+
+    def test_75(self):
+        return self.do_test_size(75)
+
+    def test_51(self):
+        return self.do_test_size(51)
+
+    def test_99(self):
+        return self.do_test_size(99)
+
+    def test_100(self):
+        return self.do_test_size(100)
+
+    def test_76(self):
+        return self.do_test_size(76)
+
+    def test_124(self):
+        return self.do_test_size(124)
+
+    def test_125(self):
+        return self.do_test_size(125)
+
+    def test_101(self):
+        return self.do_test_size(101)
 
     def upload(self, data):
         u = upload.Data(data, None)
@@ -411,10 +513,12 @@ class Roundtrip(GridTestMixin, unittest.TestCase):
         self.basedir = self.mktemp()
         self.set_up_grid()
         self.c0 = self.g.clients[0]
-        DATA = b"p"*size
+        DATA = b"p" * size
         d = self.upload(DATA)
         d.addCallback(lambda n: download_to_data(n))
+
         def _downloaded(newdata):
             self.failUnlessEqual(newdata, DATA)
+
         d.addCallback(_downloaded)
         return d

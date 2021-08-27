@@ -4,7 +4,7 @@ import os
 from six.moves import cStringIO as StringIO
 from six.moves import urllib, http_client
 import six
-import allmydata # for __full_version__
+import allmydata  # for __full_version__
 
 from allmydata.util.encodingutil import quote_output
 from allmydata.scripts.common import TahoeError
@@ -15,25 +15,27 @@ def parse_url(url, defaultPort=None):
     url = url.strip()
     parsed = urllib.parse.urlparse(url)
     scheme = parsed[0]
-    path = urllib.parse.urlunparse(('','')+parsed[2:])
+    path = urllib.parse.urlunparse(("", "") + parsed[2:])
     if defaultPort is None:
-        if scheme == 'https':
+        if scheme == "https":
             defaultPort = 443
         else:
             defaultPort = 80
     host, port = parsed[1], defaultPort
-    if ':' in host:
-        host, port = host.split(':')
+    if ":" in host:
+        host, port = host.split(":")
         port = int(port)
     if path == "":
         path = "/"
     return scheme, host, port, path
+
 
 class BadResponse(object):
     def __init__(self, url, err):
         self.status = -1
         self.reason = "Error trying to connect to %s: %s" % (url, err)
         self.error = err
+
     def read(self, length=0):
         return ""
 
@@ -86,9 +88,15 @@ def do_http(method, url, body=""):
 def format_http_success(resp):
     return "%s %s" % (resp.status, quote_output(resp.reason, quotemarks=False))
 
+
 def format_http_error(msg, resp):
-    return "%s: %s %s\n%s" % (msg, resp.status, quote_output(resp.reason, quotemarks=False),
-                              quote_output(resp.read(), quotemarks=False))
+    return "%s: %s %s\n%s" % (
+        msg,
+        resp.status,
+        quote_output(resp.reason, quotemarks=False),
+        quote_output(resp.read(), quotemarks=False),
+    )
+
 
 def check_http_error(resp, stderr):
     if resp.status < 200 or resp.status >= 300:

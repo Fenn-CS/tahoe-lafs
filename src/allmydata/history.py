@@ -1,5 +1,5 @@
-
 import weakref
+
 
 class History(object):
     """Keep track of recent operations, for a status display."""
@@ -29,7 +29,6 @@ class History(object):
         self.all_helper_upload_statuses = weakref.WeakKeyDictionary()
         self.recent_helper_upload_statuses = []
 
-
     def add_download(self, download_status):
         self.all_downloads_statuses[download_status] = None
         self.recent_download_statuses.append(download_status)
@@ -50,8 +49,6 @@ class History(object):
         for us in self.all_upload_statuses:
             yield us
 
-
-
     def notify_mapupdate(self, p):
         self.all_mapupdate_status[p] = None
         self.recent_mapupdate_status.append(p)
@@ -62,12 +59,12 @@ class History(object):
         self.all_publish_status[p] = None
         self.recent_publish_status.append(p)
         if self.stats_provider:
-            self.stats_provider.count('mutable.files_published', 1)
+            self.stats_provider.count("mutable.files_published", 1)
             # We must be told bytes_published as an argument, since the
             # publish_status does not yet know how much data it will be asked
             # to send. When we move to MDMF we'll need to find a better way
             # to handle this.
-            self.stats_provider.count('mutable.bytes_published', size)
+            self.stats_provider.count("mutable.bytes_published", size)
         while len(self.recent_publish_status) > self.MAX_PUBLISH_STATUSES:
             self.recent_publish_status.pop(0)
 
@@ -75,18 +72,19 @@ class History(object):
         self.all_retrieve_status[r] = None
         self.recent_retrieve_status.append(r)
         if self.stats_provider:
-            self.stats_provider.count('mutable.files_retrieved', 1)
-            self.stats_provider.count('mutable.bytes_retrieved', r.get_size())
+            self.stats_provider.count("mutable.files_retrieved", 1)
+            self.stats_provider.count("mutable.bytes_retrieved", r.get_size())
         while len(self.recent_retrieve_status) > self.MAX_RETRIEVE_STATUSES:
             self.recent_retrieve_status.pop(0)
-
 
     def list_all_mapupdate_statuses(self):
         for s in self.all_mapupdate_status:
             yield s
+
     def list_all_publish_statuses(self):
         for s in self.all_publish_status:
             yield s
+
     def list_all_retrieve_statuses(self):
         for s in self.all_retrieve_status:
             yield s
@@ -100,4 +98,3 @@ class History(object):
     def list_all_helper_statuses(self):
         for s in self.all_helper_upload_statuses:
             yield s
-

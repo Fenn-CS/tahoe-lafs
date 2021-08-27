@@ -41,8 +41,8 @@ class GridManagerUtilities(SyncTestCase):
         """
         cert_path = self.mktemp()
         fake_cert = {
-            "certificate": "{\"expires\":1601687822,\"public_key\":\"pub-v0-cbq6hcf3pxcz6ouoafrbktmkixkeuywpcpbcomzd3lqbkq4nmfga\",\"version\":1}",
-            "signature": "fvjd3uvvupf2v6tnvkwjd473u3m3inyqkwiclhp7balmchkmn3px5pei3qyfjnhymq4cjcwvbpqmcwwnwswdtrfkpnlaxuih2zbdmda"
+            "certificate": '{"expires":1601687822,"public_key":"pub-v0-cbq6hcf3pxcz6ouoafrbktmkixkeuywpcpbcomzd3lqbkq4nmfga","version":1}',
+            "signature": "fvjd3uvvupf2v6tnvkwjd473u3m3inyqkwiclhp7balmchkmn3px5pei3qyfjnhymq4cjcwvbpqmcwwnwswdtrfkpnlaxuih2zbdmda",
         }
         with open(cert_path, "w") as f:
             f.write(json.dumps(fake_cert))
@@ -52,10 +52,12 @@ class GridManagerUtilities(SyncTestCase):
             "[grid_manager_certificates]\n"
             "ding = {}\n".format(cert_path)
         )
-        config = config_from_string("/foo", "portnum", config_data, client_valid_config())
+        config = config_from_string(
+            "/foo", "portnum", config_data, client_valid_config()
+        )
         self.assertEqual(
             {"fluffy": "pub-v0-vqimc4s5eflwajttsofisp5st566dbq36xnpp4siz57ufdavpvlq"},
-            config.enumerate_section("grid_managers")
+            config.enumerate_section("grid_managers"),
         )
         certs = config.get_grid_manager_certificates()
         self.assertEqual([fake_cert], certs)
@@ -93,7 +95,7 @@ class GridManagerVerifier(SyncTestCase):
                 base32.a2b(cert["signature"]),
                 cert["certificate"],
             ),
-            None
+            None,
         )
 
     def test_sign_cert_wrong_name(self):
@@ -117,7 +119,7 @@ class GridManagerVerifier(SyncTestCase):
                 "test": {
                     "public_key": ed25519.string_from_verifying_key(pub),
                 }
-            }
+            },
         )
 
     def test_remove(self):
@@ -228,9 +230,7 @@ class GridManagerVerifier(SyncTestCase):
         bad_config = {
             "grid_manager_config_version": 0,
             "private_key": "priv-v0-ub7knkkmkptqbsax4tznymwzc4nk5lynskwjsiubmnhcpd7lvlqa",
-            "storage_servers": {
-                "bad": {}
-            }
+            "storage_servers": {"bad": {}},
         }
         fp.makedirs()
         with fp.child("config.json").open("w") as f:
@@ -248,10 +248,7 @@ class GridManagerVerifier(SyncTestCase):
         Parse an ostensibly valid storage certificate
         """
         js = parse_grid_manager_certificate('{"certificate": "", "signature": ""}')
-        self.assertEqual(
-            set(js.keys()),
-            {"certificate", "signature"}
-        )
+        self.assertEqual(set(js.keys()), {"certificate", "signature"})
         # the signature isn't *valid*, but that's checked in a
         # different function
 

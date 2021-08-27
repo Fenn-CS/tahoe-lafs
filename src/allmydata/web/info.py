@@ -1,4 +1,3 @@
-
 import os, urllib
 
 from twisted.python.filepath import FilePath
@@ -7,7 +6,7 @@ from twisted.web.template import tags as T, Element, renderElement, XMLFile, ren
 from allmydata.util import base32
 from allmydata.interfaces import IDirectoryNode, IFileNode, MDMF_VERSION
 from allmydata.web.common import MultiFormatResource
-from allmydata.mutable.common import UnrecoverableFileError # TODO: move
+from allmydata.mutable.common import UnrecoverableFileError  # TODO: move
 
 
 class MoreInfo(MultiFormatResource):
@@ -96,14 +95,18 @@ class MoreInfoElement(Element):
     def size(self, req, tag):
         node = self.original
         d = node.get_current_size()
+
         def _no_size(size):
             if size is None:
                 return "?"
             return size
+
         d.addCallback(_no_size)
+
         def _handle_unrecoverable(f):
             f.trap(UnrecoverableFileError)
             return "?"
+
         d.addErrback(_handle_unrecoverable)
         d.addCallback(lambda size: tag(str(size)))
         return d
@@ -200,26 +203,29 @@ class MoreInfoElement(Element):
         target = self.get_root(req) + "/uri/" + quoted_uri
         if IDirectoryNode.providedBy(node):
             target += "/"
-        check = T.form(action=target, method="post",
-                       enctype="multipart/form-data")(
+        check = T.form(action=target, method="post", enctype="multipart/form-data")(
             T.fieldset(
-            T.input(type="hidden", name="t", value="check"),
-            T.input(type="hidden", name="return_to", value="."),
-            T.legend("Check on this object", class_="freeform-form-label"),
-            T.div(
-            "Verify every bit? (EXPENSIVE):",
-            T.input(type="checkbox", name="verify"),
-            ),
-            T.div("Repair any problems?: ",
-                  T.input(type="checkbox", name="repair")),
-            T.div("Add/renew lease on all shares?: ",
-                  T.input(type="checkbox", name="add-lease")),
-            T.div("Emit results in JSON format?: ",
-                  T.input(type="checkbox", name="output", value="JSON")),
-
-            T.input(type="submit", value="Check"),
-
-            ))
+                T.input(type="hidden", name="t", value="check"),
+                T.input(type="hidden", name="return_to", value="."),
+                T.legend("Check on this object", class_="freeform-form-label"),
+                T.div(
+                    "Verify every bit? (EXPENSIVE):",
+                    T.input(type="checkbox", name="verify"),
+                ),
+                T.div(
+                    "Repair any problems?: ", T.input(type="checkbox", name="repair")
+                ),
+                T.div(
+                    "Add/renew lease on all shares?: ",
+                    T.input(type="checkbox", name="add-lease"),
+                ),
+                T.div(
+                    "Emit results in JSON format?: ",
+                    T.input(type="checkbox", name="output", value="JSON"),
+                ),
+                T.input(type="submit", value="Check"),
+            )
+        )
         return tag(check)
 
     @renderer
@@ -227,8 +233,7 @@ class MoreInfoElement(Element):
         node = self.original
         if IDirectoryNode.providedBy(node):
             return ""
-        if (IFileNode.providedBy(node)
-            and node.is_mutable() and not node.is_readonly()):
+        if IFileNode.providedBy(node) and node.is_mutable() and not node.is_readonly():
             return tag
         return ""
 
@@ -238,17 +243,17 @@ class MoreInfoElement(Element):
         root = self.get_root(req)
         action = "%s/uri/%s" % (root, urllib.quote(node.get_uri()))
         done_url = "%s/uri/%s?t=info" % (root, urllib.quote(node.get_uri()))
-        overwrite = T.form(action=action, method="post",
-                           enctype="multipart/form-data")(
+        overwrite = T.form(action=action, method="post", enctype="multipart/form-data")(
             T.fieldset(
-            T.input(type="hidden", name="t", value="upload"),
-            T.input(type='hidden', name='when_done', value=done_url),
-            T.legend("Overwrite", class_="freeform-form-label"),
-            "Upload new contents: ",
-            T.input(type="file", name="file"),
-            " ",
-            T.input(type="submit", value="Replace Contents")
-            ))
+                T.input(type="hidden", name="t", value="upload"),
+                T.input(type="hidden", name="when_done", value=done_url),
+                T.legend("Overwrite", class_="freeform-form-label"),
+                "Upload new contents: ",
+                T.input(type="file", name="file"),
+                " ",
+                T.input(type="submit", value="Replace Contents"),
+            )
+        )
         return tag(overwrite)
 
     @renderer
@@ -261,73 +266,96 @@ class MoreInfoElement(Element):
     @renderer
     def deep_check_form(self, req, tag):
         ophandle = base32.b2a(os.urandom(16))
-        deep_check = T.form(action=req.path, method="post",
-                            enctype="multipart/form-data")(
+        deep_check = T.form(
+            action=req.path, method="post", enctype="multipart/form-data"
+        )(
             T.fieldset(
-            T.input(type="hidden", name="t", value="start-deep-check"),
-            T.input(type="hidden", name="return_to", value="."),
-            T.legend("Run a deep-check operation (EXPENSIVE)", class_="freeform-form-label"),
-            T.div(
-            "Verify every bit? (EVEN MORE EXPENSIVE):",
-            T.input(type="checkbox", name="verify"),
-            ),
-            T.div("Repair any problems?: ",
-                  T.input(type="checkbox", name="repair")),
-            T.div("Add/renew lease on all shares?: ",
-                  T.input(type="checkbox", name="add-lease")),
-            T.div("Emit results in JSON format?: ",
-                  T.input(type="checkbox", name="output", value="JSON")),
-
-            T.input(type="hidden", name="ophandle", value=ophandle),
-            T.input(type="submit", value="Deep-Check"),
-
-            ))
+                T.input(type="hidden", name="t", value="start-deep-check"),
+                T.input(type="hidden", name="return_to", value="."),
+                T.legend(
+                    "Run a deep-check operation (EXPENSIVE)",
+                    class_="freeform-form-label",
+                ),
+                T.div(
+                    "Verify every bit? (EVEN MORE EXPENSIVE):",
+                    T.input(type="checkbox", name="verify"),
+                ),
+                T.div(
+                    "Repair any problems?: ", T.input(type="checkbox", name="repair")
+                ),
+                T.div(
+                    "Add/renew lease on all shares?: ",
+                    T.input(type="checkbox", name="add-lease"),
+                ),
+                T.div(
+                    "Emit results in JSON format?: ",
+                    T.input(type="checkbox", name="output", value="JSON"),
+                ),
+                T.input(type="hidden", name="ophandle", value=ophandle),
+                T.input(type="submit", value="Deep-Check"),
+            )
+        )
         return tag(deep_check)
 
     @renderer
     def deep_size_form(self, req, tag):
         ophandle = base32.b2a(os.urandom(16))
-        deep_size = T.form(action=req.path, method="post",
-                            enctype="multipart/form-data")(
+        deep_size = T.form(
+            action=req.path, method="post", enctype="multipart/form-data"
+        )(
             T.fieldset(
-            T.input(type="hidden", name="t", value="start-deep-size"),
-            T.legend("Run a deep-size operation (EXPENSIVE)", class_="freeform-form-label"),
-            T.input(type="hidden", name="ophandle", value=ophandle),
-            T.input(type="submit", value="Deep-Size"),
-            ))
+                T.input(type="hidden", name="t", value="start-deep-size"),
+                T.legend(
+                    "Run a deep-size operation (EXPENSIVE)",
+                    class_="freeform-form-label",
+                ),
+                T.input(type="hidden", name="ophandle", value=ophandle),
+                T.input(type="submit", value="Deep-Size"),
+            )
+        )
         return tag(deep_size)
 
     @renderer
     def deep_stats_form(self, req, tag):
         ophandle = base32.b2a(os.urandom(16))
-        deep_stats = T.form(action=req.path, method="post",
-                            enctype="multipart/form-data")(
+        deep_stats = T.form(
+            action=req.path, method="post", enctype="multipart/form-data"
+        )(
             T.fieldset(
-            T.input(type="hidden", name="t", value="start-deep-stats"),
-            T.legend("Run a deep-stats operation (EXPENSIVE)", class_="freeform-form-label"),
-            T.input(type="hidden", name="ophandle", value=ophandle),
-            T.input(type="submit", value="Deep-Stats"),
-            ))
+                T.input(type="hidden", name="t", value="start-deep-stats"),
+                T.legend(
+                    "Run a deep-stats operation (EXPENSIVE)",
+                    class_="freeform-form-label",
+                ),
+                T.input(type="hidden", name="ophandle", value=ophandle),
+                T.input(type="submit", value="Deep-Stats"),
+            )
+        )
         return tag(deep_stats)
 
     @renderer
     def manifest_form(self, req, tag):
         ophandle = base32.b2a(os.urandom(16))
-        manifest = T.form(action=req.path, method="post",
-                            enctype="multipart/form-data")(
+        manifest = T.form(
+            action=req.path, method="post", enctype="multipart/form-data"
+        )(
             T.fieldset(
-            T.input(type="hidden", name="t", value="start-manifest"),
-            T.legend("Run a manifest operation (EXPENSIVE)", class_="freeform-form-label"),
-            T.div("Output Format: ",
-                  T.select(name="output")
-                  ( T.option("HTML", value="html", selected="true"),
-                    T.option("text", value="text"),
-                    T.option("JSON", value="json"),
+                T.input(type="hidden", name="t", value="start-manifest"),
+                T.legend(
+                    "Run a manifest operation (EXPENSIVE)", class_="freeform-form-label"
+                ),
+                T.div(
+                    "Output Format: ",
+                    T.select(name="output")(
+                        T.option("HTML", value="html", selected="true"),
+                        T.option("text", value="text"),
+                        T.option("JSON", value="json"),
                     ),
-                  ),
-            T.input(type="hidden", name="ophandle", value=ophandle),
-            T.input(type="submit", value="Manifest"),
-            ))
+                ),
+                T.input(type="hidden", name="ophandle", value=ophandle),
+                T.input(type="submit", value="Manifest"),
+            )
+        )
         return tag(manifest)
 
 

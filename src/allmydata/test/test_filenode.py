@@ -7,8 +7,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 from twisted.trial import unittest
 from allmydata import uri, client
@@ -19,29 +42,38 @@ from allmydata.mutable.filenode import MutableFileNode
 from allmydata.util import hashutil
 from allmydata.util.consumer import download_to_data
 
+
 class NotANode(object):
     pass
+
 
 class FakeClient(object):
     # just enough to let the node acquire a downloader (which it won't use),
     # and to get default encoding parameters
     def getServiceNamed(self, name):
         return None
+
     def get_encoding_parameters(self):
         return {"k": 3, "n": 10}
+
     def get_storage_broker(self):
         return None
+
     def get_history(self):
         return None
+
     _secret_holder = client.SecretHolder(b"lease secret", b"convergence secret")
+
 
 class Node(unittest.TestCase):
     def test_chk_filenode(self):
-        u = uri.CHKFileURI(key=b"\x00"*16,
-                           uri_extension_hash=b"\x00"*32,
-                           needed_shares=3,
-                           total_shares=10,
-                           size=1000)
+        u = uri.CHKFileURI(
+            key=b"\x00" * 16,
+            uri_extension_hash=b"\x00" * 32,
+            needed_shares=3,
+            total_shares=10,
+            size=1000,
+        )
         fn1 = ImmutableFileNode(u, None, None, None, None)
         fn2 = ImmutableFileNode(u, None, None, None, None)
         self.failUnlessEqual(fn1, fn2)
@@ -61,13 +93,12 @@ class Node(unittest.TestCase):
         fn1.raise_error()
         fn2.raise_error()
         d = {}
-        d[fn1] = 1 # exercise __hash__
+        d[fn1] = 1  # exercise __hash__
         v = fn1.get_verify_cap()
         self.failUnless(isinstance(v, uri.CHKFileVerifierURI))
         self.failUnlessEqual(fn1.get_repair_cap(), v)
         self.failUnless(v.is_readonly())
         self.failIf(v.is_mutable())
-
 
     def test_literal_filenode(self):
         DATA = b"I am a short file."
@@ -91,47 +122,46 @@ class Node(unittest.TestCase):
         fn1.raise_error()
         fn2.raise_error()
         d = {}
-        d[fn1] = 1 # exercise __hash__
+        d[fn1] = 1  # exercise __hash__
 
         v = fn1.get_verify_cap()
         self.failUnlessEqual(v, None)
         self.failUnlessEqual(fn1.get_repair_cap(), None)
 
         d = download_to_data(fn1)
+
         def _check(res):
             self.failUnlessEqual(res, DATA)
+
         d.addCallback(_check)
 
         d.addCallback(lambda res: download_to_data(fn1, 1, 5))
+
         def _check_segment(res):
-            self.failUnlessEqual(res, DATA[1:1+5])
+            self.failUnlessEqual(res, DATA[1 : 1 + 5])
+
         d.addCallback(_check_segment)
         d.addCallback(lambda ignored: fn1.get_best_readable_version())
         d.addCallback(lambda fn2: self.failUnlessEqual(fn1, fn2))
-        d.addCallback(lambda ignored:
-            fn1.get_size_of_best_version())
-        d.addCallback(lambda size:
-            self.failUnlessEqual(size, len(DATA)))
-        d.addCallback(lambda ignored:
-            fn1.download_to_data())
-        d.addCallback(lambda data:
-            self.failUnlessEqual(data, DATA))
-        d.addCallback(lambda ignored:
-            fn1.download_best_version())
-        d.addCallback(lambda data:
-            self.failUnlessEqual(data, DATA))
+        d.addCallback(lambda ignored: fn1.get_size_of_best_version())
+        d.addCallback(lambda size: self.failUnlessEqual(size, len(DATA)))
+        d.addCallback(lambda ignored: fn1.download_to_data())
+        d.addCallback(lambda data: self.failUnlessEqual(data, DATA))
+        d.addCallback(lambda ignored: fn1.download_best_version())
+        d.addCallback(lambda data: self.failUnlessEqual(data, DATA))
 
         return d
 
     def test_mutable_filenode(self):
         client = FakeClient()
-        wk = b"\x00"*16
+        wk = b"\x00" * 16
         rk = hashutil.ssk_readkey_hash(wk)
         si = hashutil.ssk_storage_index_hash(rk)
 
-        u = uri.WriteableSSKFileURI(b"\x00"*16, b"\x00"*32)
-        n = MutableFileNode(None, None, client.get_encoding_parameters(),
-                            None).init_from_cap(u)
+        u = uri.WriteableSSKFileURI(b"\x00" * 16, b"\x00" * 32)
+        n = MutableFileNode(
+            None, None, client.get_encoding_parameters(), None
+        ).init_from_cap(u)
 
         self.failUnlessEqual(n.get_writekey(), wk)
         self.failUnlessEqual(n.get_readkey(), rk)
@@ -153,11 +183,12 @@ class Node(unittest.TestCase):
         self.failIf(n.is_allowed_in_immutable_directory())
         n.raise_error()
 
-        n2 = MutableFileNode(None, None, client.get_encoding_parameters(),
-                             None).init_from_cap(u)
+        n2 = MutableFileNode(
+            None, None, client.get_encoding_parameters(), None
+        ).init_from_cap(u)
         self.failUnlessEqual(n, n2)
         self.failIfEqual(n, "not even the right type")
-        self.failIfEqual(n, u) # not the right class
+        self.failIfEqual(n, u)  # not the right class
         n.raise_error()
         d = {n: "can these be used as dictionary keys?"}
         d[n2] = "replace the old one"
@@ -177,23 +208,26 @@ class Node(unittest.TestCase):
         self.failUnlessEqual(nro_u, nro.get_readonly_uri())
         self.failUnlessEqual(nro_u, u.get_readonly().to_string())
         self.failUnlessEqual(nro.get_write_uri(), None)
-        self.failUnlessEqual(nro.get_repair_cap(), None) # RSAmut needs writecap
+        self.failUnlessEqual(nro.get_repair_cap(), None)  # RSAmut needs writecap
         nro.raise_error()
 
         v = n.get_verify_cap()
         self.failUnless(isinstance(v, uri.SSKVerifierURI))
-        self.failUnlessEqual(n.get_repair_cap(), n._uri) # TODO: n.get_uri()
+        self.failUnlessEqual(n.get_repair_cap(), n._uri)  # TODO: n.get_uri()
 
     def test_mutable_filenode_equality(self):
         client = FakeClient()
-        u = uri.WriteableSSKFileURI(b"\x00"*16, b"\x00"*32)
-        n = MutableFileNode(None, None, client.get_encoding_parameters(),
-                            None).init_from_cap(u)
-        u2 = uri.WriteableSSKFileURI(b"\x01"*16, b"\x01"*32)
-        n2 = MutableFileNode(None, None, client.get_encoding_parameters(),
-                             None).init_from_cap(u2)
-        n2b = MutableFileNode(None, None, client.get_encoding_parameters(),
-                              None).init_from_cap(u2)
+        u = uri.WriteableSSKFileURI(b"\x00" * 16, b"\x00" * 32)
+        n = MutableFileNode(
+            None, None, client.get_encoding_parameters(), None
+        ).init_from_cap(u)
+        u2 = uri.WriteableSSKFileURI(b"\x01" * 16, b"\x01" * 32)
+        n2 = MutableFileNode(
+            None, None, client.get_encoding_parameters(), None
+        ).init_from_cap(u2)
+        n2b = MutableFileNode(
+            None, None, client.get_encoding_parameters(), None
+        ).init_from_cap(u2)
         self.assertTrue(n2 == n2b)
         self.assertFalse(n2 != n2b)
         self.assertTrue(n2 != n)
@@ -210,8 +244,10 @@ class LiteralChecker(unittest.TestCase):
         fn1 = LiteralFileNode(u)
 
         d = fn1.check(Monitor())
+
         def _check_checker_results(cr):
             self.failUnlessEqual(cr, None)
+
         d.addCallback(_check_checker_results)
 
         d.addCallback(lambda res: fn1.check(Monitor(), verify=True))

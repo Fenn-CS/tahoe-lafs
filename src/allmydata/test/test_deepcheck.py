@@ -22,17 +22,25 @@ from allmydata.mutable.common import UnrecoverableFileError
 from allmydata.mutable.publish import MutableData
 from allmydata.util import idlib
 from allmydata.util import base32
-from allmydata.interfaces import ICheckResults, ICheckAndRepairResults, \
-     IDeepCheckResults, IDeepCheckAndRepairResults
+from allmydata.interfaces import (
+    ICheckResults,
+    ICheckAndRepairResults,
+    IDeepCheckResults,
+    IDeepCheckAndRepairResults,
+)
 from allmydata.monitor import Monitor, OperationCancelledError
 from allmydata.uri import LiteralFileURI
 
-from allmydata.test.common import ErrorMixin, _corrupt_mutable_share_data, \
-     ShouldFailMixin
+from allmydata.test.common import (
+    ErrorMixin,
+    _corrupt_mutable_share_data,
+    ShouldFailMixin,
+)
 from .common_util import StallMixin, run_cli
 from .common_web import do_http
 from allmydata.test.no_network import GridTestMixin
 from .cli.common import CLITestMixin
+
 
 class MutableChecker(GridTestMixin, unittest.TestCase, ErrorMixin):
     def test_good(self):
@@ -41,19 +49,24 @@ class MutableChecker(GridTestMixin, unittest.TestCase, ErrorMixin):
         CONTENTS = "a little bit of data"
         CONTENTS_uploadable = MutableData(CONTENTS)
         d = self.g.clients[0].create_mutable_file(CONTENTS_uploadable)
+
         def _created(node):
             self.node = node
             self.fileurl = "uri/" + urllib.quote(node.get_uri())
+
         d.addCallback(_created)
         # now make sure the webapi verifier sees no problems
-        d.addCallback(lambda ign: self.GET(self.fileurl+"?t=check&verify=true",
-                                           method="POST"))
+        d.addCallback(
+            lambda ign: self.GET(self.fileurl + "?t=check&verify=true", method="POST")
+        )
+
         def _got_results(out):
             self.failUnless("<span>Healthy : Healthy</span>" in out, out)
             self.failUnless("Recoverable Versions: 10*seq1-" in out, out)
             self.failIf("Not Healthy!" in out, out)
             self.failIf("Unhealthy" in out, out)
             self.failIf("Corrupt Shares" in out, out)
+
         d.addCallback(_got_results)
         d.addErrback(self.explain_web_error)
         return d
@@ -64,33 +77,50 @@ class MutableChecker(GridTestMixin, unittest.TestCase, ErrorMixin):
         CONTENTS = "a little bit of data"
         CONTENTS_uploadable = MutableData(CONTENTS)
         d = self.g.clients[0].create_mutable_file(CONTENTS_uploadable)
+
         def _stash_and_corrupt(node):
             self.node = node
             self.fileurl = "uri/" + urllib.quote(node.get_uri())
-            self.corrupt_shares_numbered(node.get_uri(), [0],
-                                         _corrupt_mutable_share_data)
+            self.corrupt_shares_numbered(
+                node.get_uri(), [0], _corrupt_mutable_share_data
+            )
+
         d.addCallback(_stash_and_corrupt)
         # now make sure the webapi verifier notices it
-        d.addCallback(lambda ign: self.GET(self.fileurl+"?t=check&verify=true",
-                                           method="POST"))
+        d.addCallback(
+            lambda ign: self.GET(self.fileurl + "?t=check&verify=true", method="POST")
+        )
+
         def _got_results(out):
             self.failUnless("Not Healthy!" in out, out)
-            self.failUnless("Unhealthy: best version has only 9 shares (encoding is 3-of-10)" in out, out)
+            self.failUnless(
+                "Unhealthy: best version has only 9 shares (encoding is 3-of-10)"
+                in out,
+                out,
+            )
             self.failUnless("Corrupt Shares:" in out, out)
+
         d.addCallback(_got_results)
 
         # now make sure the webapi repairer can fix it
-        d.addCallback(lambda ign:
-                      self.GET(self.fileurl+"?t=check&verify=true&repair=true",
-                               method="POST"))
+        d.addCallback(
+            lambda ign: self.GET(
+                self.fileurl + "?t=check&verify=true&repair=true", method="POST"
+            )
+        )
+
         def _got_repair_results(out):
             self.failUnless("<div>Repair successful</div>" in out, out)
+
         d.addCallback(_got_repair_results)
-        d.addCallback(lambda ign: self.GET(self.fileurl+"?t=check&verify=true",
-                                           method="POST"))
+        d.addCallback(
+            lambda ign: self.GET(self.fileurl + "?t=check&verify=true", method="POST")
+        )
+
         def _got_postrepair_results(out):
             self.failIf("Not Healthy!" in out, out)
             self.failUnless("Recoverable Versions: 10*seq" in out, out)
+
         d.addCallback(_got_postrepair_results)
         d.addErrback(self.explain_web_error)
 
@@ -102,41 +132,57 @@ class MutableChecker(GridTestMixin, unittest.TestCase, ErrorMixin):
         CONTENTS = "a little bit of data"
         CONTENTS_uploadable = MutableData(CONTENTS)
         d = self.g.clients[0].create_mutable_file(CONTENTS_uploadable)
+
         def _stash_and_delete(node):
             self.node = node
             self.fileurl = "uri/" + urllib.quote(node.get_uri())
             self.delete_shares_numbered(node.get_uri(), [0])
+
         d.addCallback(_stash_and_delete)
         # now make sure the webapi checker notices it
-        d.addCallback(lambda ign: self.GET(self.fileurl+"?t=check&verify=false",
-                                           method="POST"))
+        d.addCallback(
+            lambda ign: self.GET(self.fileurl + "?t=check&verify=false", method="POST")
+        )
+
         def _got_results(out):
             self.failUnless("Not Healthy!" in out, out)
-            self.failUnless("Unhealthy: best version has only 9 shares (encoding is 3-of-10)" in out, out)
+            self.failUnless(
+                "Unhealthy: best version has only 9 shares (encoding is 3-of-10)"
+                in out,
+                out,
+            )
             self.failIf("Corrupt Shares" in out, out)
+
         d.addCallback(_got_results)
 
         # now make sure the webapi repairer can fix it
-        d.addCallback(lambda ign:
-                      self.GET(self.fileurl+"?t=check&verify=false&repair=true",
-                               method="POST"))
+        d.addCallback(
+            lambda ign: self.GET(
+                self.fileurl + "?t=check&verify=false&repair=true", method="POST"
+            )
+        )
+
         def _got_repair_results(out):
             self.failUnless("Repair successful" in out)
+
         d.addCallback(_got_repair_results)
-        d.addCallback(lambda ign: self.GET(self.fileurl+"?t=check&verify=false",
-                                           method="POST"))
+        d.addCallback(
+            lambda ign: self.GET(self.fileurl + "?t=check&verify=false", method="POST")
+        )
+
         def _got_postrepair_results(out):
             self.failIf("Not Healthy!" in out, out)
             self.failUnless("Recoverable Versions: 10*seq" in out)
+
         d.addCallback(_got_postrepair_results)
         d.addErrback(self.explain_web_error)
 
         return d
 
 
-class DeepCheckBase(GridTestMixin, ErrorMixin, StallMixin, ShouldFailMixin,
-                    CLITestMixin):
-
+class DeepCheckBase(
+    GridTestMixin, ErrorMixin, StallMixin, ShouldFailMixin, CLITestMixin
+):
     def web_json(self, n, **kwargs):
         kwargs["output"] = "json"
         d = self.web(n, "POST", **kwargs)
@@ -165,10 +211,14 @@ class DeepCheckBase(GridTestMixin, ErrorMixin, StallMixin, ShouldFailMixin,
     @inlineCallbacks
     def web(self, n, method="GET", **kwargs):
         # returns (data, url)
-        url = (self.client_baseurls[0] + "uri/%s" % urllib.quote(n.get_uri())
-               + "?" + "&".join(["%s=%s" % (k,v) for (k,v) in kwargs.items()]))
+        url = (
+            self.client_baseurls[0]
+            + "uri/%s" % urllib.quote(n.get_uri())
+            + "?"
+            + "&".join(["%s=%s" % (k, v) for (k, v) in kwargs.items()])
+        )
         data = yield do_http(method, url, browser_like_redirects=True)
-        returnValue((data,url))
+        returnValue((data, url))
 
     @inlineCallbacks
     def wait_for_operation(self, ophandle):
@@ -215,54 +265,77 @@ class DeepCheckWebGood(DeepCheckBase, unittest.TestCase):
 
         c0 = self.g.clients[0]
         d = c0.create_dirnode()
+
         def _created_root(n):
             self.root = n
             self.root_uri = n.get_uri()
+
         d.addCallback(_created_root)
-        d.addCallback(lambda ign:
-            c0.create_mutable_file(MutableData("mutable file contents")))
+        d.addCallback(
+            lambda ign: c0.create_mutable_file(MutableData("mutable file contents"))
+        )
         d.addCallback(lambda n: self.root.set_node(u"mutable", n))
+
         def _created_mutable(n):
             self.mutable = n
             self.mutable_uri = n.get_uri()
+
         d.addCallback(_created_mutable)
 
         large = upload.Data("Lots of data\n" * 1000, None)
         d.addCallback(lambda ign: self.root.add_file(u"large", large))
+
         def _created_large(n):
             self.large = n
             self.large_uri = n.get_uri()
+
         d.addCallback(_created_large)
 
         small = upload.Data("Small enough for a LIT", None)
         d.addCallback(lambda ign: self.root.add_file(u"small", small))
+
         def _created_small(n):
             self.small = n
             self.small_uri = n.get_uri()
+
         d.addCallback(_created_small)
 
         small2 = upload.Data("Small enough for a LIT too", None)
         d.addCallback(lambda ign: self.root.add_file(u"small2", small2))
+
         def _created_small2(n):
             self.small2 = n
             self.small2_uri = n.get_uri()
+
         d.addCallback(_created_small2)
 
         empty_litdir_uri = "URI:DIR2-LIT:"
-        tiny_litdir_uri = "URI:DIR2-LIT:gqytunj2onug64tufqzdcosvkjetutcjkq5gw4tvm5vwszdgnz5hgyzufqydulbshj5x2lbm" # contains one child which is itself also LIT
+        tiny_litdir_uri = "URI:DIR2-LIT:gqytunj2onug64tufqzdcosvkjetutcjkq5gw4tvm5vwszdgnz5hgyzufqydulbshj5x2lbm"  # contains one child which is itself also LIT
 
-        d.addCallback(lambda ign: self.root._create_and_validate_node(None, empty_litdir_uri, name=u"test_deepcheck empty_lit_dir"))
+        d.addCallback(
+            lambda ign: self.root._create_and_validate_node(
+                None, empty_litdir_uri, name=u"test_deepcheck empty_lit_dir"
+            )
+        )
+
         def _created_empty_lit_dir(n):
             self.empty_lit_dir = n
             self.empty_lit_dir_uri = n.get_uri()
             self.root.set_node(u"empty_lit_dir", n)
+
         d.addCallback(_created_empty_lit_dir)
 
-        d.addCallback(lambda ign: self.root._create_and_validate_node(None, tiny_litdir_uri, name=u"test_deepcheck tiny_lit_dir"))
+        d.addCallback(
+            lambda ign: self.root._create_and_validate_node(
+                None, tiny_litdir_uri, name=u"test_deepcheck tiny_lit_dir"
+            )
+        )
+
         def _created_tiny_lit_dir(n):
             self.tiny_lit_dir = n
             self.tiny_lit_dir_uri = n.get_uri()
             self.root.set_node(u"tiny_lit_dir", n)
+
         d.addCallback(_created_tiny_lit_dir)
 
         d.addCallback(lambda ign: self.root.set_node(u"loop", self.root))
@@ -271,10 +344,10 @@ class DeepCheckWebGood(DeepCheckBase, unittest.TestCase):
     def check_is_healthy(self, cr, n, where, incomplete=False):
         self.failUnless(ICheckResults.providedBy(cr), where)
         self.failUnless(cr.is_healthy(), where)
-        self.failUnlessEqual(cr.get_storage_index(), n.get_storage_index(),
-                             where)
-        self.failUnlessEqual(cr.get_storage_index_string(),
-                             base32.b2a(n.get_storage_index()), where)
+        self.failUnlessEqual(cr.get_storage_index(), n.get_storage_index(), where)
+        self.failUnlessEqual(
+            cr.get_storage_index_string(), base32.b2a(n.get_storage_index()), where
+        )
         num_servers = len(self.g.all_servers)
         self.failUnlessEqual(num_servers, 10, where)
 
@@ -283,25 +356,24 @@ class DeepCheckWebGood(DeepCheckBase, unittest.TestCase):
         self.failUnlessEqual(cr.get_encoding_needed(), 3, where)
         self.failUnlessEqual(cr.get_encoding_expected(), num_servers, where)
         if not incomplete:
-            self.failUnlessEqual(cr.get_host_counter_good_shares(),
-                                 num_servers, where)
+            self.failUnlessEqual(cr.get_host_counter_good_shares(), num_servers, where)
         self.failUnlessEqual(cr.get_corrupt_shares(), [], where)
         if not incomplete:
-            self.failUnlessEqual(sorted([s.get_serverid()
-                                         for s in cr.get_servers_responding()]),
-                                 sorted(self.g.get_all_serverids()),
-                                 where)
+            self.failUnlessEqual(
+                sorted([s.get_serverid() for s in cr.get_servers_responding()]),
+                sorted(self.g.get_all_serverids()),
+                where,
+            )
             all_serverids = set()
             for (shareid, servers) in cr.get_sharemap().items():
                 all_serverids.update([s.get_serverid() for s in servers])
-            self.failUnlessEqual(sorted(all_serverids),
-                                 sorted(self.g.get_all_serverids()),
-                                 where)
+            self.failUnlessEqual(
+                sorted(all_serverids), sorted(self.g.get_all_serverids()), where
+            )
 
         self.failUnlessEqual(cr.get_share_counter_wrong(), 0, where)
         self.failUnlessEqual(cr.get_version_counter_recoverable(), 1, where)
         self.failUnlessEqual(cr.get_version_counter_unrecoverable(), 0, where)
-
 
     def check_and_repair_is_healthy(self, cr, n, where, incomplete=False):
         self.failUnless(ICheckAndRepairResults.providedBy(cr), (where, cr))
@@ -313,16 +385,15 @@ class DeepCheckWebGood(DeepCheckBase, unittest.TestCase):
 
     def deep_check_is_healthy(self, cr, num_healthy, where):
         self.failUnless(IDeepCheckResults.providedBy(cr))
-        self.failUnlessEqual(cr.get_counters()["count-objects-healthy"],
-                             num_healthy, where)
+        self.failUnlessEqual(
+            cr.get_counters()["count-objects-healthy"], num_healthy, where
+        )
 
     def deep_check_and_repair_is_healthy(self, cr, num_healthy, where):
         self.failUnless(IDeepCheckAndRepairResults.providedBy(cr), where)
         c = cr.get_counters()
-        self.failUnlessEqual(c["count-objects-healthy-pre-repair"],
-                             num_healthy, where)
-        self.failUnlessEqual(c["count-objects-healthy-post-repair"],
-                             num_healthy, where)
+        self.failUnlessEqual(c["count-objects-healthy-pre-repair"], num_healthy, where)
+        self.failUnlessEqual(c["count-objects-healthy-post-repair"], num_healthy, where)
         self.failUnlessEqual(c["count-repairs-attempted"], 0, where)
 
     def test_good(self):
@@ -362,16 +433,22 @@ class DeepCheckWebGood(DeepCheckBase, unittest.TestCase):
         # returns a list of tuples, but JSON only knows about lists., so
         # t=start-deep-stats returns a list of lists.
         histogram = [tuple(stuff) for stuff in s["size-files-histogram"]]
-        self.failUnlessEqual(histogram, [(4, 10, 1), (11, 31, 2),
-                                         (10001, 31622, 1),
-                                         ])
+        self.failUnlessEqual(
+            histogram,
+            [
+                (4, 10, 1),
+                (11, 31, 2),
+                (10001, 31622, 1),
+            ],
+        )
         self.failUnlessEqual(s["size-immutable-files"], 13000)
         self.failUnlessEqual(s["size-literal-files"], 56)
 
     def do_web_stream_manifest(self, ignored):
         d = self.web(self.root, method="POST", t="stream-manifest")
-        d.addCallback(lambda output_and_url:
-                      self._check_streamed_manifest(output_and_url[0]))
+        d.addCallback(
+            lambda output_and_url: self._check_streamed_manifest(output_and_url[0])
+        )
         return d
 
     def _check_streamed_manifest(self, output):
@@ -381,29 +458,23 @@ class DeepCheckWebGood(DeepCheckBase, unittest.TestCase):
         stats = units[-1]["stats"]
         self.failUnlessEqual(len(files), 8)
         # [root,mutable,large] are distributed, [small,small2,empty_litdir,tiny_litdir] are not
-        self.failUnlessEqual(len([f for f in files
-                                  if f["verifycap"] != ""]), 3)
-        self.failUnlessEqual(len([f for f in files
-                                  if f["verifycap"] == ""]), 5)
-        self.failUnlessEqual(len([f for f in files
-                                  if f["repaircap"] != ""]), 3)
-        self.failUnlessEqual(len([f for f in files
-                                  if f["repaircap"] == ""]), 5)
-        self.failUnlessEqual(len([f for f in files
-                                  if f["storage-index"] != ""]), 3)
-        self.failUnlessEqual(len([f for f in files
-                                  if f["storage-index"] == ""]), 5)
+        self.failUnlessEqual(len([f for f in files if f["verifycap"] != ""]), 3)
+        self.failUnlessEqual(len([f for f in files if f["verifycap"] == ""]), 5)
+        self.failUnlessEqual(len([f for f in files if f["repaircap"] != ""]), 3)
+        self.failUnlessEqual(len([f for f in files if f["repaircap"] == ""]), 5)
+        self.failUnlessEqual(len([f for f in files if f["storage-index"] != ""]), 3)
+        self.failUnlessEqual(len([f for f in files if f["storage-index"] == ""]), 5)
         # make sure that a mutable file has filecap==repaircap!=verifycap
-        mutable = [f for f in files
-                   if f["cap"] is not None
-                   and f["cap"].startswith("URI:SSK:")][0]
+        mutable = [
+            f for f in files if f["cap"] is not None and f["cap"].startswith("URI:SSK:")
+        ][0]
         self.failUnlessEqual(mutable["cap"], self.mutable_uri)
         self.failIfEqual(mutable["cap"], mutable["verifycap"])
         self.failUnlessEqual(mutable["cap"], mutable["repaircap"])
         # for immutable file, verifycap==repaircap!=filecap
-        large = [f for f in files
-                   if f["cap"] is not None
-                   and f["cap"].startswith("URI:CHK:")][0]
+        large = [
+            f for f in files if f["cap"] is not None and f["cap"].startswith("URI:CHK:")
+        ][0]
         self.failUnlessEqual(large["cap"], self.large_uri)
         self.failIfEqual(large["cap"], large["verifycap"])
         self.failUnlessEqual(large["verifycap"], large["repaircap"])
@@ -413,12 +484,14 @@ class DeepCheckWebGood(DeepCheckBase, unittest.TestCase):
         # TODO
         return
         d = self.web(self.root, t="stream-deep-check")
+
         def _check(res):
             units = list(self.parse_streamed_json(res))
-            #files = [u for u in units if u["type"] in ("file", "directory")]
+            # files = [u for u in units if u["type"] in ("file", "directory")]
             assert units[-1]["type"] == "stats"
-            #stats = units[-1]["stats"]
+            # stats = units[-1]["stats"]
             # ...
+
         d.addCallback(_check)
         return d
 
@@ -477,33 +550,37 @@ class DeepCheckWebGood(DeepCheckBase, unittest.TestCase):
         d.addCallback(lambda ign: self.mutable.check_and_repair(Monitor(), verify=True))
         d.addCallback(self.check_and_repair_is_healthy, self.mutable, "mutable")
         d.addCallback(lambda ign: self.large.check_and_repair(Monitor(), verify=True))
-        d.addCallback(self.check_and_repair_is_healthy, self.large, "large", incomplete=True)
+        d.addCallback(
+            self.check_and_repair_is_healthy, self.large, "large", incomplete=True
+        )
         d.addCallback(lambda ign: self.small.check_and_repair(Monitor(), verify=True))
         d.addCallback(self.failUnlessEqual, None, "small")
         d.addCallback(lambda ign: self.small2.check_and_repair(Monitor(), verify=True))
         d.addCallback(self.failUnlessEqual, None, "small2")
         d.addCallback(self.failUnlessEqual, None, "small2")
-        d.addCallback(lambda ign: self.empty_lit_dir.check_and_repair(Monitor(), verify=True))
+        d.addCallback(
+            lambda ign: self.empty_lit_dir.check_and_repair(Monitor(), verify=True)
+        )
         d.addCallback(self.failUnlessEqual, None, "empty_lit_dir")
-        d.addCallback(lambda ign: self.tiny_lit_dir.check_and_repair(Monitor(), verify=True))
-
+        d.addCallback(
+            lambda ign: self.tiny_lit_dir.check_and_repair(Monitor(), verify=True)
+        )
 
         # now deep-check the root, with various verify= and repair= options
-        d.addCallback(lambda ign:
-                      self.root.start_deep_check().when_done())
+        d.addCallback(lambda ign: self.root.start_deep_check().when_done())
         d.addCallback(self.deep_check_is_healthy, 3, "root")
-        d.addCallback(lambda ign:
-                      self.root.start_deep_check(verify=True).when_done())
+        d.addCallback(lambda ign: self.root.start_deep_check(verify=True).when_done())
         d.addCallback(self.deep_check_is_healthy, 3, "root")
-        d.addCallback(lambda ign:
-                      self.root.start_deep_check_and_repair().when_done())
+        d.addCallback(lambda ign: self.root.start_deep_check_and_repair().when_done())
         d.addCallback(self.deep_check_and_repair_is_healthy, 3, "root")
-        d.addCallback(lambda ign:
-                      self.root.start_deep_check_and_repair(verify=True).when_done())
+        d.addCallback(
+            lambda ign: self.root.start_deep_check_and_repair(verify=True).when_done()
+        )
         d.addCallback(self.deep_check_and_repair_is_healthy, 3, "root")
 
         # and finally, start a deep-check, but then cancel it.
         d.addCallback(lambda ign: self.root.start_deep_check())
+
         def _checking(monitor):
             monitor.cancel()
             d = monitor.when_done()
@@ -513,21 +590,26 @@ class DeepCheckWebGood(DeepCheckBase, unittest.TestCase):
             # takes effect.
             def _finished_normally(res):
                 self.fail("this was supposed to fail, not finish normally")
+
             def _cancelled(f):
                 f.trap(OperationCancelledError)
+
             d.addCallbacks(_finished_normally, _cancelled)
             return d
+
         d.addCallback(_checking)
 
         return d
 
     def json_check_is_healthy(self, data, n, where, incomplete=False):
 
-        self.failUnlessEqual(data["storage-index"],
-                             base32.b2a(n.get_storage_index()), where)
+        self.failUnlessEqual(
+            data["storage-index"], base32.b2a(n.get_storage_index()), where
+        )
         self.failUnless("summary" in data, (where, data))
-        self.failUnlessEqual(data["summary"].lower(), "healthy",
-                             "%s: '%s'" % (where, data["summary"]))
+        self.failUnlessEqual(
+            data["summary"].lower(), "healthy", "%s: '%s'" % (where, data["summary"])
+        )
         r = data["results"]
         self.failUnlessEqual(r["healthy"], True, where)
         num_servers = len(self.g.all_servers)
@@ -539,39 +621,40 @@ class DeepCheckWebGood(DeepCheckBase, unittest.TestCase):
         self.failUnlessEqual(r["count-shares-needed"], 3, where)
         self.failUnlessEqual(r["count-shares-expected"], num_servers, where)
         if not incomplete:
-            self.failUnlessEqual(r["count-good-share-hosts"], num_servers,
-                                 where)
+            self.failUnlessEqual(r["count-good-share-hosts"], num_servers, where)
         self.failUnlessEqual(r["count-corrupt-shares"], 0, where)
         self.failUnlessEqual(r["list-corrupt-shares"], [], where)
         if not incomplete:
-            self.failUnlessEqual(sorted(r["servers-responding"]),
-                                 sorted([idlib.nodeid_b2a(sid)
-                                         for sid in self.g.get_all_serverids()]),
-                                 where)
+            self.failUnlessEqual(
+                sorted(r["servers-responding"]),
+                sorted([idlib.nodeid_b2a(sid) for sid in self.g.get_all_serverids()]),
+                where,
+            )
             self.failUnless("sharemap" in r, where)
             all_serverids = set()
             for (shareid, serverids_s) in r["sharemap"].items():
                 all_serverids.update(serverids_s)
-            self.failUnlessEqual(sorted(all_serverids),
-                                 sorted([idlib.nodeid_b2a(sid)
-                                         for sid in self.g.get_all_serverids()]),
-                                 where)
+            self.failUnlessEqual(
+                sorted(all_serverids),
+                sorted([idlib.nodeid_b2a(sid) for sid in self.g.get_all_serverids()]),
+                where,
+            )
         self.failUnlessEqual(r["count-wrong-shares"], 0, where)
         self.failUnlessEqual(r["count-recoverable-versions"], 1, where)
         self.failUnlessEqual(r["count-unrecoverable-versions"], 0, where)
 
     def json_check_and_repair_is_healthy(self, data, n, where, incomplete=False):
-        self.failUnlessEqual(data["storage-index"],
-                             base32.b2a(n.get_storage_index()), where)
+        self.failUnlessEqual(
+            data["storage-index"], base32.b2a(n.get_storage_index()), where
+        )
         self.failUnlessEqual(data["repair-attempted"], False, where)
-        self.json_check_is_healthy(data["pre-repair-results"],
-                                   n, where, incomplete)
-        self.json_check_is_healthy(data["post-repair-results"],
-                                   n, where, incomplete)
+        self.json_check_is_healthy(data["pre-repair-results"], n, where, incomplete)
+        self.json_check_is_healthy(data["post-repair-results"], n, where, incomplete)
 
     def json_full_deepcheck_is_healthy(self, data, n, where):
-        self.failUnlessEqual(data["root-storage-index"],
-                             base32.b2a(n.get_storage_index()), where)
+        self.failUnlessEqual(
+            data["root-storage-index"], base32.b2a(n.get_storage_index()), where
+        )
         self.failUnlessEqual(data["count-objects-checked"], 3, where)
         self.failUnlessEqual(data["count-objects-healthy"], 3, where)
         self.failUnlessEqual(data["count-objects-unhealthy"], 0, where)
@@ -581,8 +664,9 @@ class DeepCheckWebGood(DeepCheckBase, unittest.TestCase):
         self.json_check_stats_good(data["stats"], where)
 
     def json_full_deepcheck_and_repair_is_healthy(self, data, n, where):
-        self.failUnlessEqual(data["root-storage-index"],
-                             base32.b2a(n.get_storage_index()), where)
+        self.failUnlessEqual(
+            data["root-storage-index"], base32.b2a(n.get_storage_index()), where
+        )
         self.failUnlessEqual(data["count-objects-checked"], 3, where)
 
         self.failUnlessEqual(data["count-objects-healthy-pre-repair"], 3, where)
@@ -601,7 +685,6 @@ class DeepCheckWebGood(DeepCheckBase, unittest.TestCase):
         self.failUnlessEqual(data["count-repairs-successful"], 0, where)
         self.failUnlessEqual(data["count-repairs-unsuccessful"], 0, where)
 
-
     def json_check_lit(self, data, n, where):
         self.failUnlessEqual(data["storage-index"], "", where)
         self.failUnlessEqual(data["results"]["healthy"], True, where)
@@ -613,9 +696,9 @@ class DeepCheckWebGood(DeepCheckBase, unittest.TestCase):
         d = defer.succeed(None)
 
         # stats
-        d.addCallback(lambda ign:
-                      self.slow_web(self.root,
-                                    t="start-deep-stats", output="json"))
+        d.addCallback(
+            lambda ign: self.slow_web(self.root, t="start-deep-stats", output="json")
+        )
         d.addCallback(self.json_check_stats_good, "deep-stats")
 
         # check, no verify
@@ -635,84 +718,127 @@ class DeepCheckWebGood(DeepCheckBase, unittest.TestCase):
         d.addCallback(self.json_check_lit, self.tiny_lit_dir, "tiny_lit_dir")
 
         # check and verify
-        d.addCallback(lambda ign:
-                      self.web_json(self.root, t="check", verify="true"))
+        d.addCallback(lambda ign: self.web_json(self.root, t="check", verify="true"))
         d.addCallback(self.json_check_is_healthy, self.root, "root+v")
-        d.addCallback(lambda ign:
-                      self.web_json(self.mutable, t="check", verify="true"))
+        d.addCallback(lambda ign: self.web_json(self.mutable, t="check", verify="true"))
         d.addCallback(self.json_check_is_healthy, self.mutable, "mutable+v")
-        d.addCallback(lambda ign:
-                      self.web_json(self.large, t="check", verify="true"))
-        d.addCallback(self.json_check_is_healthy, self.large, "large+v",
-                      incomplete=True)
-        d.addCallback(lambda ign:
-                      self.web_json(self.small, t="check", verify="true"))
+        d.addCallback(lambda ign: self.web_json(self.large, t="check", verify="true"))
+        d.addCallback(
+            self.json_check_is_healthy, self.large, "large+v", incomplete=True
+        )
+        d.addCallback(lambda ign: self.web_json(self.small, t="check", verify="true"))
         d.addCallback(self.json_check_lit, self.small, "small+v")
-        d.addCallback(lambda ign:
-                      self.web_json(self.small2, t="check", verify="true"))
+        d.addCallback(lambda ign: self.web_json(self.small2, t="check", verify="true"))
         d.addCallback(self.json_check_lit, self.small2, "small2+v")
-        d.addCallback(lambda ign: self.web_json(self.empty_lit_dir, t="check", verify="true"))
+        d.addCallback(
+            lambda ign: self.web_json(self.empty_lit_dir, t="check", verify="true")
+        )
         d.addCallback(self.json_check_lit, self.empty_lit_dir, "empty_lit_dir+v")
-        d.addCallback(lambda ign: self.web_json(self.tiny_lit_dir, t="check", verify="true"))
+        d.addCallback(
+            lambda ign: self.web_json(self.tiny_lit_dir, t="check", verify="true")
+        )
         d.addCallback(self.json_check_lit, self.tiny_lit_dir, "tiny_lit_dir+v")
 
         # check and repair, no verify
-        d.addCallback(lambda ign:
-                      self.web_json(self.root, t="check", repair="true"))
+        d.addCallback(lambda ign: self.web_json(self.root, t="check", repair="true"))
         d.addCallback(self.json_check_and_repair_is_healthy, self.root, "root+r")
-        d.addCallback(lambda ign:
-                      self.web_json(self.mutable, t="check", repair="true"))
+        d.addCallback(lambda ign: self.web_json(self.mutable, t="check", repair="true"))
         d.addCallback(self.json_check_and_repair_is_healthy, self.mutable, "mutable+r")
-        d.addCallback(lambda ign:
-                      self.web_json(self.large, t="check", repair="true"))
+        d.addCallback(lambda ign: self.web_json(self.large, t="check", repair="true"))
         d.addCallback(self.json_check_and_repair_is_healthy, self.large, "large+r")
-        d.addCallback(lambda ign:
-                      self.web_json(self.small, t="check", repair="true"))
+        d.addCallback(lambda ign: self.web_json(self.small, t="check", repair="true"))
         d.addCallback(self.json_check_lit, self.small, "small+r")
-        d.addCallback(lambda ign:
-                      self.web_json(self.small2, t="check", repair="true"))
+        d.addCallback(lambda ign: self.web_json(self.small2, t="check", repair="true"))
         d.addCallback(self.json_check_lit, self.small2, "small2+r")
-        d.addCallback(lambda ign: self.web_json(self.empty_lit_dir, t="check", repair="true"))
+        d.addCallback(
+            lambda ign: self.web_json(self.empty_lit_dir, t="check", repair="true")
+        )
         d.addCallback(self.json_check_lit, self.empty_lit_dir, "empty_lit_dir+r")
-        d.addCallback(lambda ign: self.web_json(self.tiny_lit_dir, t="check", repair="true"))
+        d.addCallback(
+            lambda ign: self.web_json(self.tiny_lit_dir, t="check", repair="true")
+        )
         d.addCallback(self.json_check_lit, self.tiny_lit_dir, "tiny_lit_dir+r")
 
         # check+verify+repair
-        d.addCallback(lambda ign:
-                      self.web_json(self.root, t="check", repair="true", verify="true"))
+        d.addCallback(
+            lambda ign: self.web_json(
+                self.root, t="check", repair="true", verify="true"
+            )
+        )
         d.addCallback(self.json_check_and_repair_is_healthy, self.root, "root+vr")
-        d.addCallback(lambda ign:
-                      self.web_json(self.mutable, t="check", repair="true", verify="true"))
+        d.addCallback(
+            lambda ign: self.web_json(
+                self.mutable, t="check", repair="true", verify="true"
+            )
+        )
         d.addCallback(self.json_check_and_repair_is_healthy, self.mutable, "mutable+vr")
-        d.addCallback(lambda ign:
-                      self.web_json(self.large, t="check", repair="true", verify="true"))
-        d.addCallback(self.json_check_and_repair_is_healthy, self.large, "large+vr", incomplete=True)
-        d.addCallback(lambda ign:
-                      self.web_json(self.small, t="check", repair="true", verify="true"))
+        d.addCallback(
+            lambda ign: self.web_json(
+                self.large, t="check", repair="true", verify="true"
+            )
+        )
+        d.addCallback(
+            self.json_check_and_repair_is_healthy,
+            self.large,
+            "large+vr",
+            incomplete=True,
+        )
+        d.addCallback(
+            lambda ign: self.web_json(
+                self.small, t="check", repair="true", verify="true"
+            )
+        )
         d.addCallback(self.json_check_lit, self.small, "small+vr")
-        d.addCallback(lambda ign:
-                      self.web_json(self.small2, t="check", repair="true", verify="true"))
+        d.addCallback(
+            lambda ign: self.web_json(
+                self.small2, t="check", repair="true", verify="true"
+            )
+        )
         d.addCallback(self.json_check_lit, self.small2, "small2+vr")
-        d.addCallback(lambda ign: self.web_json(self.empty_lit_dir, t="check", repair="true", verify=True))
+        d.addCallback(
+            lambda ign: self.web_json(
+                self.empty_lit_dir, t="check", repair="true", verify=True
+            )
+        )
         d.addCallback(self.json_check_lit, self.empty_lit_dir, "empty_lit_dir+vr")
-        d.addCallback(lambda ign: self.web_json(self.tiny_lit_dir, t="check", repair="true", verify=True))
+        d.addCallback(
+            lambda ign: self.web_json(
+                self.tiny_lit_dir, t="check", repair="true", verify=True
+            )
+        )
         d.addCallback(self.json_check_lit, self.tiny_lit_dir, "tiny_lit_dir+vr")
 
         # now run a deep-check, with various verify= and repair= flags
-        d.addCallback(lambda ign:
-                      self.slow_web(self.root, t="start-deep-check", output="json"))
+        d.addCallback(
+            lambda ign: self.slow_web(self.root, t="start-deep-check", output="json")
+        )
         d.addCallback(self.json_full_deepcheck_is_healthy, self.root, "root+d")
-        d.addCallback(lambda ign:
-                      self.slow_web(self.root, t="start-deep-check", verify="true",
-                                    output="json"))
+        d.addCallback(
+            lambda ign: self.slow_web(
+                self.root, t="start-deep-check", verify="true", output="json"
+            )
+        )
         d.addCallback(self.json_full_deepcheck_is_healthy, self.root, "root+dv")
-        d.addCallback(lambda ign:
-                      self.slow_web(self.root, t="start-deep-check", repair="true",
-                                    output="json"))
-        d.addCallback(self.json_full_deepcheck_and_repair_is_healthy, self.root, "root+dr")
-        d.addCallback(lambda ign:
-                      self.slow_web(self.root, t="start-deep-check", verify="true", repair="true", output="json"))
-        d.addCallback(self.json_full_deepcheck_and_repair_is_healthy, self.root, "root+dvr")
+        d.addCallback(
+            lambda ign: self.slow_web(
+                self.root, t="start-deep-check", repair="true", output="json"
+            )
+        )
+        d.addCallback(
+            self.json_full_deepcheck_and_repair_is_healthy, self.root, "root+dr"
+        )
+        d.addCallback(
+            lambda ign: self.slow_web(
+                self.root,
+                t="start-deep-check",
+                verify="true",
+                repair="true",
+                output="json",
+            )
+        )
+        d.addCallback(
+            self.json_full_deepcheck_and_repair_is_healthy, self.root, "root+dvr"
+        )
 
         # now look at t=info
         d.addCallback(lambda ign: self.web(self.root, t="info"))
@@ -746,6 +872,7 @@ class DeepCheckWebGood(DeepCheckBase, unittest.TestCase):
 
     def do_cli_manifest_stream1(self):
         d = self.do_cli("manifest", self.root_uri)
+
         def _check(args):
             (rc, out, err) = args
             self.failUnlessEqual(err, "")
@@ -767,30 +894,36 @@ class DeepCheckWebGood(DeepCheckBase, unittest.TestCase):
             self.failUnlessEqual(caps[self.small2.get_uri()], "small2")
             self.failUnlessEqual(caps[self.empty_lit_dir.get_uri()], "empty_lit_dir")
             self.failUnlessEqual(caps[self.tiny_lit_dir.get_uri()], "tiny_lit_dir")
+
         d.addCallback(_check)
         return d
 
     def do_cli_manifest_stream2(self):
         d = self.do_cli("manifest", "--raw", self.root_uri)
+
         def _check(args):
             (rc, out, err) = args
             self.failUnlessEqual(err, "")
             # this should be the same as the POST t=stream-manifest output
             self._check_streamed_manifest(out)
+
         d.addCallback(_check)
         return d
 
     def do_cli_manifest_stream3(self):
         d = self.do_cli("manifest", "--storage-index", self.root_uri)
+
         def _check(args):
             (rc, out, err) = args
             self.failUnlessEqual(err, "")
             self._check_manifest_storage_index(out)
+
         d.addCallback(_check)
         return d
 
     def do_cli_manifest_stream4(self):
         d = self.do_cli("manifest", "--verify-cap", self.root_uri)
+
         def _check(args):
             (rc, out, err) = args
             self.failUnlessEqual(err, "")
@@ -799,11 +932,13 @@ class DeepCheckWebGood(DeepCheckBase, unittest.TestCase):
             self.failUnless(self.root.get_verify_cap().to_string() in lines)
             self.failUnless(self.mutable.get_verify_cap().to_string() in lines)
             self.failUnless(self.large.get_verify_cap().to_string() in lines)
+
         d.addCallback(_check)
         return d
 
     def do_cli_manifest_stream5(self):
         d = self.do_cli("manifest", "--repair-cap", self.root_uri)
+
         def _check(args):
             (rc, out, err) = args
             self.failUnlessEqual(err, "")
@@ -812,11 +947,13 @@ class DeepCheckWebGood(DeepCheckBase, unittest.TestCase):
             self.failUnless(self.root.get_repair_cap().to_string() in lines)
             self.failUnless(self.mutable.get_repair_cap().to_string() in lines)
             self.failUnless(self.large.get_repair_cap().to_string() in lines)
+
         d.addCallback(_check)
         return d
 
     def do_cli_stats1(self):
         d = self.do_cli("stats", self.root_uri)
+
         def _check3(args):
             (rc, out, err) = args
             lines = [l.strip() for l in out.split("\n") if l]
@@ -825,16 +962,22 @@ class DeepCheckWebGood(DeepCheckBase, unittest.TestCase):
             self.failUnless("count-literal-files: 3" in lines)
             self.failUnless("count-files: 5" in lines)
             self.failUnless("count-directories: 3" in lines)
-            self.failUnless("size-immutable-files: 13000    (13.00 kB, 12.70 kiB)" in lines, lines)
+            self.failUnless(
+                "size-immutable-files: 13000    (13.00 kB, 12.70 kiB)" in lines, lines
+            )
             self.failUnless("size-literal-files: 56" in lines, lines)
             self.failUnless("    4-10    : 1    (10 B, 10 B)".strip() in lines, lines)
             self.failUnless("   11-31    : 2    (31 B, 31 B)".strip() in lines, lines)
-            self.failUnless("10001-31622 : 1    (31.62 kB, 30.88 kiB)".strip() in lines, lines)
+            self.failUnless(
+                "10001-31622 : 1    (31.62 kB, 30.88 kiB)".strip() in lines, lines
+            )
+
         d.addCallback(_check3)
         return d
 
     def do_cli_stats2(self):
         d = self.do_cli("stats", "--raw", self.root_uri)
+
         def _check4(args):
             (rc, out, err) = args
             data = json.loads(out)
@@ -846,9 +989,10 @@ class DeepCheckWebGood(DeepCheckBase, unittest.TestCase):
             self.failUnlessEqual(data["count-directories"], 3)
             self.failUnlessEqual(data["size-immutable-files"], 13000)
             self.failUnlessEqual(data["size-literal-files"], 56)
-            self.failUnless([4,10,1] in data["size-files-histogram"])
-            self.failUnless([11,31,2] in data["size-files-histogram"])
-            self.failUnless([10001,31622,1] in data["size-files-histogram"])
+            self.failUnless([4, 10, 1] in data["size-files-histogram"])
+            self.failUnless([11, 31, 2] in data["size-files-histogram"])
+            self.failUnless([10001, 31622, 1] in data["size-files-histogram"])
+
         d.addCallback(_check4)
         return d
 
@@ -865,8 +1009,6 @@ class DeepCheckWebBad(DeepCheckBase, unittest.TestCase):
         d.addErrback(self.explain_web_error)
         d.addErrback(self.explain_error)
         return d
-
-
 
     def set_up_damaged_tree(self):
         # 6.4s
@@ -891,9 +1033,11 @@ class DeepCheckWebBad(DeepCheckBase, unittest.TestCase):
 
         c0 = self.g.clients[0]
         d = c0.create_dirnode()
+
         def _created_root(n):
             self.root = n
             self.root_uri = n.get_uri()
+
         d.addCallback(_created_root)
         d.addCallback(self.create_mangled, "mutable-good")
         d.addCallback(self.create_mangled, "mutable-missing-shares")
@@ -906,19 +1050,21 @@ class DeepCheckWebBad(DeepCheckBase, unittest.TestCase):
         d.addCallback(lambda ignored: c0.create_dirnode())
         d.addCallback(self._stash_node, "broken")
         large1 = upload.Data("Lots of data\n" * 1000 + "large1" + "\n", None)
-        d.addCallback(lambda ignored:
-                      self.nodes["broken"].add_file(u"large1", large1))
-        d.addCallback(lambda ignored:
-                      self.nodes["broken"].create_subdirectory(u"subdir-good"))
+        d.addCallback(lambda ignored: self.nodes["broken"].add_file(u"large1", large1))
+        d.addCallback(
+            lambda ignored: self.nodes["broken"].create_subdirectory(u"subdir-good")
+        )
         large2 = upload.Data("Lots of data\n" * 1000 + "large2" + "\n", None)
         d.addCallback(lambda subdir: subdir.add_file(u"large2-good", large2))
-        d.addCallback(lambda ignored:
-                      self.nodes["broken"].create_subdirectory(u"subdir-unrecoverable"))
+        d.addCallback(
+            lambda ignored: self.nodes["broken"].create_subdirectory(
+                u"subdir-unrecoverable"
+            )
+        )
         d.addCallback(self._stash_node, "subdir-unrecoverable")
         large3 = upload.Data("Lots of data\n" * 1000 + "large3" + "\n", None)
         d.addCallback(lambda subdir: subdir.add_file(u"large3-good", large3))
-        d.addCallback(lambda ignored:
-                      self._delete_most_shares(self.nodes["broken"]))
+        d.addCallback(lambda ignored: self._delete_most_shares(self.nodes["broken"]))
         return d
 
     def _stash_node(self, node, name):
@@ -953,22 +1099,24 @@ class DeepCheckWebBad(DeepCheckBase, unittest.TestCase):
         return d
 
     def _delete_some_shares(self, node):
-        self.delete_shares_numbered(node.get_uri(), [0,1])
+        self.delete_shares_numbered(node.get_uri(), [0, 1])
 
     @defer.inlineCallbacks
     def _corrupt_some_shares(self, node):
         for (shnum, serverid, sharefile) in self.find_uri_shares(node.get_uri()):
-            if shnum in (0,1):
+            if shnum in (0, 1):
                 yield run_cli("debug", "corrupt-share", native_str(sharefile))
 
     def _delete_most_shares(self, node):
-        self.delete_shares_numbered(node.get_uri(), range(1,10))
-
+        self.delete_shares_numbered(node.get_uri(), range(1, 10))
 
     def check_is_healthy(self, cr, where):
         try:
             self.failUnless(ICheckResults.providedBy(cr), (cr, type(cr), where))
-            self.failUnless(cr.is_healthy(), (cr.get_report(), cr.is_healthy(), cr.get_summary(), where))
+            self.failUnless(
+                cr.is_healthy(),
+                (cr.get_report(), cr.is_healthy(), cr.get_summary(), where),
+            )
             self.failUnless(cr.is_recoverable(), where)
             self.failUnlessEqual(cr.get_version_counter_recoverable(), 1, where)
             self.failUnlessEqual(cr.get_version_counter_unrecoverable(), 0, where)
@@ -998,9 +1146,10 @@ class DeepCheckWebBad(DeepCheckBase, unittest.TestCase):
         self.failUnless(ICheckResults.providedBy(cr), where)
         self.failIf(cr.is_healthy(), where)
         self.failIf(cr.is_recoverable(), where)
-        self.failUnless(cr.get_share_counter_good() < cr.get_encoding_needed(),
-                        (cr.get_share_counter_good(), cr.get_encoding_needed(),
-                         where))
+        self.failUnless(
+            cr.get_share_counter_good() < cr.get_encoding_needed(),
+            (cr.get_share_counter_good(), cr.get_encoding_needed(), where),
+        )
         self.failUnlessEqual(cr.get_version_counter_recoverable(), 0, where)
         self.failUnlessEqual(cr.get_version_counter_unrecoverable(), 1, where)
         return cr
@@ -1016,19 +1165,23 @@ class DeepCheckWebBad(DeepCheckBase, unittest.TestCase):
             return d
 
         d.addCallback(lambda ign: _check("mutable-good", self.check_is_healthy))
-        d.addCallback(lambda ign: _check("mutable-missing-shares",
-                                         self.check_is_missing_shares))
-        d.addCallback(lambda ign: _check("mutable-corrupt-shares",
-                                         self.check_is_healthy))
-        d.addCallback(lambda ign: _check("mutable-unrecoverable",
-                                         self.check_is_unrecoverable))
+        d.addCallback(
+            lambda ign: _check("mutable-missing-shares", self.check_is_missing_shares)
+        )
+        d.addCallback(
+            lambda ign: _check("mutable-corrupt-shares", self.check_is_healthy)
+        )
+        d.addCallback(
+            lambda ign: _check("mutable-unrecoverable", self.check_is_unrecoverable)
+        )
         d.addCallback(lambda ign: _check("large-good", self.check_is_healthy))
-        d.addCallback(lambda ign: _check("large-missing-shares",
-                                         self.check_is_missing_shares))
-        d.addCallback(lambda ign: _check("large-corrupt-shares",
-                                         self.check_is_healthy))
-        d.addCallback(lambda ign: _check("large-unrecoverable",
-                                         self.check_is_unrecoverable))
+        d.addCallback(
+            lambda ign: _check("large-missing-shares", self.check_is_missing_shares)
+        )
+        d.addCallback(lambda ign: _check("large-corrupt-shares", self.check_is_healthy))
+        d.addCallback(
+            lambda ign: _check("large-unrecoverable", self.check_is_unrecoverable)
+        )
 
         # and again with verify=True, which *does* detect corrupt shares.
         def _checkv(which, checker):
@@ -1037,17 +1190,25 @@ class DeepCheckWebBad(DeepCheckBase, unittest.TestCase):
             return d
 
         d.addCallback(lambda ign: _checkv("mutable-good", self.check_is_healthy))
-        d.addCallback(lambda ign: _checkv("mutable-missing-shares",
-                                         self.check_is_missing_shares))
-        d.addCallback(lambda ign: _checkv("mutable-corrupt-shares",
-                                         self.check_has_corrupt_shares))
-        d.addCallback(lambda ign: _checkv("mutable-unrecoverable",
-                                         self.check_is_unrecoverable))
+        d.addCallback(
+            lambda ign: _checkv("mutable-missing-shares", self.check_is_missing_shares)
+        )
+        d.addCallback(
+            lambda ign: _checkv("mutable-corrupt-shares", self.check_has_corrupt_shares)
+        )
+        d.addCallback(
+            lambda ign: _checkv("mutable-unrecoverable", self.check_is_unrecoverable)
+        )
         d.addCallback(lambda ign: _checkv("large-good", self.check_is_healthy))
-        d.addCallback(lambda ign: _checkv("large-missing-shares", self.check_is_missing_shares))
-        d.addCallback(lambda ign: _checkv("large-corrupt-shares", self.check_has_corrupt_shares))
-        d.addCallback(lambda ign: _checkv("large-unrecoverable",
-                                         self.check_is_unrecoverable))
+        d.addCallback(
+            lambda ign: _checkv("large-missing-shares", self.check_is_missing_shares)
+        )
+        d.addCallback(
+            lambda ign: _checkv("large-corrupt-shares", self.check_has_corrupt_shares)
+        )
+        d.addCallback(
+            lambda ign: _checkv("large-unrecoverable", self.check_is_unrecoverable)
+        )
 
         return d
 
@@ -1055,8 +1216,8 @@ class DeepCheckWebBad(DeepCheckBase, unittest.TestCase):
         d = defer.succeed(None)
 
         # now deep-check the root, with various verify= and repair= options
-        d.addCallback(lambda ign:
-                      self.root.start_deep_check().when_done())
+        d.addCallback(lambda ign: self.root.start_deep_check().when_done())
+
         def _check1(cr):
             self.failUnless(IDeepCheckResults.providedBy(cr))
             c = cr.get_counters()
@@ -1064,18 +1225,24 @@ class DeepCheckWebBad(DeepCheckBase, unittest.TestCase):
             self.failUnlessEqual(c["count-objects-healthy"], 5)
             self.failUnlessEqual(c["count-objects-unhealthy"], 4)
             self.failUnlessEqual(c["count-objects-unrecoverable"], 2)
+
         d.addCallback(_check1)
 
-        d.addCallback(lambda ign:
-                      self.root.start_deep_check(verify=True).when_done())
+        d.addCallback(lambda ign: self.root.start_deep_check(verify=True).when_done())
+
         def _check2(cr):
             self.failUnless(IDeepCheckResults.providedBy(cr))
             c = cr.get_counters()
             self.failUnlessEqual(c["count-objects-checked"], 9)
             self.failUnlessEqual(c["count-objects-healthy"], 3)
             self.failUnlessEqual(c["count-objects-unhealthy"], 6)
-            self.failUnlessEqual(c["count-objects-healthy"], 3) # root, mutable good, large good
-            self.failUnlessEqual(c["count-objects-unrecoverable"], 2) # mutable unrecoverable, large unrecoverable
+            self.failUnlessEqual(
+                c["count-objects-healthy"], 3
+            )  # root, mutable good, large good
+            self.failUnlessEqual(
+                c["count-objects-unrecoverable"], 2
+            )  # mutable unrecoverable, large unrecoverable
+
         d.addCallback(_check2)
 
         return d
@@ -1085,9 +1252,13 @@ class DeepCheckWebBad(DeepCheckBase, unittest.TestCase):
         # untraversable subdir
         def _do_deep_check():
             return self.nodes["broken"].start_deep_check().when_done()
-        d = self.shouldFail(UnrecoverableFileError, "do_deep_check",
-                            "no recoverable versions",
-                            _do_deep_check)
+
+        d = self.shouldFail(
+            UnrecoverableFileError,
+            "do_deep_check",
+            "no recoverable versions",
+            _do_deep_check,
+        )
         return d
 
     def json_is_healthy(self, data, where):
@@ -1117,8 +1288,7 @@ class DeepCheckWebBad(DeepCheckBase, unittest.TestCase):
         r = data["results"]
         self.failIf(r["healthy"], where)
         self.failIf(r["recoverable"], where)
-        self.failUnless(r["count-shares-good"] < r["count-shares-needed"],
-                        where)
+        self.failUnless(r["count-shares-good"] < r["count-shares-needed"], where)
         self.failUnlessEqual(r["count-recoverable-versions"], 0, where)
         self.failUnlessEqual(r["count-unrecoverable-versions"], 1, where)
 
@@ -1131,22 +1301,24 @@ class DeepCheckWebBad(DeepCheckBase, unittest.TestCase):
             d.addCallback(checker, which + "--webcheck")
             return d
 
-        d.addCallback(lambda ign: _check("mutable-good",
-                                         self.json_is_healthy))
-        d.addCallback(lambda ign: _check("mutable-missing-shares",
-                                         self.json_is_missing_shares))
-        d.addCallback(lambda ign: _check("mutable-corrupt-shares",
-                                         self.json_is_healthy))
-        d.addCallback(lambda ign: _check("mutable-unrecoverable",
-                                         self.json_is_unrecoverable))
-        d.addCallback(lambda ign: _check("large-good",
-                                         self.json_is_healthy))
-        d.addCallback(lambda ign: _check("large-missing-shares",
-                                         self.json_is_missing_shares))
-        d.addCallback(lambda ign: _check("large-corrupt-shares",
-                                         self.json_is_healthy))
-        d.addCallback(lambda ign: _check("large-unrecoverable",
-                                         self.json_is_unrecoverable))
+        d.addCallback(lambda ign: _check("mutable-good", self.json_is_healthy))
+        d.addCallback(
+            lambda ign: _check("mutable-missing-shares", self.json_is_missing_shares)
+        )
+        d.addCallback(
+            lambda ign: _check("mutable-corrupt-shares", self.json_is_healthy)
+        )
+        d.addCallback(
+            lambda ign: _check("mutable-unrecoverable", self.json_is_unrecoverable)
+        )
+        d.addCallback(lambda ign: _check("large-good", self.json_is_healthy))
+        d.addCallback(
+            lambda ign: _check("large-missing-shares", self.json_is_missing_shares)
+        )
+        d.addCallback(lambda ign: _check("large-corrupt-shares", self.json_is_healthy))
+        d.addCallback(
+            lambda ign: _check("large-unrecoverable", self.json_is_unrecoverable)
+        )
 
         # check and verify
         def _checkv(which, checker):
@@ -1154,22 +1326,29 @@ class DeepCheckWebBad(DeepCheckBase, unittest.TestCase):
             d.addCallback(checker, which + "--webcheck-and-verify")
             return d
 
-        d.addCallback(lambda ign: _checkv("mutable-good",
-                                          self.json_is_healthy))
-        d.addCallback(lambda ign: _checkv("mutable-missing-shares",
-                                         self.json_is_missing_shares))
-        d.addCallback(lambda ign: _checkv("mutable-corrupt-shares",
-                                         self.json_has_corrupt_shares))
-        d.addCallback(lambda ign: _checkv("mutable-unrecoverable",
-                                         self.json_is_unrecoverable))
-        d.addCallback(lambda ign: _checkv("large-good",
-                                          self.json_is_healthy))
-        d.addCallback(lambda ign: _checkv("large-missing-shares", self.json_is_missing_shares))
-        d.addCallback(lambda ign: _checkv("large-corrupt-shares", self.json_has_corrupt_shares))
-        d.addCallback(lambda ign: _checkv("large-unrecoverable",
-                                         self.json_is_unrecoverable))
+        d.addCallback(lambda ign: _checkv("mutable-good", self.json_is_healthy))
+        d.addCallback(
+            lambda ign: _checkv("mutable-missing-shares", self.json_is_missing_shares)
+        )
+        d.addCallback(
+            lambda ign: _checkv("mutable-corrupt-shares", self.json_has_corrupt_shares)
+        )
+        d.addCallback(
+            lambda ign: _checkv("mutable-unrecoverable", self.json_is_unrecoverable)
+        )
+        d.addCallback(lambda ign: _checkv("large-good", self.json_is_healthy))
+        d.addCallback(
+            lambda ign: _checkv("large-missing-shares", self.json_is_missing_shares)
+        )
+        d.addCallback(
+            lambda ign: _checkv("large-corrupt-shares", self.json_has_corrupt_shares)
+        )
+        d.addCallback(
+            lambda ign: _checkv("large-unrecoverable", self.json_is_unrecoverable)
+        )
 
         return d
+
 
 class Large(DeepCheckBase, unittest.TestCase):
     def test_lots_of_lits(self):
@@ -1190,11 +1369,14 @@ class Large(DeepCheckBase, unittest.TestCase):
         c0 = self.g.clients[0]
         d = c0.create_dirnode()
         self.stash = {}
+
         def _created_root(n):
             self.root = n
             return n
+
         d.addCallback(_created_root)
         d.addCallback(lambda root: root.create_subdirectory(u"subdir"))
+
         def _add_children(subdir_node):
             self.subdir_node = subdir_node
             kids = {}
@@ -1202,17 +1384,21 @@ class Large(DeepCheckBase, unittest.TestCase):
                 litcap = LiteralFileURI("%03d-data" % i).to_string()
                 kids[u"%03d-small" % i] = (litcap, litcap)
             return subdir_node.set_children(kids)
+
         d.addCallback(_add_children)
         up = upload.Data("large enough for CHK" * 100, "")
         d.addCallback(lambda ign: self.subdir_node.add_file(u"0000-large", up))
 
         def _start_deepcheck(ignored):
             return self.web(self.root, method="POST", t="stream-deep-check")
+
         d.addCallback(_start_deepcheck)
+
         def _check(output_and_url):
             (output, url) = output_and_url
             units = list(self.parse_streamed_json(output))
-            self.failUnlessEqual(len(units), 2+COUNT+1)
+            self.failUnlessEqual(len(units), 2 + COUNT + 1)
+
         d.addCallback(_check)
 
         return d

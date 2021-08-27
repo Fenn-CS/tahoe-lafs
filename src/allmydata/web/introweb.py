@@ -1,4 +1,3 @@
-
 import time, os
 from pkg_resources import resource_filename
 from twisted.web.template import Element, XMLFile, renderElement, renderer
@@ -37,8 +36,7 @@ class IntroducerRoot(MultiFormatResource):
         Create a ``IntroducerRootElement`` which can be flattened into an HTML
         response.
         """
-        return IntroducerRootElement(
-            self.introducer_node, self.introducer_service)
+        return IntroducerRootElement(self.introducer_node, self.introducer_service)
 
     def render_HTML(self, req):
         """
@@ -106,8 +104,10 @@ class IntroducerRootElement(Element):
             services[ad.service_name] += 1
         service_names = list(services.keys())
         service_names.sort()
-        return u", ".join(u"{}: {}".format(service_name, services[service_name])
-                          for service_name in service_names)
+        return u", ".join(
+            u"{}: {}".format(service_name, services[service_name])
+            for service_name in service_names
+        )
 
     @renderer
     def client_summary(self, req, tag):
@@ -116,33 +116,40 @@ class IntroducerRootElement(Element):
             if s.service_name not in counts:
                 counts[s.service_name] = 0
             counts[s.service_name] += 1
-        return u", ".join(u"{}: {}".format(name, counts[name])
-                          for name in sorted(counts.keys()))
+        return u", ".join(
+            u"{}: {}".format(name, counts[name]) for name in sorted(counts.keys())
+        )
 
     @renderer
     def services(self, req, tag):
         services = self.introducer_service.get_announcements()
         services.sort(key=lambda ad: (ad.service_name, ad.nickname))
-        services = [{
-            "serverid": ad.serverid,
-            "nickname": ad.nickname,
-            "connection-hints":
-                u"connection hints: " + u" ".join(ad.connection_hints),
-            "connected": u"?",
-            "announced": render_time(ad.when),
-            "version": ad.version,
-            "service_name": ad.service_name,
-        } for ad in services]
+        services = [
+            {
+                "serverid": ad.serverid,
+                "nickname": ad.nickname,
+                "connection-hints": u"connection hints: "
+                + u" ".join(ad.connection_hints),
+                "connected": u"?",
+                "announced": render_time(ad.when),
+                "version": ad.version,
+                "service_name": ad.service_name,
+            }
+            for ad in services
+        ]
         return SlotsSequenceElement(tag, services)
 
     @renderer
     def subscribers(self, req, tag):
-        subscribers = [{
-            "nickname": s.nickname,
-            "tubid": s.tubid,
-            "connected": s.remote_address,
-            "since": render_time(s.when),
-            "version": s.version,
-            "service_name": s.service_name,
-        } for s in self.introducer_service.get_subscribers()]
+        subscribers = [
+            {
+                "nickname": s.nickname,
+                "tubid": s.tubid,
+                "connected": s.remote_address,
+                "since": render_time(s.when),
+                "version": s.version,
+                "service_name": s.service_name,
+            }
+            for s in self.introducer_service.get_subscribers()
+        ]
         return SlotsSequenceElement(tag, subscribers)

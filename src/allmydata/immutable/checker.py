@@ -8,28 +8,43 @@ from allmydata.check_results import CheckResults
 from allmydata.uri import CHKFileVerifierURI
 from allmydata.util.assertutil import precondition
 from allmydata.util import base32, deferredutil, dictutil, log, mathutil
-from allmydata.util.hashutil import file_renewal_secret_hash, \
-     file_cancel_secret_hash, bucket_renewal_secret_hash, \
-     bucket_cancel_secret_hash, uri_extension_hash, CRYPTO_VAL_SIZE, \
-     block_hash
+from allmydata.util.hashutil import (
+    file_renewal_secret_hash,
+    file_cancel_secret_hash,
+    bucket_renewal_secret_hash,
+    bucket_cancel_secret_hash,
+    uri_extension_hash,
+    CRYPTO_VAL_SIZE,
+    block_hash,
+)
 from allmydata.util.happinessutil import servers_of_happiness
 
 from allmydata.immutable import layout
 
+
 class IntegrityCheckReject(Exception):
     pass
+
+
 class BadURIExtension(IntegrityCheckReject):
     pass
+
+
 class BadURIExtensionHashValue(IntegrityCheckReject):
     pass
+
+
 class BadOrMissingHash(IntegrityCheckReject):
     pass
+
+
 class UnsupportedErasureCodec(BadURIExtension):
     pass
 
+
 @implementer(IValidatedThingProxy)
 class ValidatedExtendedURIProxy(object):
-    """ I am a front-end for a remote UEB (using a local ReadBucketProxy),
+    """I am a front-end for a remote UEB (using a local ReadBucketProxy),
     responsible for retrieving and validating the elements from the UEB."""
 
     def __init__(self, readbucketproxy, verifycap, fetch_failures=None):
@@ -60,10 +75,11 @@ class ValidatedExtendedURIProxy(object):
     def _check_integrity(self, data):
         h = uri_extension_hash(data)
         if h != self._verifycap.uri_extension_hash:
-            msg = ("The copy of uri_extension we received from %s was bad: wanted %s, got %s" %
-                   (self._readbucketproxy,
-                    base32.b2a(self._verifycap.uri_extension_hash),
-                    base32.b2a(h)))
+            msg = "The copy of uri_extension we received from %s was bad: wanted %s, got %s" % (
+                self._readbucketproxy,
+                base32.b2a(self._verifycap.uri_extension_hash),
+                base32.b2a(h),
+            )
             if self._fetch_failures is not None:
                 self._fetch_failures["uri_extension"] += 1
             raise BadURIExtensionHashValue(msg)
@@ -71,8 +87,9 @@ class ValidatedExtendedURIProxy(object):
             return data
 
     def _parse_and_validate(self, data):
-        self.share_size = mathutil.div_ceil(self._verifycap.size,
-                                            self._verifycap.needed_shares)
+        self.share_size = mathutil.div_ceil(
+            self._verifycap.size, self._verifycap.needed_shares
+        )
 
         d = uri.unpack_extension(data)
 
@@ -92,109 +109,143 @@ class ValidatedExtendedURIProxy(object):
 
         # First, things that we really need to learn from the UEB:
         # segment_size, crypttext_root_hash, and share_root_hash.
-        self.segment_size = d['segment_size']
+        self.segment_size = d["segment_size"]
 
-        self.block_size = mathutil.div_ceil(self.segment_size,
-                                            self._verifycap.needed_shares)
-        self.num_segments = mathutil.div_ceil(self._verifycap.size,
-                                              self.segment_size)
+        self.block_size = mathutil.div_ceil(
+            self.segment_size, self._verifycap.needed_shares
+        )
+        self.num_segments = mathutil.div_ceil(self._verifycap.size, self.segment_size)
 
         self.tail_data_size = self._verifycap.size % self.segment_size
         if not self.tail_data_size:
             self.tail_data_size = self.segment_size
         # padding for erasure code
-        self.tail_segment_size = mathutil.next_multiple(self.tail_data_size,
-                                                        self._verifycap.needed_shares)
+        self.tail_segment_size = mathutil.next_multiple(
+            self.tail_data_size, self._verifycap.needed_shares
+        )
 
         # Ciphertext hash tree root is mandatory, so that there is at most
         # one ciphertext that matches this read-cap or verify-cap. The
         # integrity check on the shares is not sufficient to prevent the
         # original encoder from creating some shares of file A and other
         # shares of file B.
-        self.crypttext_root_hash = d['crypttext_root_hash']
+        self.crypttext_root_hash = d["crypttext_root_hash"]
 
-        self.share_root_hash = d['share_root_hash']
-
+        self.share_root_hash = d["share_root_hash"]
 
         # Next: things that are optional and not redundant: crypttext_hash
-        if 'crypttext_hash' in d:
-            self.crypttext_hash = d['crypttext_hash']
+        if "crypttext_hash" in d:
+            self.crypttext_hash = d["crypttext_hash"]
             if len(self.crypttext_hash) != CRYPTO_VAL_SIZE:
-                raise BadURIExtension('crypttext_hash is required to be hashutil.CRYPTO_VAL_SIZE bytes, not %s bytes' % (len(self.crypttext_hash),))
-
+                raise BadURIExtension(
+                    "crypttext_hash is required to be hashutil.CRYPTO_VAL_SIZE bytes, not %s bytes"
+                    % (len(self.crypttext_hash),)
+                )
 
         # Next: things that are optional, redundant, and required to be
         # consistent: codec_name, codec_params, tail_codec_params,
         # num_segments, size, needed_shares, total_shares
-        if 'codec_name' in d:
-            if d['codec_name'] != b"crs":
-                raise UnsupportedErasureCodec(d['codec_name'])
+        if "codec_name" in d:
+            if d["codec_name"] != b"crs":
+                raise UnsupportedErasureCodec(d["codec_name"])
 
-        if 'codec_params' in d:
-            ucpss, ucpns, ucpts = codec.parse_params(d['codec_params'])
+        if "codec_params" in d:
+            ucpss, ucpns, ucpts = codec.parse_params(d["codec_params"])
             if ucpss != self.segment_size:
-                raise BadURIExtension("inconsistent erasure code params: "
-                                      "ucpss: %s != self.segment_size: %s" %
-                                      (ucpss, self.segment_size))
+                raise BadURIExtension(
+                    "inconsistent erasure code params: "
+                    "ucpss: %s != self.segment_size: %s" % (ucpss, self.segment_size)
+                )
             if ucpns != self._verifycap.needed_shares:
-                raise BadURIExtension("inconsistent erasure code params: ucpns: %s != "
-                                      "self._verifycap.needed_shares: %s" %
-                                      (ucpns, self._verifycap.needed_shares))
+                raise BadURIExtension(
+                    "inconsistent erasure code params: ucpns: %s != "
+                    "self._verifycap.needed_shares: %s"
+                    % (ucpns, self._verifycap.needed_shares)
+                )
             if ucpts != self._verifycap.total_shares:
-                raise BadURIExtension("inconsistent erasure code params: ucpts: %s != "
-                                      "self._verifycap.total_shares: %s" %
-                                      (ucpts, self._verifycap.total_shares))
+                raise BadURIExtension(
+                    "inconsistent erasure code params: ucpts: %s != "
+                    "self._verifycap.total_shares: %s"
+                    % (ucpts, self._verifycap.total_shares)
+                )
 
-        if 'tail_codec_params' in d:
-            utcpss, utcpns, utcpts = codec.parse_params(d['tail_codec_params'])
+        if "tail_codec_params" in d:
+            utcpss, utcpns, utcpts = codec.parse_params(d["tail_codec_params"])
             if utcpss != self.tail_segment_size:
-                raise BadURIExtension("inconsistent erasure code params: utcpss: %s != "
-                                      "self.tail_segment_size: %s, self._verifycap.size: %s, "
-                                      "self.segment_size: %s, self._verifycap.needed_shares: %s"
-                                      % (utcpss, self.tail_segment_size, self._verifycap.size,
-                                         self.segment_size, self._verifycap.needed_shares))
+                raise BadURIExtension(
+                    "inconsistent erasure code params: utcpss: %s != "
+                    "self.tail_segment_size: %s, self._verifycap.size: %s, "
+                    "self.segment_size: %s, self._verifycap.needed_shares: %s"
+                    % (
+                        utcpss,
+                        self.tail_segment_size,
+                        self._verifycap.size,
+                        self.segment_size,
+                        self._verifycap.needed_shares,
+                    )
+                )
             if utcpns != self._verifycap.needed_shares:
-                raise BadURIExtension("inconsistent erasure code params: utcpns: %s != "
-                                      "self._verifycap.needed_shares: %s" % (utcpns,
-                                                                             self._verifycap.needed_shares))
+                raise BadURIExtension(
+                    "inconsistent erasure code params: utcpns: %s != "
+                    "self._verifycap.needed_shares: %s"
+                    % (utcpns, self._verifycap.needed_shares)
+                )
             if utcpts != self._verifycap.total_shares:
-                raise BadURIExtension("inconsistent erasure code params: utcpts: %s != "
-                                      "self._verifycap.total_shares: %s" % (utcpts,
-                                                                            self._verifycap.total_shares))
+                raise BadURIExtension(
+                    "inconsistent erasure code params: utcpts: %s != "
+                    "self._verifycap.total_shares: %s"
+                    % (utcpts, self._verifycap.total_shares)
+                )
 
-        if 'num_segments' in d:
-            if d['num_segments'] != self.num_segments:
-                raise BadURIExtension("inconsistent num_segments: size: %s, "
-                                      "segment_size: %s, computed_num_segments: %s, "
-                                      "ueb_num_segments: %s" % (self._verifycap.size,
-                                                                self.segment_size,
-                                                                self.num_segments, d['num_segments']))
+        if "num_segments" in d:
+            if d["num_segments"] != self.num_segments:
+                raise BadURIExtension(
+                    "inconsistent num_segments: size: %s, "
+                    "segment_size: %s, computed_num_segments: %s, "
+                    "ueb_num_segments: %s"
+                    % (
+                        self._verifycap.size,
+                        self.segment_size,
+                        self.num_segments,
+                        d["num_segments"],
+                    )
+                )
 
-        if 'size' in d:
-            if d['size'] != self._verifycap.size:
-                raise BadURIExtension("inconsistent size: URI size: %s, UEB size: %s" %
-                                      (self._verifycap.size, d['size']))
+        if "size" in d:
+            if d["size"] != self._verifycap.size:
+                raise BadURIExtension(
+                    "inconsistent size: URI size: %s, UEB size: %s"
+                    % (self._verifycap.size, d["size"])
+                )
 
-        if 'needed_shares' in d:
-            if d['needed_shares'] != self._verifycap.needed_shares:
-                raise BadURIExtension("inconsistent needed shares: URI needed shares: %s, UEB "
-                                      "needed shares: %s" % (self._verifycap.total_shares,
-                                                             d['needed_shares']))
+        if "needed_shares" in d:
+            if d["needed_shares"] != self._verifycap.needed_shares:
+                raise BadURIExtension(
+                    "inconsistent needed shares: URI needed shares: %s, UEB "
+                    "needed shares: %s"
+                    % (self._verifycap.total_shares, d["needed_shares"])
+                )
 
-        if 'total_shares' in d:
-            if d['total_shares'] != self._verifycap.total_shares:
-                raise BadURIExtension("inconsistent total shares: URI total shares: %s, UEB "
-                                      "total shares: %s" % (self._verifycap.total_shares,
-                                                            d['total_shares']))
+        if "total_shares" in d:
+            if d["total_shares"] != self._verifycap.total_shares:
+                raise BadURIExtension(
+                    "inconsistent total shares: URI total shares: %s, UEB "
+                    "total shares: %s"
+                    % (self._verifycap.total_shares, d["total_shares"])
+                )
 
         # Finally, things that are deprecated and ignored: plaintext_hash,
         # plaintext_root_hash
-        if d.get('plaintext_hash'):
-            log.msg("Found plaintext_hash in UEB. This field is deprecated for security reasons "
-                    "and is no longer used.  Ignoring.  %s" % (self,))
-        if d.get('plaintext_root_hash'):
-            log.msg("Found plaintext_root_hash in UEB. This field is deprecated for security "
-                    "reasons and is no longer used.  Ignoring.  %s" % (self,))
+        if d.get("plaintext_hash"):
+            log.msg(
+                "Found plaintext_hash in UEB. This field is deprecated for security reasons "
+                "and is no longer used.  Ignoring.  %s" % (self,)
+            )
+        if d.get("plaintext_root_hash"):
+            log.msg(
+                "Found plaintext_root_hash in UEB. This field is deprecated for security "
+                "reasons and is no longer used.  Ignoring.  %s" % (self,)
+            )
 
         return self
 
@@ -208,6 +259,7 @@ class ValidatedExtendedURIProxy(object):
         d.addCallback(self._parse_and_validate)
         return d
 
+
 class ValidatedReadBucketProxy(log.PrefixingLogMixin):
     """I am a front-end for a remote storage bucket, responsible for
     retrieving and validating data from that bucket.
@@ -215,17 +267,21 @@ class ValidatedReadBucketProxy(log.PrefixingLogMixin):
     My get_block() method is used by BlockDownloaders.
     """
 
-    def __init__(self, sharenum, bucket, share_hash_tree, num_blocks,
-                 block_size, share_size):
-        """ share_hash_tree is required to have already been initialized with
+    def __init__(
+        self, sharenum, bucket, share_hash_tree, num_blocks, block_size, share_size
+    ):
+        """share_hash_tree is required to have already been initialized with
         the root hash (the number-0 hash), using the share_root_hash from the
         UEB"""
         precondition(share_hash_tree[0] is not None, share_hash_tree)
-        prefix = "%d-%s-%s" % (sharenum, bucket,
-                               base32.b2a(share_hash_tree[0][:8])[:12])
-        log.PrefixingLogMixin.__init__(self,
-                                       facility="tahoe.immutable.download",
-                                       prefix=prefix)
+        prefix = "%d-%s-%s" % (
+            sharenum,
+            bucket,
+            base32.b2a(share_hash_tree[0][:8])[:12],
+        )
+        log.PrefixingLogMixin.__init__(
+            self, facility="tahoe.immutable.download", prefix=prefix
+        )
         self.sharenum = sharenum
         self.bucket = bucket
         self.share_hash_tree = share_hash_tree
@@ -252,6 +308,7 @@ class ValidatedReadBucketProxy(log.PrefixingLogMixin):
         BadOrMissingHash."""
 
         d = self.bucket.get_share_hashes()
+
         def _got_share_hashes(sh):
             sharehashes = dict(sh)
             try:
@@ -260,6 +317,7 @@ class ValidatedReadBucketProxy(log.PrefixingLogMixin):
                 raise BadOrMissingHash(le)
             except (hashtree.BadHashError, hashtree.NotEnoughHashesError) as le:
                 raise BadOrMissingHash(le)
+
         d.addCallback(_got_share_hashes)
         return d
 
@@ -282,6 +340,7 @@ class ValidatedReadBucketProxy(log.PrefixingLogMixin):
         # get_block_hashes(anything) currently always returns everything
         needed = list(range(len(self.block_hash_tree)))
         d = self.bucket.get_block_hashes(needed)
+
         def _got_block_hashes(blockhashes):
             if len(blockhashes) < len(self.block_hash_tree):
                 raise BadOrMissingHash()
@@ -293,6 +352,7 @@ class ValidatedReadBucketProxy(log.PrefixingLogMixin):
                 raise BadOrMissingHash(le)
             except (hashtree.BadHashError, hashtree.NotEnoughHashesError) as le:
                 raise BadOrMissingHash(le)
+
         d.addCallback(_got_block_hashes)
         return d
 
@@ -310,6 +370,7 @@ class ValidatedReadBucketProxy(log.PrefixingLogMixin):
 
         # get_crypttext_hashes() always returns everything
         d = self.bucket.get_crypttext_hashes()
+
         def _got_crypttext_hashes(hashes):
             if len(hashes) < len(crypttext_hash_tree):
                 raise BadOrMissingHash()
@@ -320,6 +381,7 @@ class ValidatedReadBucketProxy(log.PrefixingLogMixin):
                 raise BadOrMissingHash(le)
             except (hashtree.BadHashError, hashtree.NotEnoughHashesError) as le:
                 raise BadOrMissingHash(le)
+
         d.addCallback(_got_crypttext_hashes)
         return d
 
@@ -334,28 +396,28 @@ class ValidatedReadBucketProxy(log.PrefixingLogMixin):
 
         # We might need to grab some elements of our block hash tree, to
         # validate the requested block up to the share hash.
-        blockhashesneeded = self.block_hash_tree.needed_hashes(blocknum, include_leaf=True)
+        blockhashesneeded = self.block_hash_tree.needed_hashes(
+            blocknum, include_leaf=True
+        )
         # We don't need the root of the block hash tree, as that comes in the
         # share tree.
         blockhashesneeded.discard(0)
         d2 = self.bucket.get_block_hashes(blockhashesneeded)
 
-        if blocknum < self.num_blocks-1:
+        if blocknum < self.num_blocks - 1:
             thisblocksize = self.block_size
         else:
             thisblocksize = self.share_size % self.block_size
             if thisblocksize == 0:
                 thisblocksize = self.block_size
-        d3 = self.bucket.get_block_data(blocknum,
-                                        self.block_size, thisblocksize)
+        d3 = self.bucket.get_block_data(blocknum, self.block_size, thisblocksize)
 
         dl = deferredutil.gatherResults([d1, d2, d3])
         dl.addCallback(self._got_data, blocknum)
         return dl
 
     def _got_data(self, results, blocknum):
-        precondition(blocknum < self.num_blocks,
-                     self, blocknum, self.num_blocks)
+        precondition(blocknum < self.num_blocks, self, blocknum, self.num_blocks)
         sharehashes, blockhashes, blockdata = results
         try:
             sharehashes = dict(sharehashes)
@@ -364,8 +426,8 @@ class ValidatedReadBucketProxy(log.PrefixingLogMixin):
             raise
         blockhashes = dict(enumerate(blockhashes))
 
-        candidate_share_hash = None # in case we log it in the except block below
-        blockhash = None # in case we log it in the except block below
+        candidate_share_hash = None  # in case we log it in the except block below
+        blockhash = None  # in case we log it in the except block below
 
         try:
             if self.share_hash_tree.needed_hashes(self.sharenum):
@@ -381,7 +443,7 @@ class ValidatedReadBucketProxy(log.PrefixingLogMixin):
             # To validate a block we need the root of the block hash tree,
             # which is also one of the leafs of the share hash tree, and is
             # called "the share hash".
-            if not self.block_hash_tree[0]: # empty -- no root node yet
+            if not self.block_hash_tree[0]:  # empty -- no root node yet
                 # Get the share hash from the share hash tree.
                 share_hash = self.share_hash_tree.get_leaf(self.sharenum)
                 if not share_hash:
@@ -395,7 +457,7 @@ class ValidatedReadBucketProxy(log.PrefixingLogMixin):
 
             blockhash = block_hash(blockdata)
             self.block_hash_tree.set_hashes(leaves={blocknum: blockhash})
-            #self.log("checking block_hash(shareid=%d, blocknum=%d) len=%d "
+            # self.log("checking block_hash(shareid=%d, blocknum=%d) len=%d "
             #        "%r .. %r: %s" %
             #        (self.sharenum, blocknum, len(blockdata),
             #         blockdata[:50], blockdata[-50:], base32.b2a(blockhash)))
@@ -403,32 +465,40 @@ class ValidatedReadBucketProxy(log.PrefixingLogMixin):
         except (hashtree.BadHashError, hashtree.NotEnoughHashesError) as le:
             # log.WEIRD: indicates undetected disk/network error, or more
             # likely a programming error
-            self.log("hash failure in block=%d, shnum=%d on %s" %
-                    (blocknum, self.sharenum, self.bucket))
+            self.log(
+                "hash failure in block=%d, shnum=%d on %s"
+                % (blocknum, self.sharenum, self.bucket)
+            )
             if self.block_hash_tree.needed_hashes(blocknum):
-                self.log(""" failure occurred when checking the block_hash_tree.
+                self.log(
+                    """ failure occurred when checking the block_hash_tree.
                 This suggests that either the block data was bad, or that the
-                block hashes we received along with it were bad.""")
+                block hashes we received along with it were bad."""
+                )
             else:
-                self.log(""" the failure probably occurred when checking the
+                self.log(
+                    """ the failure probably occurred when checking the
                 share_hash_tree, which suggests that the share hashes we
-                received from the remote peer were bad.""")
+                received from the remote peer were bad."""
+                )
             self.log(" have candidate_share_hash: %s" % bool(candidate_share_hash))
             self.log(" block length: %d" % len(blockdata))
             self.log(" block hash: %s" % base32.b2a_or_none(blockhash))
             if len(blockdata) < 100:
                 self.log(" block data: %r" % (blockdata,))
             else:
-                self.log(" block data start/end: %r .. %r" %
-                        (blockdata[:50], blockdata[-50:]))
+                self.log(
+                    " block data start/end: %r .. %r"
+                    % (blockdata[:50], blockdata[-50:])
+                )
             self.log(" share hash tree:\n" + self.share_hash_tree.dump())
             self.log(" block hash tree:\n" + self.block_hash_tree.dump())
             lines = []
-            for i,h in sorted(sharehashes.items()):
+            for i, h in sorted(sharehashes.items()):
                 lines.append("%3d: %s" % (i, base32.b2a_or_none(h)))
             self.log(" sharehashes:\n" + "\n".join(lines) + "\n")
             lines = []
-            for i,h in list(blockhashes.items()):
+            for i, h in list(blockhashes.items()):
                 lines.append("%3d: %s" % (i, base32.b2a_or_none(h)))
             log.msg(" blockhashes:\n" + "\n".join(lines) + "\n")
             raise BadOrMissingHash(le)
@@ -461,29 +531,36 @@ class Checker(log.PrefixingLogMixin):
     object that was passed into my constructor whether this task has been
     cancelled (by invoking its raise_if_cancelled() method).
     """
-    def __init__(self, verifycap, servers, verify, add_lease, secret_holder,
-                 monitor):
-        assert precondition(isinstance(verifycap, CHKFileVerifierURI), verifycap, type(verifycap))
+
+    def __init__(self, verifycap, servers, verify, add_lease, secret_holder, monitor):
+        assert precondition(
+            isinstance(verifycap, CHKFileVerifierURI), verifycap, type(verifycap)
+        )
 
         prefix = "%s" % base32.b2a(verifycap.get_storage_index()[:8])[:12]
-        log.PrefixingLogMixin.__init__(self, facility="tahoe.immutable.checker", prefix=prefix)
+        log.PrefixingLogMixin.__init__(
+            self, facility="tahoe.immutable.checker", prefix=prefix
+        )
 
         self._verifycap = verifycap
 
         self._monitor = monitor
         self._servers = servers
-        self._verify = verify # bool: verify what the servers claim, or not?
+        self._verify = verify  # bool: verify what the servers claim, or not?
         self._add_lease = add_lease
 
-        frs = file_renewal_secret_hash(secret_holder.get_renewal_secret(),
-                                       self._verifycap.get_storage_index())
+        frs = file_renewal_secret_hash(
+            secret_holder.get_renewal_secret(), self._verifycap.get_storage_index()
+        )
         self.file_renewal_secret = frs
-        fcs = file_cancel_secret_hash(secret_holder.get_cancel_secret(),
-                                      self._verifycap.get_storage_index())
+        fcs = file_cancel_secret_hash(
+            secret_holder.get_cancel_secret(), self._verifycap.get_storage_index()
+        )
         self.file_cancel_secret = fcs
 
     def _get_renewal_secret(self, seed):
         return bucket_renewal_secret_hash(self.file_renewal_secret, seed)
+
     def _get_cancel_secret(self, seed):
         return bucket_cancel_secret_hash(self.file_cancel_secret, seed)
 
@@ -509,6 +586,7 @@ class Checker(log.PrefixingLogMixin):
             d2.addErrback(self._add_lease_failed, s.get_name(), storageindex)
 
         d = storage_server.get_buckets(storageindex)
+
         def _wrap_results(res):
             return (res, True)
 
@@ -516,9 +594,13 @@ class Checker(log.PrefixingLogMixin):
             level = log.WEIRD
             if f.check(DeadReferenceError):
                 level = log.UNUSUAL
-            self.log("failure from server on 'get_buckets' the REMOTE failure was:",
-                     facility="tahoe.immutable.checker",
-                     failure=f, level=level, umid="AX7wZQ")
+            self.log(
+                "failure from server on 'get_buckets' the REMOTE failure was:",
+                facility="tahoe.immutable.checker",
+                failure=f,
+                level=level,
+                umid="AX7wZQ",
+            )
             return ({}, False)
 
         d.addCallbacks(_wrap_results, _trap_errs)
@@ -544,19 +626,24 @@ class Checker(log.PrefixingLogMixin):
                 # this may ignore a bit too much, but that only hurts us
                 # during debugging
                 return
-            self.log(format="error in add_lease from [%(name)s]: %(f_value)s",
-                     name=server_name,
-                     f_value=str(f.value),
-                     failure=f,
-                     level=log.WEIRD, umid="atbAxw")
-            return
-        # local errors are cause for alarm
-        log.err(f,
-                format="local error in add_lease to [%(name)s]: %(f_value)s",
+            self.log(
+                format="error in add_lease from [%(name)s]: %(f_value)s",
                 name=server_name,
                 f_value=str(f.value),
-                level=log.WEIRD, umid="hEGuQg")
-
+                failure=f,
+                level=log.WEIRD,
+                umid="atbAxw",
+            )
+            return
+        # local errors are cause for alarm
+        log.err(
+            f,
+            format="local error in add_lease to [%(name)s]: %(f_value)s",
+            name=server_name,
+            f_value=str(f.value),
+            level=log.WEIRD,
+            umid="hEGuQg",
+        )
 
     def _download_and_verify(self, server, sharenum, bucket):
         """Start an attempt to download and verify every block in this bucket
@@ -586,11 +673,14 @@ class Checker(log.PrefixingLogMixin):
             share_hash_tree = IncompleteHashTree(vcap.total_shares)
             share_hash_tree.set_hashes({0: vup.share_root_hash})
 
-            vrbp = ValidatedReadBucketProxy(sharenum, b,
-                                            share_hash_tree,
-                                            vup.num_segments,
-                                            vup.block_size,
-                                            vup.share_size)
+            vrbp = ValidatedReadBucketProxy(
+                sharenum,
+                b,
+                share_hash_tree,
+                vup.num_segments,
+                vup.block_size,
+                vup.share_size,
+            )
 
             # note: normal download doesn't use get_all_sharehashes(),
             # because it gets more data than necessary. We've discussed the
@@ -613,6 +703,7 @@ class Checker(log.PrefixingLogMixin):
 
             d.addCallback(lambda ign: vrbp)
             return d
+
         d.addCallback(_got_ueb)
 
         def _discard_result(r):
@@ -641,6 +732,7 @@ class Checker(log.PrefixingLogMixin):
         # are good
         def _all_good(ign):
             return (True, sharenum, None)
+
         d.addCallback(_all_good)
 
         # but if anything fails, we'll land here
@@ -649,25 +741,28 @@ class Checker(log.PrefixingLogMixin):
             # this share. Handle each reason for failure differently.
 
             if f.check(DeadReferenceError):
-                return (False, sharenum, 'disconnect')
+                return (False, sharenum, "disconnect")
             elif f.check(RemoteException):
-                return (False, sharenum, 'failure')
+                return (False, sharenum, "failure")
             elif f.check(layout.ShareVersionIncompatible):
-                return (False, sharenum, 'incompatible')
-            elif f.check(layout.LayoutInvalid,
-                         layout.RidiculouslyLargeURIExtensionBlock,
-                         BadOrMissingHash,
-                         BadURIExtensionHashValue):
-                return (False, sharenum, 'corrupt')
+                return (False, sharenum, "incompatible")
+            elif f.check(
+                layout.LayoutInvalid,
+                layout.RidiculouslyLargeURIExtensionBlock,
+                BadOrMissingHash,
+                BadURIExtensionHashValue,
+            ):
+                return (False, sharenum, "corrupt")
 
             # if it wasn't one of those reasons, re-raise the error
             return f
+
         d.addErrback(_errb)
 
         return d
 
     def _verify_server_shares(self, s):
-        """ Return a deferred which eventually fires with a tuple of
+        """Return a deferred which eventually fires with a tuple of
         (set(sharenum), server, set(corruptsharenum),
         set(incompatiblesharenum), success) showing all the shares verified
         to be served by this server, and all the corrupt shares served by the
@@ -709,9 +804,9 @@ class Checker(log.PrefixingLogMixin):
                     if succ:
                         verified.add(sharenum)
                     else:
-                        if whynot == 'corrupt':
+                        if whynot == "corrupt":
                             corrupt.add(sharenum)
-                        elif whynot == 'incompatible':
+                        elif whynot == "incompatible":
                             incompatible.add(sharenum)
                 return (verified, s, corrupt, incompatible, success)
 
@@ -737,9 +832,11 @@ class Checker(log.PrefixingLogMixin):
 
         see also _verify_server_shares()
         """
+
         def _curry_empty_corrupted(res):
             buckets, responded = res
             return (set(buckets), s, set(), set(), responded)
+
         d = self._get_buckets(s, self._verifycap.get_storage_index())
         d.addCallback(_curry_empty_corrupted)
         return d
@@ -747,11 +844,11 @@ class Checker(log.PrefixingLogMixin):
     def _format_results(self, results):
         SI = self._verifycap.get_storage_index()
 
-        verifiedshares = dictutil.DictOfSets() # {sharenum: set(server)}
-        servers = {} # {server: set(sharenums)}
-        corruptshare_locators = [] # (server, storageindex, sharenum)
-        incompatibleshare_locators = [] # (server, storageindex, sharenum)
-        servers_responding = set() # server
+        verifiedshares = dictutil.DictOfSets()  # {sharenum: set(server)}
+        servers = {}  # {server: set(sharenums)}
+        corruptshare_locators = []  # (server, storageindex, sharenum)
+        incompatibleshare_locators = []  # (server, storageindex, sharenum)
+        servers_responding = set()  # server
 
         for verified, server, corrupt, incompatible, responded in results:
             servers.setdefault(server, set()).update(verified)
@@ -766,16 +863,20 @@ class Checker(log.PrefixingLogMixin):
 
         good_share_hosts = len([s for s in servers.keys() if servers[s]])
 
-        assert len(verifiedshares) <= self._verifycap.total_shares, (verifiedshares.keys(), self._verifycap.total_shares)
+        assert len(verifiedshares) <= self._verifycap.total_shares, (
+            verifiedshares.keys(),
+            self._verifycap.total_shares,
+        )
         if len(verifiedshares) == self._verifycap.total_shares:
             healthy = True
             summary = "Healthy"
         else:
             healthy = False
-            summary = ("Not Healthy: %d shares (enc %d-of-%d)" %
-                       (len(verifiedshares),
-                        self._verifycap.needed_shares,
-                        self._verifycap.total_shares))
+            summary = "Not Healthy: %d shares (enc %d-of-%d)" % (
+                len(verifiedshares),
+                self._verifycap.needed_shares,
+                self._verifycap.total_shares,
+            )
         if len(verifiedshares) >= self._verifycap.needed_shares:
             recoverable = 1
             unrecoverable = 0
@@ -785,26 +886,30 @@ class Checker(log.PrefixingLogMixin):
 
         count_happiness = servers_of_happiness(verifiedshares)
 
-        cr = CheckResults(self._verifycap, SI,
-                          healthy=healthy, recoverable=bool(recoverable),
-                          count_happiness=count_happiness,
-                          count_shares_needed=self._verifycap.needed_shares,
-                          count_shares_expected=self._verifycap.total_shares,
-                          count_shares_good=len(verifiedshares),
-                          count_good_share_hosts=good_share_hosts,
-                          count_recoverable_versions=recoverable,
-                          count_unrecoverable_versions=unrecoverable,
-                          servers_responding=list(servers_responding),
-                          sharemap=verifiedshares,
-                          count_wrong_shares=0, # no such thing, for immutable
-                          list_corrupt_shares=corruptshare_locators,
-                          count_corrupt_shares=len(corruptshare_locators),
-                          list_incompatible_shares=incompatibleshare_locators,
-                          count_incompatible_shares=len(incompatibleshare_locators),
-                          summary=summary,
-                          report=[],
-                          share_problems=[],
-                          servermap=None)
+        cr = CheckResults(
+            self._verifycap,
+            SI,
+            healthy=healthy,
+            recoverable=bool(recoverable),
+            count_happiness=count_happiness,
+            count_shares_needed=self._verifycap.needed_shares,
+            count_shares_expected=self._verifycap.total_shares,
+            count_shares_good=len(verifiedshares),
+            count_good_share_hosts=good_share_hosts,
+            count_recoverable_versions=recoverable,
+            count_unrecoverable_versions=unrecoverable,
+            servers_responding=list(servers_responding),
+            sharemap=verifiedshares,
+            count_wrong_shares=0,  # no such thing, for immutable
+            list_corrupt_shares=corruptshare_locators,
+            count_corrupt_shares=len(corruptshare_locators),
+            list_incompatible_shares=incompatibleshare_locators,
+            count_incompatible_shares=len(incompatibleshare_locators),
+            summary=summary,
+            report=[],
+            share_problems=[],
+            servermap=None,
+        )
 
         return cr
 

@@ -7,8 +7,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 from twisted.trial import unittest
 from allmydata.interfaces import SDMF_VERSION
@@ -20,6 +43,7 @@ from allmydata.mutable.servermap import ServerMap, ServermapUpdater
 from ..common_util import DevNullDictionary
 from .util import FakeStorage, make_nodemaker
 
+
 class MultipleEncodings(unittest.TestCase):
     def setUp(self):
         self.CONTENTS = b"New contents go here"
@@ -28,8 +52,10 @@ class MultipleEncodings(unittest.TestCase):
         self._nodemaker = make_nodemaker(self._storage, num_peers=20)
         self._storage_broker = self._nodemaker.storage_broker
         d = self._nodemaker.create_mutable_file(self.uploadable)
+
         def _created(node):
             self._fn = node
+
         d.addCallback(_created)
         return d
 
@@ -51,22 +77,23 @@ class MultipleEncodings(unittest.TestCase):
         fn2._total_shares = n
 
         s = self._storage
-        s._peers = {} # clear existing storage
+        s._peers = {}  # clear existing storage
         p2 = Publish(fn2, self._storage_broker, None)
         uploadable = MutableData(data)
         d = p2.publish(uploadable)
+
         def _published(res):
             shares = s._peers
             s._peers = {}
             return shares
+
         d.addCallback(_published)
         return d
 
     def make_servermap(self, mode=MODE_READ, oldmap=None):
         if oldmap is None:
             oldmap = ServerMap()
-        smu = ServermapUpdater(self._fn, self._storage_broker, Monitor(),
-                               oldmap, mode)
+        smu = ServermapUpdater(self._fn, self._storage_broker, Monitor(), oldmap, mode)
         d = smu.update()
         return d
 
@@ -75,9 +102,9 @@ class MultipleEncodings(unittest.TestCase):
         # then mix up the shares, to make sure that download survives seeing
         # a variety of encodings. This is actually kind of tricky to set up.
 
-        contents1 = b"Contents for encoding 1 (3-of-10) go here"*1000
-        contents2 = b"Contents for encoding 2 (4-of-9) go here"*1000
-        contents3 = b"Contents for encoding 3 (4-of-7) go here"*1000
+        contents1 = b"Contents for encoding 1 (3-of-10) go here" * 1000
+        contents2 = b"Contents for encoding 2 (4-of-9) go here" * 1000
+        contents3 = b"Contents for encoding 3 (4-of-7) go here" * 1000
 
         # we make a retrieval object that doesn't know what encoding
         # parameters to use
@@ -85,16 +112,22 @@ class MultipleEncodings(unittest.TestCase):
 
         # now we upload a file through fn1, and grab its shares
         d = self._encode(3, 10, contents1)
+
         def _encoded_1(shares):
             self._shares1 = shares
+
         d.addCallback(_encoded_1)
         d.addCallback(lambda res: self._encode(4, 9, contents2))
+
         def _encoded_2(shares):
             self._shares2 = shares
+
         d.addCallback(_encoded_2)
         d.addCallback(lambda res: self._encode(4, 7, contents3))
+
         def _encoded_3(shares):
             self._shares3 = shares
+
         d.addCallback(_encoded_3)
 
         def _merge(res):
@@ -151,14 +184,16 @@ class MultipleEncodings(unittest.TestCase):
 
             # we don't bother placing any other shares
             # now sort the sequence so that share 0 is returned first
-            new_sequence = [sharemap[shnum]
-                            for shnum in sorted(sharemap.keys())]
+            new_sequence = [sharemap[shnum] for shnum in sorted(sharemap.keys())]
             self._storage._sequence = new_sequence
             log.msg("merge done")
+
         d.addCallback(_merge)
         d.addCallback(lambda res: fn3.download_best_version())
+
         def _retrieved(new_contents):
             # the current specified behavior is "first version recoverable"
             self.failUnlessEqual(new_contents, contents1)
+
         d.addCallback(_retrieved)
         return d

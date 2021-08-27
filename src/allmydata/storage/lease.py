@@ -8,14 +8,44 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import struct, time
 
+
 class LeaseInfo(object):
-    def __init__(self, owner_num=None, renew_secret=None, cancel_secret=None,
-                 expiration_time=None, nodeid=None):
+    def __init__(
+        self,
+        owner_num=None,
+        renew_secret=None,
+        cancel_secret=None,
+        expiration_time=None,
+        nodeid=None,
+    ):
         self.owner_num = owner_num
         self.renew_secret = renew_secret
         self.cancel_secret = cancel_secret
@@ -30,35 +60,46 @@ class LeaseInfo(object):
 
     def get_grant_renew_time_time(self):
         # hack, based upon fixed 31day expiration period
-        return self.expiration_time - 31*24*60*60
+        return self.expiration_time - 31 * 24 * 60 * 60
 
     def get_age(self):
         return time.time() - self.get_grant_renew_time_time()
 
     def from_immutable_data(self, data):
-        (self.owner_num,
-         self.renew_secret,
-         self.cancel_secret,
-         self.expiration_time) = struct.unpack(">L32s32sL", data)
+        (
+            self.owner_num,
+            self.renew_secret,
+            self.cancel_secret,
+            self.expiration_time,
+        ) = struct.unpack(">L32s32sL", data)
         self.nodeid = None
         return self
 
     def to_immutable_data(self):
-        return struct.pack(">L32s32sL",
-                           self.owner_num,
-                           self.renew_secret, self.cancel_secret,
-                           int(self.expiration_time))
+        return struct.pack(
+            ">L32s32sL",
+            self.owner_num,
+            self.renew_secret,
+            self.cancel_secret,
+            int(self.expiration_time),
+        )
 
     def to_mutable_data(self):
-        return struct.pack(">LL32s32s20s",
-                           self.owner_num,
-                           int(self.expiration_time),
-                           self.renew_secret, self.cancel_secret,
-                           self.nodeid)
+        return struct.pack(
+            ">LL32s32s20s",
+            self.owner_num,
+            int(self.expiration_time),
+            self.renew_secret,
+            self.cancel_secret,
+            self.nodeid,
+        )
 
     def from_mutable_data(self, data):
-        (self.owner_num,
-         self.expiration_time,
-         self.renew_secret, self.cancel_secret,
-         self.nodeid) = struct.unpack(">LL32s32s20s", data)
+        (
+            self.owner_num,
+            self.expiration_time,
+            self.renew_secret,
+            self.cancel_secret,
+            self.nodeid,
+        ) = struct.unpack(">LL32s32s20s", data)
         return self

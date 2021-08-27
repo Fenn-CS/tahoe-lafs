@@ -94,6 +94,7 @@ class FakeWebTest(TestCase):
 
             round_trip_content = yield resp.content()
             self.assertEqual(content, round_trip_content)
+
         self.assertThat(
             do_test(),
             succeeded(Always()),
@@ -116,15 +117,12 @@ class FakeWebTest(TestCase):
 
             cap_raw = yield resp.content()
             self.assertThat(
-                cap_raw,
-                AfterPreprocessing(
-                    from_string,
-                    IsInstance(CHKFileURI)
-                )
+                cap_raw, AfterPreprocessing(from_string, IsInstance(CHKFileURI))
             )
 
             resp = yield http_client.put("http://example.com/uri", content)
             self.assertThat(resp.code, Equals(200))
+
         self.assertThat(
             do_test(),
             succeeded(Always()),
@@ -138,17 +136,12 @@ class FakeWebTest(TestCase):
         http_client = create_tahoe_treq_client()
         cap_gen = capability_generator("URI:CHK:")
 
-        uri = DecodedURL.from_text(u"http://example.com/uri?uri={}".format(next(cap_gen)))
+        uri = DecodedURL.from_text(
+            u"http://example.com/uri?uri={}".format(next(cap_gen))
+        )
         resp = http_client.get(uri.to_uri().to_text())
 
-        self.assertThat(
-            resp,
-            succeeded(
-                MatchesStructure(
-                    code=Equals(500)
-                )
-            )
-        )
+        self.assertThat(resp, succeeded(MatchesStructure(code=Equals(500))))
 
     def test_download_no_arg(self):
         """
@@ -160,11 +153,4 @@ class FakeWebTest(TestCase):
         uri = DecodedURL.from_text(u"http://example.com/uri/")
         resp = http_client.get(uri.to_uri().to_text())
 
-        self.assertThat(
-            resp,
-            succeeded(
-                MatchesStructure(
-                    code=Equals(400)
-                )
-            )
-        )
+        self.assertThat(resp, succeeded(MatchesStructure(code=Equals(400))))

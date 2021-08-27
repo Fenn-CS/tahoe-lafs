@@ -27,22 +27,26 @@ def _import_i2p():
     # this exists to be overridden by unit tests
     try:
         from foolscap.connections import i2p
+
         return i2p
-    except ImportError: # pragma: no cover
+    except ImportError:  # pragma: no cover
         return None
+
 
 def _import_txi2p():
     try:
         import txi2p
+
         return txi2p
-    except ImportError: # pragma: no cover
+    except ImportError:  # pragma: no cover
         return None
 
 
 def _try_to_connect(reactor, endpoint_desc, stdout, txi2p):
     # yields True or None
     ep = clientFromString(reactor, endpoint_desc)
-    d = txi2p.testAPI(reactor, 'SAM', ep)
+    d = txi2p.testAPI(reactor, "SAM", ep)
+
     def _failed(f):
         # depending upon what's listening at that endpoint, we might get
         # various errors. If this list is too short, we might expose an
@@ -50,21 +54,25 @@ def _try_to_connect(reactor, endpoint_desc, stdout, txi2p):
         # when we're supposed to just try the next potential port instead.
         # But I don't want to catch everything, because that may hide actual
         # coding errors.
-        f.trap(ConnectionRefusedError, # nothing listening on TCP
-               ConnectError, # missing unix socket, or permission denied
-               #ValueError,
-               # connecting to e.g. an HTTP server causes an
-               # UnhandledException (around a ValueError) when the handshake
-               # fails to parse, but that's not something we can catch. The
-               # attempt hangs, so don't do that.
-               RuntimeError, # authentication failure
-               )
+        f.trap(
+            ConnectionRefusedError,  # nothing listening on TCP
+            ConnectError,  # missing unix socket, or permission denied
+            # ValueError,
+            # connecting to e.g. an HTTP server causes an
+            # UnhandledException (around a ValueError) when the handshake
+            # fails to parse, but that's not something we can catch. The
+            # attempt hangs, so don't do that.
+            RuntimeError,  # authentication failure
+        )
         if stdout:
-            stdout.write("Unable to reach I2P SAM API at '%s': %s\n" %
-                         (endpoint_desc, f.value))
+            stdout.write(
+                "Unable to reach I2P SAM API at '%s': %s\n" % (endpoint_desc, f.value)
+            )
         return None
+
     d.addErrback(_failed)
     return d
+
 
 @inlineCallbacks
 def _connect_to_i2p(reactor, cli_config, txi2p):
@@ -73,20 +81,23 @@ def _connect_to_i2p(reactor, cli_config, txi2p):
     if cli_config["i2p-sam-port"]:
         ports_to_try = [cli_config["i2p-sam-port"]]
     for port in ports_to_try:
-        accessible = yield _try_to_connect(reactor, port, cli_config.stdout,
-                                           txi2p)
+        accessible = yield _try_to_connect(reactor, port, cli_config.stdout, txi2p)
         if accessible:
-            returnValue(port) ; break # helps editor
+            returnValue(port)
+            break  # helps editor
     else:
         raise ValueError("unable to reach any default I2P SAM port")
+
 
 @inlineCallbacks
 def create_config(reactor, cli_config):
     txi2p = _import_txi2p()
     if not txi2p:
-        raise ValueError("Cannot create I2P Destination without txi2p. "
-                         "Please 'pip install tahoe-lafs[i2p]' to fix this.")
-    tahoe_config_i2p = {} # written into tahoe.cfg:[i2p]
+        raise ValueError(
+            "Cannot create I2P Destination without txi2p. "
+            "Please 'pip install tahoe-lafs[i2p]' to fix this."
+        )
+    tahoe_config_i2p = {}  # written into tahoe.cfg:[i2p]
     private_dir = os.path.abspath(os.path.join(cli_config["basedir"], "private"))
     stdout = cli_config.stdout
     if cli_config["i2p-launch"]:
@@ -97,14 +108,14 @@ def create_config(reactor, cli_config):
         print("I2P connection established", file=stdout)
         tahoe_config_i2p["sam.port"] = sam_port
 
-    external_port = 3457 # TODO: pick this randomly? there's no contention.
+    external_port = 3457  # TODO: pick this randomly? there's no contention.
 
     privkeyfile = os.path.join(private_dir, "i2p_dest.privkey")
     sam_endpoint = clientFromString(reactor, sam_port)
     print("allocating .i2p address...", file=stdout)
-    dest = yield txi2p.generateDestination(reactor, privkeyfile, 'SAM', sam_endpoint)
+    dest = yield txi2p.generateDestination(reactor, privkeyfile, "SAM", sam_endpoint)
     print(".i2p address allocated", file=stdout)
-    i2p_port = "listen:i2p" # means "see [i2p]", calls Provider.get_listener()
+    i2p_port = "listen:i2p"  # means "see [i2p]", calls Provider.get_listener()
     i2p_location = "i2p:%s:%d" % (dest.host, external_port)
 
     # in addition to the "how to launch/connect-to i2p" keys above, we also
@@ -117,8 +128,9 @@ def create_config(reactor, cli_config):
 
     tahoe_config_i2p["dest"] = "true"
     tahoe_config_i2p["dest.port"] = str(external_port)
-    tahoe_config_i2p["dest.private_key_file"] = os.path.join("private",
-                                                             "i2p_dest.privkey")
+    tahoe_config_i2p["dest.private_key_file"] = os.path.join(
+        "private", "i2p_dest.privkey"
+    )
 
     # tahoe_config_i2p: this is a dictionary of keys/values to add to the
     # "[i2p]" section of tahoe.cfg, which tells the new node how to launch
@@ -151,13 +163,16 @@ class _Provider(service.MultiService):
         privkeyfile = self._get_i2p_config("dest.private_key_file")
         external_port = self._get_i2p_config("dest.port")
         sam_port = self._get_i2p_config("sam.port")
-        escaped_sam_port = sam_port.replace(':', '\:')
+        escaped_sam_port = sam_port.replace(":", "\:")
         # for now, this returns a string, which then gets passed to
         # endpoints.serverFromString . But it can also return an Endpoint
         # directly, which means we don't need to encode all these options
         # into a string
-        i2p_port = "i2p:%s:%s:api=SAM:apiEndpoint=%s" % \
-                   (privkeyfile, external_port, escaped_sam_port)
+        i2p_port = "i2p:%s:%s:api=SAM:apiEndpoint=%s" % (
+            privkeyfile,
+            external_port,
+            escaped_sam_port,
+        )
         return i2p_port
 
     def get_i2p_handler(self):
@@ -174,8 +189,9 @@ class _Provider(service.MultiService):
 
         if sam_port:
             if launch:
-                raise ValueError("tahoe.cfg [i2p] must not set both "
-                                 "sam.port and launch")
+                raise ValueError(
+                    "tahoe.cfg [i2p] must not set both " "sam.port and launch"
+                )
             ep = clientFromString(self._reactor, sam_port)
             return self._i2p.sam_endpoint(ep, keyfile=keyfile)
 
@@ -191,8 +207,10 @@ class _Provider(service.MultiService):
     def check_dest_config(self):
         if self._get_i2p_config("dest", False, boolean=True):
             if not self._txi2p:
-                raise ValueError("Cannot create I2P Destination without txi2p. "
-                                 "Please 'pip install tahoe-lafs[i2p]' to fix.")
+                raise ValueError(
+                    "Cannot create I2P Destination without txi2p. "
+                    "Please 'pip install tahoe-lafs[i2p]' to fix."
+                )
 
             # to start an I2P server, we either need an I2P SAM port, or
             # we need to launch I2P
@@ -200,18 +218,23 @@ class _Provider(service.MultiService):
             launch = self._get_i2p_config("launch", False, boolean=True)
             configdir = self._get_i2p_config("i2p.configdir", None)
             if not sam_port and not launch and not configdir:
-                raise ValueError("[i2p] dest = true, but we have neither "
-                                 "sam.port= nor launch=true nor configdir=")
+                raise ValueError(
+                    "[i2p] dest = true, but we have neither "
+                    "sam.port= nor launch=true nor configdir="
+                )
             if sam_port and launch:
-                raise ValueError("tahoe.cfg [i2p] must not set both "
-                                 "sam.port and launch")
+                raise ValueError(
+                    "tahoe.cfg [i2p] must not set both " "sam.port and launch"
+                )
             if launch:
                 raise NotImplementedError("[i2p] launch is under development.")
             # check that all the expected Destination-specific keys are present
             def require(name):
                 if not self._get_i2p_config("dest.%s" % name, None):
-                    raise ValueError("[i2p] dest = true,"
-                                     " but dest.%s= is missing" % name)
+                    raise ValueError(
+                        "[i2p] dest = true," " but dest.%s= is missing" % name
+                    )
+
             require("port")
             require("private_key_file")
 

@@ -10,23 +10,24 @@ from twisted.cred import portal
 from twisted.python import filepath
 from twisted.protocols import ftp
 
-from allmydata.interfaces import IDirectoryNode, ExistingChildError, \
-     NoSuchChildError
+from allmydata.interfaces import IDirectoryNode, ExistingChildError, NoSuchChildError
 from allmydata.immutable.upload import FileHandle
 from allmydata.util.fileutil import EncryptedTemporaryFile
 from allmydata.util.assertutil import precondition
+
 
 @implementer(ftp.IReadFile)
 class ReadFile(object):
     def __init__(self, node):
         self.node = node
+
     def send(self, consumer):
         d = self.node.read(consumer)
-        return d # when consumed
+        return d  # when consumed
+
 
 @implementer(IConsumer)
 class FileWriter(object):
-
     def registerProducer(self, producer, streaming):
         if not streaming:
             raise NotImplementedError("Non-streaming producer not supported.")
@@ -42,9 +43,9 @@ class FileWriter(object):
     def write(self, data):
         self.f.write(data)
 
+
 @implementer(ftp.IWriteFile)
 class WriteFile(object):
-
     def __init__(self, parent, childname, convergence):
         self.parent = parent
         self.childname = childname
@@ -63,16 +64,20 @@ class WriteFile(object):
 class NoParentError(Exception):
     pass
 
+
 # filepath.Permissions was added in Twisted-11.1.0, which we require. Twisted
 # <15.0.0 expected an int, and only does '&' on it. Twisted >=15.0.0 expects
 # a filepath.Permissions. This satisfies both.
+
 
 class IntishPermissions(filepath.Permissions):
     def __init__(self, statModeInt):
         self._tahoe_statModeInt = statModeInt
         filepath.Permissions.__init__(self, statModeInt)
+
     def __and__(self, other):
         return self._tahoe_statModeInt & other
+
 
 @implementer(ftp.IFTPShell)
 class Handler(object):
@@ -84,22 +89,28 @@ class Handler(object):
 
     def makeDirectory(self, path):
         d = self._get_root(path)
-        d.addCallback(lambda root_and_path:
-                      self._get_or_create_directories(root_and_path[0], root_and_path[1]))
+        d.addCallback(
+            lambda root_and_path: self._get_or_create_directories(
+                root_and_path[0], root_and_path[1]
+            )
+        )
         return d
 
     def _get_or_create_directories(self, node, path):
         if not IDirectoryNode.providedBy(node):
             # unfortunately it is too late to provide the name of the
             # blocking directory in the error message.
-            raise ftp.FileExistsError("cannot create directory because there "
-                                      "is a file in the way")
+            raise ftp.FileExistsError(
+                "cannot create directory because there " "is a file in the way"
+            )
         if not path:
             return defer.succeed(node)
         d = node.get(path[0])
+
         def _maybe_create(f):
             f.trap(NoSuchChildError)
             return node.create_subdirectory(path[0])
+
         d.addErrback(_maybe_create)
         d.addCallback(self._get_or_create_directories, path[1:])
         return d
@@ -111,35 +122,45 @@ class Handler(object):
             raise NoParentError
         childname = path[-1]
         d = self._get_root(path)
+
         def _got_root(root_and_path):
             (root, path) = root_and_path
             if not path:
                 raise NoParentError
             return root.get_child_at_path(path[:-1])
+
         d.addCallback(_got_root)
+
         def _got_parent(parent):
             return (parent, childname)
+
         d.addCallback(_got_parent)
         return d
 
     def _remove_thing(self, path, must_be_directory=False, must_be_file=False):
         d = defer.maybeDeferred(self._get_parent, path)
+
         def _convert_error(f):
             f.trap(NoParentError)
             raise ftp.PermissionDeniedError("cannot delete root directory")
+
         d.addErrback(_convert_error)
+
         def _got_parent(parent_and_childname):
             (parent, childname) = parent_and_childname
             d = parent.get(childname)
+
             def _got_child(child):
                 if must_be_directory and not IDirectoryNode.providedBy(child):
                     raise ftp.IsNotADirectoryError("rmdir called on a file")
                 if must_be_file and IDirectoryNode.providedBy(child):
                     raise ftp.IsADirectoryError("rmfile called on a directory")
                 return parent.delete(childname)
+
             d.addCallback(_got_child)
             d.addErrback(self._convert_error)
             return d
+
         d.addCallback(_got_parent)
         return d
 
@@ -152,14 +173,20 @@ class Handler(object):
     def rename(self, fromPath, toPath):
         # the target directory must already exist
         d = self._get_parent(fromPath)
+
         def _got_from_parent(fromparent_and_childname):
             (fromparent, childname) = fromparent_and_childname
             d = self._get_parent(toPath)
-            d.addCallback(lambda toparent_and_tochildname:
-                          fromparent.move_child_to(childname,
-                                                   toparent_and_tochildname[0], toparent_and_tochildname[1],
-                                                   overwrite=False))
+            d.addCallback(
+                lambda toparent_and_tochildname: fromparent.move_child_to(
+                    childname,
+                    toparent_and_tochildname[0],
+                    toparent_and_tochildname[1],
+                    overwrite=False,
+                )
+            )
             return d
+
         d.addCallback(_got_from_parent)
         d.addErrback(self._convert_error)
         return d
@@ -187,21 +214,22 @@ class Handler(object):
         # return (root, remaining_path)
         path = [unicode(p) for p in path]
         if path and path[0] == "uri":
-            d = defer.maybeDeferred(self.client.create_node_from_uri,
-                                    str(path[1]))
+            d = defer.maybeDeferred(self.client.create_node_from_uri, str(path[1]))
             d.addCallback(lambda root: (root, path[2:]))
         else:
-            d = defer.succeed((self.root,path))
+            d = defer.succeed((self.root, path))
         return d
 
     def _get_node_and_metadata_for_path(self, path):
         d = self._get_root(path)
+
         def _got_root(root_and_path):
-            (root,path) = root_and_path
+            (root, path) = root_and_path
             if path:
                 return root.get_child_and_metadata_at_path(path)
             else:
-                return (root,{})
+                return (root, {})
+
         d.addCallback(_got_root)
         return d
 
@@ -244,10 +272,12 @@ class Handler(object):
     def stat(self, path, keys=()):
         # for files only, I think
         d = self._get_node_and_metadata_for_path(path)
+
         def _render(node_and_metadata):
             (node, metadata) = node_and_metadata
             assert not IDirectoryNode.providedBy(node)
-            return self._populate_row(keys, (node,metadata))
+            return self._populate_row(keys, (node, metadata))
+
         d.addCallback(_render)
         d.addErrback(self._convert_error)
         return d
@@ -256,21 +286,26 @@ class Handler(object):
         # the interface claims that path is a list of unicodes, but in
         # practice it is not
         d = self._get_node_and_metadata_for_path(path)
+
         def _list(node_and_metadata):
             (node, metadata) = node_and_metadata
             if IDirectoryNode.providedBy(node):
                 return node.list()
-            return { path[-1]: (node, metadata) } # need last-edge metadata
+            return {path[-1]: (node, metadata)}  # need last-edge metadata
+
         d.addCallback(_list)
+
         def _render(children):
             results = []
             for (name, childnode) in children.iteritems():
                 # the interface claims that the result should have a unicode
                 # object as the name, but it fails unless you give it a
                 # bytestring
-                results.append( (name.encode("utf-8"),
-                                 self._populate_row(keys, childnode) ) )
+                results.append(
+                    (name.encode("utf-8"), self._populate_row(keys, childnode))
+                )
             return results
+
         d.addCallback(_render)
         d.addErrback(self._convert_error)
         return d
@@ -287,18 +322,27 @@ class Handler(object):
             raise ftp.PermissionDeniedError("cannot STOR to root directory")
         childname = path[-1]
         d = self._get_root(path)
+
         def _got_root(root_and_path):
             (root, path) = root_and_path
             if not path:
                 raise ftp.PermissionDeniedError("cannot STOR to root directory")
             return root.get_child_at_path(path[:-1])
+
         d.addCallback(_got_root)
+
         def _got_parent(parent):
             return WriteFile(parent, childname, self.convergence)
+
         d.addCallback(_got_parent)
         return d
 
-from allmydata.frontends.auth import AccountURLChecker, AccountFileChecker, NeedRootcapLookupScheme
+
+from allmydata.frontends.auth import (
+    AccountURLChecker,
+    AccountFileChecker,
+    NeedRootcapLookupScheme,
+)
 
 
 @implementer(portal.IRealm)
@@ -311,7 +355,10 @@ class Dispatcher(object):
         rootnode = self.client.create_node_from_uri(avatarID.rootcap)
         convergence = self.client.convergence
         s = Handler(self.client, rootnode, avatarID.username, convergence)
-        def logout(): pass
+
+        def logout():
+            pass
+
         return (interface, s, None)
 
 

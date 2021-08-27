@@ -2,6 +2,7 @@ import os
 import sys
 from twisted.python.util import sibpath as tsibpath
 
+
 def sibpath(path, sibling):
     """
     Looks for a named sibling relative to the given path.  If such a file
@@ -21,4 +22,3 @@ def sibpath(path, sibling):
         if os.path.exists(exe_sib):
             return exe_sib
     return sib
-

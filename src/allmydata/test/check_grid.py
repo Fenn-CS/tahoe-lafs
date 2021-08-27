@@ -58,19 +58,22 @@ in a machine-readable logfile.
 import time, subprocess, md5, os.path, random
 from twisted.python import usage
 
+
 class GridTesterOptions(usage.Options):
 
     optFlags = [
         ("no", "n", "Dry run: do not run any commands, just print them."),
-        ]
+    ]
 
     def parseArgs(self, nodedir, tahoe):
         # Note: does not support Unicode arguments.
         self.nodedir = os.path.expanduser(nodedir)
         self.tahoe = os.path.abspath(os.path.expanduser(tahoe))
 
+
 class CommandFailed(Exception):
     pass
+
 
 class GridTester(object):
     def __init__(self, config):
@@ -84,16 +87,16 @@ class GridTester(object):
         if self.config["no"]:
             return
         if stdin is not None:
-            p = subprocess.Popen(cmd,
-                                 stdin=subprocess.PIPE,
-                                 stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE)
-            (stdout,stderr) = p.communicate(stdin)
+            p = subprocess.Popen(
+                cmd,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            (stdout, stderr) = p.communicate(stdin)
         else:
-            p = subprocess.Popen(cmd,
-                                 stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE)
-            (stdout,stderr) = p.communicate()
+            p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            (stdout, stderr) = p.communicate()
         rc = p.returncode
         if expected_rc != None and rc != expected_rc:
             if stderr:
@@ -104,11 +107,13 @@ class GridTester(object):
 
     def cli(self, cmd, *args, **kwargs):
         print("tahoe", cmd, " ".join(args))
-        stdout, stderr = self.command(self.tahoe, cmd, "-d", self.nodedir,
-                                      *args, **kwargs)
+        stdout, stderr = self.command(
+            self.tahoe, cmd, "-d", self.nodedir, *args, **kwargs
+        )
         if not kwargs.get("ignore_stderr", False) and stderr != "":
-            raise CommandFailed("command '%s' had stderr: %s" % (" ".join(args),
-                                                                 stderr))
+            raise CommandFailed(
+                "command '%s' had stderr: %s" % (" ".join(args), stderr)
+            )
         return stdout
 
     def stop_old_node(self):
@@ -125,7 +130,7 @@ class GridTester(object):
         self.command(self.tahoe, "stop", self.nodedir)
 
     def read_and_check(self, f):
-        expected_md5_s = f[f.find(".")+1:]
+        expected_md5_s = f[f.find(".") + 1 :]
         out = self.cli("get", "testgrid:" + f)
         got_md5_s = md5.new(out).hexdigest()
         if got_md5_s != expected_md5_s:
@@ -138,15 +143,16 @@ class GridTester(object):
         else:
             absfilename = "testgrid:" + f
         if f not in oldfiles:
-            raise CommandFailed("um, '%s' was supposed to already be in %s"
-                                % (f, dirname))
+            raise CommandFailed(
+                "um, '%s' was supposed to already be in %s" % (f, dirname)
+            )
         self.cli("unlink", absfilename)
         newfiles = self.listdir(dirname)
         if f in newfiles:
             raise CommandFailed("failed to remove '%s' from %s" % (f, dirname))
 
     def listdir(self, dirname):
-        out = self.cli("ls", "testgrid:"+dirname).strip().split("\n")
+        out = self.cli("ls", "testgrid:" + dirname).strip().split("\n")
         files = [f.strip() for f in out]
         print(" ", files)
         return files
@@ -170,7 +176,7 @@ class GridTester(object):
 
         self.cli("mkdir", "testgrid:recentdir")
         fn, data = self.makefile("recent")
-        self.put("recentdir/"+fn, data)
+        self.put("recentdir/" + fn, data)
         files = self.listdir("recentdir")
         if fn not in files:
             raise CommandFailed("failed to put %s in recentdir/" % fn)
@@ -186,14 +192,15 @@ class GridTester(object):
         self.put_mutable("recentlog", "Recent Mutable Log Header\n\n")
 
     def put(self, fn, data):
-        self.cli("put", "-", "testgrid:"+fn, stdin=data, ignore_stderr=True)
+        self.cli("put", "-", "testgrid:" + fn, stdin=data, ignore_stderr=True)
 
     def put_mutable(self, fn, data):
-        self.cli("put", "--mutable", "-", "testgrid:"+fn,
-                 stdin=data, ignore_stderr=True)
+        self.cli(
+            "put", "--mutable", "-", "testgrid:" + fn, stdin=data, ignore_stderr=True
+        )
 
     def update(self, fn):
-        old = self.cli("get", "testgrid:"+fn)
+        old = self.cli("get", "testgrid:" + fn)
         new = old + time.ctime() + "\n"
         self.put(fn, new)
 
@@ -212,11 +219,13 @@ class GridTester(object):
         finally:
             self.stop_node()
 
+
 def main():
     config = GridTesterOptions()
     config.parseOptions()
     gt = GridTester(config)
     gt.run()
+
 
 if __name__ == "__main__":
     main()

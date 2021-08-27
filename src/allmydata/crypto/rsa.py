@@ -18,15 +18,44 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
-from cryptography.hazmat.primitives.serialization import load_der_private_key, load_der_public_key, \
-    Encoding, PrivateFormat, PublicFormat, NoEncryption
+from cryptography.hazmat.primitives.serialization import (
+    load_der_private_key,
+    load_der_public_key,
+    Encoding,
+    PrivateFormat,
+    PublicFormat,
+    NoEncryption,
+)
 
 from allmydata.crypto.error import BadSignature
 
@@ -45,7 +74,6 @@ RSA_PADDING = padding.PSS(
 )
 
 
-
 def create_signing_keypair(key_size):
     """
     Create a new RSA signing (private) keypair from scratch. Can be used with
@@ -56,9 +84,7 @@ def create_signing_keypair(key_size):
     :returns: 2-tuple of (private_key, public_key)
     """
     priv_key = rsa.generate_private_key(
-        public_exponent=65537,
-        key_size=key_size,
-        backend=default_backend()
+        public_exponent=65537, key_size=key_size, backend=default_backend()
     )
     return priv_key, priv_key.public_key()
 
@@ -145,6 +171,7 @@ def sign_data(private_key, data):
         hashes.SHA256(),
     )
 
+
 def verify_signature(public_key, alleged_signature, data):
     """
     :param public_key: a verifying key, returned from `create_verifying_key_from_string` or `create_verifying_key_from_private_key`
@@ -171,9 +198,7 @@ def _validate_public_key(public_key):
     object
     """
     if not isinstance(public_key, rsa.RSAPublicKey):
-        raise ValueError(
-            "public_key must be an RSAPublicKey"
-        )
+        raise ValueError("public_key must be an RSAPublicKey")
 
 
 def _validate_private_key(private_key):
@@ -182,6 +207,4 @@ def _validate_private_key(private_key):
     object
     """
     if not isinstance(private_key, rsa.RSAPrivateKey):
-        raise ValueError(
-            "private_key must be an RSAPrivateKey"
-        )
+        raise ValueError("private_key must be an RSAPrivateKey")

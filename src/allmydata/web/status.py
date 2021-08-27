@@ -1,4 +1,3 @@
-
 import pprint
 import itertools
 import hashlib
@@ -56,14 +55,16 @@ class UploadResultsRendererMixin(Element):
     def sharemap(self, req, tag):
         d = self.upload_results()
         d.addCallback(lambda res: res.get_sharemap())
+
         def _render(sharemap):
             if sharemap is None:
                 return "None"
             ul = tags.ul()
             for shnum, servers in sorted(sharemap.items()):
-                server_names = ', '.join([s.get_name() for s in servers])
+                server_names = ", ".join([s.get_name() for s in servers])
                 ul(tags.li("%d -> placed on [%s]" % (shnum, server_names)))
             return ul
+
         d.addCallback(_render)
         return d
 
@@ -71,15 +72,21 @@ class UploadResultsRendererMixin(Element):
     def servermap(self, req, tag):
         d = self.upload_results()
         d.addCallback(lambda res: res.get_servermap())
+
         def _render(servermap):
             if servermap is None:
                 return "None"
             ul = tags.ul()
             for server, shnums in sorted(servermap.items()):
                 shares_s = ",".join(["#%d" % shnum for shnum in shnums])
-                ul(tags.li("[%s] got share%s: %s" % (server.get_name(),
-                                                     plural(shnums), shares_s)))
+                ul(
+                    tags.li(
+                        "[%s] got share%s: %s"
+                        % (server.get_name(), plural(shnums), shares_s)
+                    )
+                )
             return ul
+
         d.addCallback(_render)
         return d
 
@@ -136,10 +143,12 @@ class UploadResultsRendererMixin(Element):
 
     def _get_rate(self, name):
         d = self.upload_results()
+
         def _convert(r):
             file_size = r.get_file_size()
             duration = r.get_timings().get(name)
             return abbreviate_rate(compute_rate(file_size, duration))
+
         d.addCallback(_convert)
         return d
 
@@ -162,24 +171,28 @@ class UploadResultsRendererMixin(Element):
     @renderer
     def rate_encode_and_push(self, req, tag):
         d = self.upload_results()
+
         def _convert(r):
             file_size = r.get_file_size()
             time1 = r.get_timings().get("cumulative_encoding")
             time2 = r.get_timings().get("cumulative_sending")
-            if (time1 is None or time2 is None):
+            if time1 is None or time2 is None:
                 return abbreviate_rate(None)
             else:
-                return abbreviate_rate(compute_rate(file_size, time1+time2))
+                return abbreviate_rate(compute_rate(file_size, time1 + time2))
+
         d.addCallback(_convert)
         return d
 
     @renderer
     def rate_ciphertext_fetch(self, req, tag):
         d = self.upload_results()
+
         def _convert(r):
             fetch_size = r.get_ciphertext_fetched()
             duration = r.get_timings().get("cumulative_fetch")
             return abbreviate_rate(compute_rate(fetch_size, duration))
+
         d.addCallback(_convert)
         return d
 
@@ -214,10 +227,12 @@ class UploadStatusElement(UploadResultsRendererMixin):
     @renderer
     def results(self, req, tag):
         d = self.upload_results()
+
         def _got_results(results):
             if results:
                 return tag
             return ""
+
         d.addCallback(_got_results)
         return d
 
@@ -235,8 +250,7 @@ class UploadStatusElement(UploadResultsRendererMixin):
 
     @renderer
     def helper(self, req, tag):
-        return tag({True: "Yes",
-                    False: "No"}[self._upload_status.using_helper()])
+        return tag({True: "Yes", False: "No"}[self._upload_status.using_helper()])
 
     @renderer
     def total_size(self, req, tag):
@@ -284,12 +298,12 @@ def _find_overlap(events, start_key, end_key):
     rows = []
     for ev in events:
         ev = ev.copy()
-        if ev.has_key('server'):
+        if ev.has_key("server"):
             ev["serverid"] = ev["server"].get_longname()
             del ev["server"]
         # find an empty slot in the rows
         free_slot = None
-        for row,finished in enumerate(rows):
+        for row, finished in enumerate(rows):
             if finished is not None:
                 if ev[start_key] > finished:
                     free_slot = row
@@ -303,6 +317,7 @@ def _find_overlap(events, start_key, end_key):
         new_events.append(ev)
     return new_events
 
+
 def _find_overlap_requests(events):
     """
     We compute a three-element 'row tuple' for each event: (serverid,
@@ -315,13 +330,13 @@ def _find_overlap_requests(events):
     """
 
     serverid_to_group = {}
-    groupnum_to_rows = {} # maps groupnum to a table of rows. Each table
-                          # is a list with an element for each row number
-                          # (int starting from 0) that contains a
-                          # finish_time, indicating that the row is empty
-                          # beyond that time. If finish_time is None, it
-                          # indicate a response that has not yet
-                          # completed, so the row cannot be reused.
+    groupnum_to_rows = {}  # maps groupnum to a table of rows. Each table
+    # is a list with an element for each row number
+    # (int starting from 0) that contains a
+    # finish_time, indicating that the row is empty
+    # beyond that time. If finish_time is None, it
+    # indicate a response that has not yet
+    # completed, so the row cannot be reused.
     new_events = []
     for ev in events:
         # DownloadStatus promises to give us events in temporal order
@@ -337,7 +352,7 @@ def _find_overlap_requests(events):
         rows = groupnum_to_rows[groupnum]
         # find an empty slot in the rows
         free_slot = None
-        for row,finished in enumerate(rows):
+        for row, finished in enumerate(rows):
             if finished is not None:
                 if ev["start_time"] > finished:
                     free_slot = row
@@ -354,58 +369,67 @@ def _find_overlap_requests(events):
     # indication of the highest finish_time
     #
     # actually, return the highest rownum for each groupnum
-    highest_rownums = [len(groupnum_to_rows[groupnum])
-                       for groupnum in range(len(serverid_to_group))]
+    highest_rownums = [
+        len(groupnum_to_rows[groupnum]) for groupnum in range(len(serverid_to_group))
+    ]
     return new_events, highest_rownums
 
 
 def _color(server):
     h = hashlib.sha256(server.get_serverid()).digest()
+
     def m(c):
-        return min(ord(c) / 2 + 0x80, 0xff)
+        return min(ord(c) / 2 + 0x80, 0xFF)
+
     return "#%02x%02x%02x" % (m(h[0]), m(h[1]), m(h[2]))
 
-class _EventJson(Resource, object):
 
+class _EventJson(Resource, object):
     def __init__(self, download_status):
         self._download_status = download_status
 
     @render_exception
     def render(self, request):
         request.setHeader("content-type", "text/plain")
-        data = { } # this will be returned to the GET
+        data = {}  # this will be returned to the GET
         ds = self._download_status
 
         data["misc"] = _find_overlap(
             ds.misc_events,
-            "start_time", "finish_time",
+            "start_time",
+            "finish_time",
         )
         data["read"] = _find_overlap(
             ds.read_events,
-            "start_time", "finish_time",
+            "start_time",
+            "finish_time",
         )
         data["segment"] = _find_overlap(
             ds.segment_events,
-            "start_time", "finish_time",
+            "start_time",
+            "finish_time",
         )
         # TODO: overlap on DYHB isn't very useful, and usually gets in the
         # way. So don't do it.
         data["dyhb"] = _find_overlap(
             ds.dyhb_requests,
-            "start_time", "finish_time",
+            "start_time",
+            "finish_time",
         )
-        data["block"],data["block_rownums"] =_find_overlap_requests(ds.block_requests)
+        data["block"], data["block_rownums"] = _find_overlap_requests(ds.block_requests)
 
-        server_info = {} # maps longname to {num,color,short}
-        server_shortnames = {} # maps servernum to shortname
+        server_info = {}  # maps longname to {num,color,short}
+        server_shortnames = {}  # maps servernum to shortname
         for d_ev in ds.dyhb_requests:
             s = d_ev["server"]
             longname = s.get_longname()
             if longname not in server_info:
                 num = len(server_info)
-                server_info[longname] = {"num": num,
-                                         "color": _color(s),
-                                         "short": s.get_name() }
+                server_info[longname] = {
+                    "num": num,
+                    "color": _color(s),
+                    "short": s.get_name(),
+                }
                 server_shortnames[str(num)] = s.get_name()
 
         data["server_info"] = server_info
@@ -490,11 +514,15 @@ class DownloadStatusElement(Element):
         # "DYHB Requests" table.
         dyhbtag = tags.table(align="left", class_="status-download-events")
 
-        dyhbtag(tags.tr(tags.th("serverid"),
-                        tags.th("sent"),
-                        tags.th("received"),
-                        tags.th("shnums"),
-                        tags.th("RTT")))
+        dyhbtag(
+            tags.tr(
+                tags.th("serverid"),
+                tags.th("sent"),
+                tags.th("received"),
+                tags.th("shnums"),
+                tags.th("RTT"),
+            )
+        )
 
         for d_ev in self._download_status.dyhb_requests:
             server = d_ev["server"]
@@ -507,29 +535,38 @@ class DownloadStatusElement(Element):
             if not shnums:
                 shnums = ["-"]
 
-            dyhbtag(tags.tr(style="background: %s" % _color(server))(
-                (tags.td(server.get_name()),
-                 tags.td(srt(sent)),
-                 tags.td(srt(received)),
-                 tags.td(",".join([str(shnum) for shnum in shnums])),
-                 tags.td(abbreviate_time(rtt)),
-                )))
+            dyhbtag(
+                tags.tr(style="background: %s" % _color(server))(
+                    (
+                        tags.td(server.get_name()),
+                        tags.td(srt(sent)),
+                        tags.td(srt(received)),
+                        tags.td(",".join([str(shnum) for shnum in shnums])),
+                        tags.td(abbreviate_time(rtt)),
+                    )
+                )
+            )
 
         evtag(tags.h2("DYHB Requests:"), dyhbtag)
         evtag(tags.br(clear="all"))
 
         # "Read Events" table.
-        readtag = tags.table(align="left",class_="status-download-events")
+        readtag = tags.table(align="left", class_="status-download-events")
 
-        readtag(tags.tr((
-            tags.th("range"),
-            tags.th("start"),
-            tags.th("finish"),
-            tags.th("got"),
-            tags.th("time"),
-            tags.th("decrypttime"),
-            tags.th("pausedtime"),
-            tags.th("speed"))))
+        readtag(
+            tags.tr(
+                (
+                    tags.th("range"),
+                    tags.th("start"),
+                    tags.th("finish"),
+                    tags.th("got"),
+                    tags.th("time"),
+                    tags.th("decrypttime"),
+                    tags.th("pausedtime"),
+                    tags.th("speed"),
+                )
+            )
+        )
 
         for r_ev in self._download_status.read_events:
             start = r_ev["start"]
@@ -538,39 +575,44 @@ class DownloadStatusElement(Element):
             decrypt_time = ""
             if bytes:
                 decrypt_time = self._rate_and_time(bytes, r_ev["decrypt_time"])
-            speed, rtt = "",""
+            speed, rtt = "", ""
             if r_ev["finish_time"] is not None:
                 rtt = r_ev["finish_time"] - r_ev["start_time"] - r_ev["paused_time"]
                 speed = abbreviate_rate(compute_rate(bytes, rtt))
                 rtt = abbreviate_time(rtt)
             paused = abbreviate_time(r_ev["paused_time"])
 
-            readtag(tags.tr(
-                tags.td("[%d:+%d]" % (start, length)),
-                tags.td(srt(r_ev["start_time"])),
-                tags.td(srt(r_ev["finish_time"])),
-                tags.td(str(bytes)),
-                tags.td(rtt),
-                tags.td(decrypt_time),
-                tags.td(paused),
-                tags.td(speed),
-            ))
+            readtag(
+                tags.tr(
+                    tags.td("[%d:+%d]" % (start, length)),
+                    tags.td(srt(r_ev["start_time"])),
+                    tags.td(srt(r_ev["finish_time"])),
+                    tags.td(str(bytes)),
+                    tags.td(rtt),
+                    tags.td(decrypt_time),
+                    tags.td(paused),
+                    tags.td(speed),
+                )
+            )
 
         evtag(tags.h2("Read Events:"), readtag)
         evtag(tags.br(clear="all"))
 
         # "Segment Events" table.
-        segtag = tags.table(align="left",class_="status-download-events")
+        segtag = tags.table(align="left", class_="status-download-events")
 
-        segtag(tags.tr(
-            tags.th("segnum"),
-            tags.th("start"),
-            tags.th("active"),
-            tags.th("finish"),
-            tags.th("range"),
-            tags.th("decodetime"),
-            tags.th("segtime"),
-            tags.th("speed")))
+        segtag(
+            tags.tr(
+                tags.th("segnum"),
+                tags.th("start"),
+                tags.th("active"),
+                tags.th("finish"),
+                tags.th("range"),
+                tags.th("decodetime"),
+                tags.th("segtime"),
+                tags.th("speed"),
+            )
+        )
 
         for s_ev in self._download_status.segment_events:
             range_s = "-"
@@ -592,30 +634,36 @@ class DownloadStatusElement(Element):
                 # not finished yet
                 pass
 
-            segtag(tags.tr(
-                tags.td("seg%d" % s_ev["segment_number"]),
-                tags.td(srt(s_ev["start_time"])),
-                tags.td(srt(s_ev["active_time"])),
-                tags.td(srt(s_ev["finish_time"])),
-                tags.td(range_s),
-                tags.td(decode_time),
-                tags.td(segtime_s),
-                tags.td(speed)))
+            segtag(
+                tags.tr(
+                    tags.td("seg%d" % s_ev["segment_number"]),
+                    tags.td(srt(s_ev["start_time"])),
+                    tags.td(srt(s_ev["active_time"])),
+                    tags.td(srt(s_ev["finish_time"])),
+                    tags.td(range_s),
+                    tags.td(decode_time),
+                    tags.td(segtime_s),
+                    tags.td(speed),
+                )
+            )
 
         evtag(tags.h2("Segment Events:"), segtag)
         evtag(tags.br(clear="all"))
 
         # "Requests" table.
-        reqtab = tags.table(align="left",class_="status-download-events")
+        reqtab = tags.table(align="left", class_="status-download-events")
 
-        reqtab(tags.tr(
-            tags.th("serverid"),
-            tags.th("shnum"),
-            tags.th("range"),
-            tags.th("txtime"),
-            tags.th("rxtime"),
-            tags.th("received"),
-            tags.th("RTT")))
+        reqtab(
+            tags.tr(
+                tags.th("serverid"),
+                tags.th("shnum"),
+                tags.th("range"),
+                tags.th("txtime"),
+                tags.th("rxtime"),
+                tags.th("received"),
+                tags.th("RTT"),
+            )
+        )
 
         for r_ev in self._download_status.block_requests:
             server = r_ev["server"]
@@ -623,16 +671,17 @@ class DownloadStatusElement(Element):
             if r_ev["finish_time"] is not None:
                 rtt = r_ev["finish_time"] - r_ev["start_time"]
             color = _color(server)
-            reqtab(tags.tr(style="background: %s" % color)
-                   (
-                       tags.td(server.get_name()),
-                       tags.td(str(r_ev["shnum"])),
-                       tags.td("[%d:+%d]" % (r_ev["start"], r_ev["length"])),
-                       tags.td(srt(r_ev["start_time"])),
-                       tags.td(srt(r_ev["finish_time"])),
-                       tags.td(str(r_ev["response_length"]) or ""),
-                       tags.td(abbreviate_time(rtt)),
-                   ))
+            reqtab(
+                tags.tr(style="background: %s" % color)(
+                    tags.td(server.get_name()),
+                    tags.td(str(r_ev["shnum"])),
+                    tags.td("[%d:+%d]" % (r_ev["start"], r_ev["length"])),
+                    tags.td(srt(r_ev["start_time"])),
+                    tags.td(srt(r_ev["finish_time"])),
+                    tags.td(str(r_ev["response_length"]) or ""),
+                    tags.td(abbreviate_time(rtt)),
+                )
+            )
 
         evtag(tags.h2("Requests:"), reqtab)
         evtag(tags.br(clear="all"))
@@ -659,8 +708,7 @@ class DownloadStatusElement(Element):
 
     @renderer
     def helper(self, req, tag):
-        return tag({True: "Yes",
-                    False: "No"}[self._download_status.using_helper()])
+        return tag({True: "Yes", False: "No"}[self._download_status.using_helper()])
 
     @renderer
     def total_size(self, req, tag):
@@ -684,8 +732,9 @@ class DownloadStatusElement(Element):
         servers_used = self.download_results().servers_used
         if not servers_used:
             return ""
-        peerids_s = ", ".join(["[%s]" % idlib.shortnodeid_b2a(peerid)
-                               for peerid in servers_used])
+        peerids_s = ", ".join(
+            ["[%s]" % idlib.shortnodeid_b2a(peerid) for peerid in servers_used]
+        )
         return tags.li("Servers Used: ", peerids_s)
 
     @renderer
@@ -696,11 +745,13 @@ class DownloadStatusElement(Element):
         ul = tags.ul()
         for peerid in sorted(servermap.keys()):
             peerid_s = idlib.shortnodeid_b2a(peerid)
-            shares_s = ",".join(["#%d" % shnum
-                                 for shnum in servermap[peerid]])
-            ul(tags.li("[%s] has share%s: %s" % (peerid_s,
-                                                 plural(servermap[peerid]),
-                                                 shares_s)))
+            shares_s = ",".join(["#%d" % shnum for shnum in servermap[peerid]])
+            ul(
+                tags.li(
+                    "[%s] has share%s: %s"
+                    % (peerid_s, plural(servermap[peerid]), shares_s)
+                )
+            )
         return ul
 
     @renderer
@@ -795,8 +846,7 @@ class DownloadStatusElement(Element):
         ul = tags.ul()
         for peerid in sorted(per_server.keys()):
             peerid_s = idlib.shortnodeid_b2a(peerid)
-            times_s = ", ".join([abbreviate_time(t)
-                                 for t in per_server[peerid]])
+            times_s = ", ".join([abbreviate_time(t) for t in per_server[peerid]])
             ul(tags.li("[%s]: %s" % (peerid_s, times_s)))
         return tags.li("Per-Server Segment Fetch Response Times: ", ul)
 
@@ -839,8 +889,7 @@ class RetrieveStatusElement(Element):
 
     @renderer
     def helper(self, req, tag):
-        return tag({True: "Yes",
-                    False: "No"}[self._retrieve_status.using_helper()])
+        return tag({True: "Yes", False: "No"}[self._retrieve_status.using_helper()])
 
     @renderer
     def current_size(self, req, tag):
@@ -919,8 +968,7 @@ class RetrieveStatusElement(Element):
             return tag("")
         l = tags.ul()
         for server in sorted(per_server.keys(), key=lambda s: s.get_name()):
-            times_s = ", ".join([abbreviate_time(t)
-                                 for t in per_server[server]])
+            times_s = ", ".join([abbreviate_time(t) for t in per_server[server]])
             l(tags.li("[%s]: %s" % (server.get_name(), times_s)))
         return tags.li("Per-Server Fetch Response Times: ", l)
 
@@ -937,7 +985,7 @@ class PublishStatusPage(MultiFormatResource):
 
     @render_exception
     def render_HTML(self, req):
-        elem = PublishStatusElement(self._publish_status);
+        elem = PublishStatusElement(self._publish_status)
         return renderElement(req, elem)
 
 
@@ -963,8 +1011,7 @@ class PublishStatusElement(Element):
 
     @renderer
     def helper(self, req, tag):
-        return tag({True: "Yes",
-                    False: "No"}[self._publish_status.using_helper()])
+        return tag({True: "Yes", False: "No"}[self._publish_status.using_helper()])
 
     @renderer
     def current_size(self, req, tag):
@@ -996,9 +1043,14 @@ class PublishStatusElement(Element):
         l = tags.ul()
         sharemap = servermap.make_sharemap()
         for shnum in sorted(sharemap.keys()):
-            l(tags.li("%d -> Placed on " % shnum,
-                      ", ".join(["[%s]" % server.get_name()
-                                 for server in sharemap[shnum]])))
+            l(
+                tags.li(
+                    "%d -> Placed on " % shnum,
+                    ", ".join(
+                        ["[%s]" % server.get_name() for server in sharemap[shnum]]
+                    ),
+                )
+            )
         return tag("Sharemap:", l)
 
     @renderer
@@ -1077,11 +1129,9 @@ class PublishStatusElement(Element):
             return tag()
         l = tags.ul()
         for server in sorted(per_server.keys(), key=lambda s: s.get_name()):
-            times_s = ", ".join([abbreviate_time(t)
-                                 for t in per_server[server]])
+            times_s = ", ".join([abbreviate_time(t) for t in per_server[server]])
             l(tags.li("[%s]: %s" % (server.get_name(), times_s)))
         return tags.li("Per-Server Response Times: ", l)
-
 
 
 class MapupdateStatusPage(MultiFormatResource):
@@ -1096,7 +1146,7 @@ class MapupdateStatusPage(MultiFormatResource):
 
     @render_exception
     def render_HTML(self, req):
-        elem = MapupdateStatusElement(self._update_status);
+        elem = MapupdateStatusElement(self._update_status)
         return renderElement(req, elem)
 
 
@@ -1130,8 +1180,7 @@ class MapupdateStatusElement(Element):
 
     @renderer
     def helper(self, req, tag):
-        return tag({True: "Yes",
-                    False: "No"}[self._update_status.using_helper()])
+        return tag({True: "Yes", False: "No"}[self._update_status.using_helper()])
 
     @renderer
     def progress(self, req, tag):
@@ -1193,8 +1242,8 @@ class MapupdateStatusElement(Element):
         l = tags.ul()
         for server in sorted(per_server.keys(), key=lambda s: s.get_name()):
             times = []
-            for op,started,t in per_server[server]:
-                #times.append("%s/%.4fs/%s/%s" % (op,
+            for op, started, t in per_server[server]:
+                # times.append("%s/%.4fs/%s/%s" % (op,
                 #                              started,
                 #                              self.render_time(None, started - self.update_status.get_started()),
                 #                              self.render_time(None,t)))
@@ -1258,8 +1307,9 @@ class Status(MultiFormatResource):
 
     @render_exception
     def render_HTML(self, req):
-        elem = StatusElement(self._get_active_operations(),
-                             self._get_recent_operations())
+        elem = StatusElement(
+            self._get_active_operations(), self._get_recent_operations()
+        )
         return renderElement(req, elem)
 
     @render_exception
@@ -1288,7 +1338,7 @@ class Status(MultiFormatResource):
         # final URL segment will be an empty string. Resources can
         # thus know if they were requested with or without a final
         # slash."
-        if not path and request.postpath != ['']:
+        if not path and request.postpath != [""]:
             return self
 
         h = self.history
@@ -1298,8 +1348,9 @@ class Status(MultiFormatResource):
             raise WebError("no '-' in '{}'".format(path))
         count = int(count_s)
         if stype == "up":
-            for s in itertools.chain(h.list_all_upload_statuses(),
-                                     h.list_all_helper_statuses()):
+            for s in itertools.chain(
+                h.list_all_upload_statuses(), h.list_all_helper_statuses()
+            ):
                 # immutable-upload helpers use the same status object as a
                 # regular immutable-upload
                 if s.get_counter() == count:
@@ -1323,26 +1374,23 @@ class Status(MultiFormatResource):
 
     def _get_all_statuses(self):
         h = self.history
-        return itertools.chain(h.list_all_upload_statuses(),
-                               h.list_all_download_statuses(),
-                               h.list_all_mapupdate_statuses(),
-                               h.list_all_publish_statuses(),
-                               h.list_all_retrieve_statuses(),
-                               h.list_all_helper_statuses(),
-                               )
+        return itertools.chain(
+            h.list_all_upload_statuses(),
+            h.list_all_download_statuses(),
+            h.list_all_mapupdate_statuses(),
+            h.list_all_publish_statuses(),
+            h.list_all_retrieve_statuses(),
+            h.list_all_helper_statuses(),
+        )
 
     def _get_active_operations(self):
-        active = [s
-                  for s in self._get_all_statuses()
-                  if s.get_active()]
+        active = [s for s in self._get_all_statuses() if s.get_active()]
         active.sort(lambda a, b: cmp(a.get_started(), b.get_started()))
         active.reverse()
         return active
 
     def _get_recent_operations(self):
-        recent = [s
-                  for s in self._get_all_statuses()
-                  if not s.get_active()]
+        recent = [s for s in self._get_all_statuses() if not s.get_active()]
         recent.sort(lambda a, b: cmp(a.get_started(), b.get_started()))
         recent.reverse()
         return recent
@@ -1395,10 +1443,11 @@ class StatusElement(Element):
             result["type"] = "upload"
             # TODO: make an ascii-art bar
             (chk, ciphertext, encandpush) = progress
-            progress_s = ("hash: %.1f%%, ciphertext: %.1f%%, encode: %.1f%%" %
-                          ((100.0 * chk),
-                           (100.0 * ciphertext),
-                           (100.0 * encandpush)))
+            progress_s = "hash: %.1f%%, ciphertext: %.1f%%, encode: %.1f%%" % (
+                (100.0 * chk),
+                (100.0 * ciphertext),
+                (100.0 * encandpush),
+            )
             result["progress"] = progress_s
         elif IDownloadStatus.providedBy(op):
             link = "down-%d" % op.get_counter()
@@ -1418,15 +1467,13 @@ class StatusElement(Element):
             link = "mapupdate-%d" % op.get_counter()
             result["progress"] = "%.1f%%" % (100.0 * progress)
 
-        result["status"] = tags.a(op.get_status(),
-                                  href="/status/{}".format(link))
+        result["status"] = tags.a(op.get_status(), href="/status/{}".format(link))
 
         return result
 
 
 # Render "/helper_status" page.
 class HelperStatus(MultiFormatResource):
-
     def __init__(self, helper):
         super(HelperStatus, self).__init__()
         self._helper = helper
@@ -1442,6 +1489,7 @@ class HelperStatus(MultiFormatResource):
             stats = self._helper.get_stats()
             return json.dumps(stats, indent=1) + "\n"
         return json.dumps({}) + "\n"
+
 
 class HelperStatusElement(Element):
 
@@ -1484,13 +1532,23 @@ class HelperStatusElement(Element):
 
     @renderer
     def incoming(self, req, tag):
-        return tag("%d bytes in %d files" % (self._data["chk_upload_helper.incoming_size"],
-                                             self._data["chk_upload_helper.incoming_count"]))
+        return tag(
+            "%d bytes in %d files"
+            % (
+                self._data["chk_upload_helper.incoming_size"],
+                self._data["chk_upload_helper.incoming_count"],
+            )
+        )
 
     @renderer
     def encoding(self, req, tag):
-        return tag("%d bytes in %d files" % (self._data["chk_upload_helper.encoding_size"],
-                                             self._data["chk_upload_helper.encoding_count"]))
+        return tag(
+            "%d bytes in %d files"
+            % (
+                self._data["chk_upload_helper.encoding_size"],
+                self._data["chk_upload_helper.encoding_count"],
+            )
+        )
 
     @renderer
     def upload_requests(self, req, tag):
@@ -1535,6 +1593,7 @@ class Statistics(MultiFormatResource):
         req.setHeader("content-type", "text/plain")
         return json.dumps(stats, indent=1) + "\n"
 
+
 class StatisticsElement(Element):
 
     loader = XMLFile(FilePath(__file__).sibling("statistics.xhtml"))
@@ -1577,29 +1636,27 @@ class StatisticsElement(Element):
     def uploads(self, req, tag):
         files = self._stats["counters"].get("uploader.files_uploaded", 0)
         bytes = self._stats["counters"].get("uploader.bytes_uploaded", 0)
-        return tag(("%s files / %s bytes (%s)" %
-                    (files, bytes, abbreviate_size(bytes))))
+        return tag(
+            ("%s files / %s bytes (%s)" % (files, bytes, abbreviate_size(bytes)))
+        )
 
     @renderer
     def downloads(self, req, tag):
         files = self._stats["counters"].get("downloader.files_downloaded", 0)
         bytes = self._stats["counters"].get("downloader.bytes_downloaded", 0)
-        return tag("%s files / %s bytes (%s)" %
-                   (files, bytes, abbreviate_size(bytes)))
+        return tag("%s files / %s bytes (%s)" % (files, bytes, abbreviate_size(bytes)))
 
     @renderer
     def publishes(self, req, tag):
         files = self._stats["counters"].get("mutable.files_published", 0)
         bytes = self._stats["counters"].get("mutable.bytes_published", 0)
-        return tag("%s files / %s bytes (%s)" % (files, bytes,
-                                                 abbreviate_size(bytes)))
+        return tag("%s files / %s bytes (%s)" % (files, bytes, abbreviate_size(bytes)))
 
     @renderer
     def retrieves(self, req, tag):
         files = self._stats["counters"].get("mutable.files_retrieved", 0)
         bytes = self._stats["counters"].get("mutable.bytes_retrieved", 0)
-        return tag("%s files / %s bytes (%s)" % (files, bytes,
-                                                 abbreviate_size(bytes)))
+        return tag("%s files / %s bytes (%s)" % (files, bytes, abbreviate_size(bytes)))
 
     @renderer
     def raw(self, req, tag):

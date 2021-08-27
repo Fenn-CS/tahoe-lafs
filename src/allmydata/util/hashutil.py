@@ -9,9 +9,32 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
     # Don't import bytes to prevent leaking future's bytes.
-    from builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, dict, list, object, range, str, max, min, bytes as future_bytes  # noqa: F401
+    from builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+        bytes as future_bytes,
+    )  # noqa: F401
 else:
     future_bytes = bytes
 
@@ -51,7 +74,7 @@ class _SHA256d_Hasher(object):
             del self.h
             h2 = hashlib.sha256(h1).digest()
             if self.truncate_to:
-                h2 = h2[:self.truncate_to]
+                h2 = h2[: self.truncate_to]
             self._digest = h2
         return self._digest
 
@@ -75,6 +98,7 @@ def tagged_pair_hash(tag, val1, val2, truncate_to=None):
     s.update(netstring(val2))
     return s.digest()
 
+
 # specific hash tags that we use
 
 
@@ -97,15 +121,21 @@ BUCKET_CANCEL_TAG = b"allmydata_bucket_cancel_secret_v1"
 
 # mutable
 MUTABLE_WRITEKEY_TAG = b"allmydata_mutable_privkey_to_writekey_v1"
-MUTABLE_WRITE_ENABLER_MASTER_TAG = b"allmydata_mutable_writekey_to_write_enabler_master_v1"
-MUTABLE_WRITE_ENABLER_TAG = b"allmydata_mutable_write_enabler_master_and_nodeid_to_write_enabler_v1"
+MUTABLE_WRITE_ENABLER_MASTER_TAG = (
+    b"allmydata_mutable_writekey_to_write_enabler_master_v1"
+)
+MUTABLE_WRITE_ENABLER_TAG = (
+    b"allmydata_mutable_write_enabler_master_and_nodeid_to_write_enabler_v1"
+)
 MUTABLE_PUBKEY_TAG = b"allmydata_mutable_pubkey_to_fingerprint_v1"
 MUTABLE_READKEY_TAG = b"allmydata_mutable_writekey_to_readkey_v1"
 MUTABLE_DATAKEY_TAG = b"allmydata_mutable_readkey_to_datakey_v1"
 MUTABLE_STORAGEINDEX_TAG = b"allmydata_mutable_readkey_to_storage_index_v1"
 
 # dirnodes
-DIRNODE_CHILD_WRITECAP_TAG = b"allmydata_mutable_writekey_and_salt_to_dirnode_child_capkey_v1"
+DIRNODE_CHILD_WRITECAP_TAG = (
+    b"allmydata_mutable_writekey_and_salt_to_dirnode_child_capkey_v1"
+)
 DIRNODE_CHILD_SALT_TAG = b"allmydata_dirnode_child_rwcap_to_salt_v1"
 
 
@@ -196,13 +226,11 @@ def my_cancel_secret_hash(my_secret):
 
 
 def file_renewal_secret_hash(client_renewal_secret, storage_index):
-    return tagged_pair_hash(FILE_RENEWAL_TAG,
-                            client_renewal_secret, storage_index)
+    return tagged_pair_hash(FILE_RENEWAL_TAG, client_renewal_secret, storage_index)
 
 
 def file_cancel_secret_hash(client_cancel_secret, storage_index):
-    return tagged_pair_hash(FILE_CANCEL_TAG,
-                            client_cancel_secret, storage_index)
+    return tagged_pair_hash(FILE_CANCEL_TAG, client_cancel_secret, storage_index)
 
 
 def bucket_renewal_secret_hash(file_renewal_secret, peerid):
@@ -222,7 +250,7 @@ def _xor(a, b):
 def hmac(tag, data):
     tag = bytes(tag)  # Make sure it matches Python 3 behavior
     ikey = _xor(tag, 0x36)
-    okey = _xor(tag, 0x5c)
+    okey = _xor(tag, 0x5C)
     h1 = hashlib.sha256(ikey + data).digest()
     h2 = hashlib.sha256(okey + h1).digest()
     return h2

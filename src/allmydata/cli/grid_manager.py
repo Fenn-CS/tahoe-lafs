@@ -25,7 +25,8 @@ from allmydata.grid_manager import (
 
 @click.group()
 @click.option(
-    '--config', '-c',
+    "--config",
+    "-c",
     type=click.Path(),
     help="Configuration directory (or - for stdin)",
     required=True,
@@ -49,6 +50,7 @@ def grid_manager(ctx, config):
         """
         Availble to all sub-commands as Click's context.obj
         """
+
         _grid_manager = None
 
         @property
@@ -74,16 +76,14 @@ def create(ctx):
     """
     config_location = ctx.parent.params["config"]
     fp = None
-    if config_location != '-':
+    if config_location != "-":
         fp = FilePath(config_location)
 
     gm = create_grid_manager()
     try:
         save_grid_manager(fp, gm)
     except OSError as e:
-        raise click.ClickException(
-            "Can't create '{}': {}".format(config_location, e)
-        )
+        raise click.ClickException("Can't create '{}': {}".format(config_location, e))
 
 
 @grid_manager.command()
@@ -137,13 +137,11 @@ def remove(ctx, name):
     try:
         ctx.obj.grid_manager.remove_storage_server(name)
     except KeyError:
-        raise click.ClickException(
-            "No storage-server called '{}' exists".format(name)
-        )
+        raise click.ClickException("No storage-server called '{}' exists".format(name))
     cert_count = 0
     if fp is not None:
-        while fp.child('{}.cert.{}'.format(name, cert_count)).exists():
-            fp.child('{}.cert.{}'.format(name, cert_count)).remove()
+        while fp.child("{}.cert.{}".format(name, cert_count)).exists():
+            fp.child("{}.cert.{}".format(name, cert_count)).remove()
             cert_count += 1
 
     save_grid_manager(fp, ctx.obj.grid_manager, create=False)
@@ -157,21 +155,29 @@ def list(ctx):
     """
     for name in sorted(ctx.obj.grid_manager.storage_servers.keys()):
         blank_name = " " * len(name)
-        click.echo("{}: {}".format(name, ctx.obj.grid_manager.storage_servers[name].public_key_string()))
+        click.echo(
+            "{}: {}".format(
+                name, ctx.obj.grid_manager.storage_servers[name].public_key_string()
+            )
+        )
         for cert in ctx.obj.grid_manager.storage_servers[name].certificates:
             delta = datetime.utcnow() - cert.expires
             click.echo("{}  cert {}: ".format(blank_name, cert.index), nl=False)
             if delta.total_seconds() < 0:
-                click.echo("valid until {} ({})".format(cert.expires, abbreviate_time(delta)))
+                click.echo(
+                    "valid until {} ({})".format(cert.expires, abbreviate_time(delta))
+                )
             else:
-                click.echo("expired {} ({})".format(cert.expires, abbreviate_time(delta)))
+                click.echo(
+                    "expired {} ({})".format(cert.expires, abbreviate_time(delta))
+                )
 
 
 @grid_manager.command()
 @click.argument("name")
 @click.argument(
     "expiry_days",
-    type=click.IntRange(1, 5*365),  # XXX is 5 years a good maximum?
+    type=click.IntRange(1, 5 * 365),  # XXX is 5 years a good maximum?
 )
 @click.pass_context
 def sign(ctx, name, expiry_days):
@@ -184,9 +190,7 @@ def sign(ctx, name, expiry_days):
     try:
         certificate = ctx.obj.grid_manager.sign(name, expiry)
     except KeyError:
-        raise click.ClickException(
-            "No storage-server called '{}' exists".format(name)
-        )
+        raise click.ClickException("No storage-server called '{}' exists".format(name))
 
     certificate_data = json.dumps(certificate, indent=4)
     click.echo(certificate_data)

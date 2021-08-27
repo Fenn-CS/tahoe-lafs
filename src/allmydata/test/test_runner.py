@@ -1,4 +1,3 @@
-
 from __future__ import (
     absolute_import,
 )
@@ -36,18 +35,20 @@ from ..util.eliotutil import (
     inline_callbacks,
 )
 
+
 def get_root_from_file(src):
     srcdir = os.path.dirname(os.path.dirname(os.path.normcase(os.path.realpath(src))))
 
     root = os.path.dirname(srcdir)
-    if os.path.basename(srcdir) == 'site-packages':
-        if re.search(r'python.+\..+', os.path.basename(root)):
+    if os.path.basename(srcdir) == "site-packages":
+        if re.search(r"python.+\..+", os.path.basename(root)):
             root = os.path.dirname(root)
         root = os.path.dirname(root)
-    elif os.path.basename(root) == 'src':
+    elif os.path.basename(root) == "src":
         root = os.path.dirname(root)
 
     return root
+
 
 srcfile = allmydata.__file__
 rootdir = get_root_from_file(srcfile)
@@ -62,10 +63,12 @@ class RunBinTahoeMixin(object):
             env = os.environ
 
         d = getProcessOutputAndValue(command, argv, env, stdinBytes=stdin)
+
         def fix_signal(result):
             # Mirror subprocess.Popen.returncode structure
             (out, err, signal) = result
             return (out, err, -signal)
+
         d.addErrback(fix_signal)
         return d
 
@@ -77,23 +80,29 @@ class BinTahoe(common_util.SignalMixin, unittest.TestCase, RunBinTahoeMixin):
             tricky_arg = unicode_to_argv(tricky, mangle=True)
             tricky_out = unicode_to_output(tricky)
         except UnicodeEncodeError:
-            raise unittest.SkipTest("A non-ASCII argument/output could not be encoded on this platform.")
+            raise unittest.SkipTest(
+                "A non-ASCII argument/output could not be encoded on this platform."
+            )
 
         d = self.run_bintahoe([tricky_arg])
+
         def _cb(res):
             out, err, rc_or_sig = res
             self.failUnlessEqual(rc_or_sig, 1, str(res))
-            self.failUnlessIn("Unknown command: "+tricky_out, out)
+            self.failUnlessIn("Unknown command: " + tricky_out, out)
+
         d.addCallback(_cb)
         return d
 
     def test_run_with_python_options(self):
         # -t is a harmless option that warns about tabs.
         d = self.run_bintahoe(["--version"], python_options=["-t"])
+
         def _cb(res):
             out, err, rc_or_sig = res
             self.assertEqual(rc_or_sig, 0, str(res))
-            self.assertTrue(out.startswith(allmydata.__appname__ + '/'), str(res))
+            self.assertTrue(out.startswith(allmydata.__appname__ + "/"), str(res))
+
         d.addCallback(_cb)
         return d
 
@@ -105,38 +114,46 @@ class BinTahoe(common_util.SignalMixin, unittest.TestCase, RunBinTahoeMixin):
 
     @inlineCallbacks
     def test_eliot_destination(self):
-        out, err, rc_or_sig = yield self.run_bintahoe([
-            # Proves little but maybe more than nothing.
-            "--eliot-destination=file:-",
-            # Throw in *some* command or the process exits with error, making
-            # it difficult for us to see if the previous arg was accepted or
-            # not.
-            "--help",
-        ])
+        out, err, rc_or_sig = yield self.run_bintahoe(
+            [
+                # Proves little but maybe more than nothing.
+                "--eliot-destination=file:-",
+                # Throw in *some* command or the process exits with error, making
+                # it difficult for us to see if the previous arg was accepted or
+                # not.
+                "--help",
+            ]
+        )
         self.assertEqual(rc_or_sig, 0)
 
     @inlineCallbacks
     def test_unknown_eliot_destination(self):
-        out, err, rc_or_sig = yield self.run_bintahoe([
-            "--eliot-destination=invalid:more",
-        ])
+        out, err, rc_or_sig = yield self.run_bintahoe(
+            [
+                "--eliot-destination=invalid:more",
+            ]
+        )
         self.assertEqual(1, rc_or_sig)
         self.assertIn("Unknown destination description", out)
         self.assertIn("invalid:more", out)
 
     @inlineCallbacks
     def test_malformed_eliot_destination(self):
-        out, err, rc_or_sig = yield self.run_bintahoe([
-            "--eliot-destination=invalid",
-        ])
+        out, err, rc_or_sig = yield self.run_bintahoe(
+            [
+                "--eliot-destination=invalid",
+            ]
+        )
         self.assertEqual(1, rc_or_sig)
         self.assertIn("must be formatted like", out)
 
     @inlineCallbacks
     def test_escape_in_eliot_destination(self):
-        out, err, rc_or_sig = yield self.run_bintahoe([
-            "--eliot-destination=file:@foo",
-        ])
+        out, err, rc_or_sig = yield self.run_bintahoe(
+            [
+                "--eliot-destination=file:@foo",
+            ]
+        )
         self.assertEqual(1, rc_or_sig)
         self.assertIn("Unsupported escape character", out)
 
@@ -172,11 +189,16 @@ class CreateNode(unittest.TestCase):
             # 'create-node', and disabled for 'create-client'.
             tahoe_cfg = os.path.join(n1, "tahoe.cfg")
             self.failUnless(os.path.exists(tahoe_cfg))
-            content = fileutil.read(tahoe_cfg).replace('\r\n', '\n')
+            content = fileutil.read(tahoe_cfg).replace("\r\n", "\n")
             if kind == "client":
-                self.failUnless(re.search(r"\n\[storage\]\n#.*\nenabled = false\n", content), content)
+                self.failUnless(
+                    re.search(r"\n\[storage\]\n#.*\nenabled = false\n", content),
+                    content,
+                )
             else:
-                self.failUnless(re.search(r"\n\[storage\]\n#.*\nenabled = true\n", content), content)
+                self.failUnless(
+                    re.search(r"\n\[storage\]\n#.*\nenabled = true\n", content), content
+                )
                 self.failUnless("\nreserved_space = 1G\n" in content)
 
         # creating the node a second time should be rejected
@@ -224,14 +246,14 @@ class CreateNode(unittest.TestCase):
             self.failUnless(os.path.exists(os.path.join(n4, tac)))
 
         # make sure it rejects too many arguments
-        self.failUnlessRaises(usage.UsageError, parse_cli,
-                              command, "basedir", "extraarg")
+        self.failUnlessRaises(
+            usage.UsageError, parse_cli, command, "basedir", "extraarg"
+        )
 
         # when creating a non-client, there is no default for the basedir
         if not is_client:
             argv = [command]
-            self.failUnlessRaises(usage.UsageError, parse_cli,
-                                  command)
+            self.failUnlessRaises(usage.UsageError, parse_cli, command)
 
     def test_node(self):
         self.do_create("node", "--hostname=127.0.0.1")
@@ -248,19 +270,24 @@ class CreateNode(unittest.TestCase):
 
     def test_subcommands(self):
         # no arguments should trigger a command listing, via UsageError
-        self.failUnlessRaises(usage.UsageError, parse_cli,
-                              )
+        self.failUnlessRaises(
+            usage.UsageError,
+            parse_cli,
+        )
 
     @inlineCallbacks
     def test_stats_gatherer_good_args(self):
-        rc,out,err = yield run_cli("create-stats-gatherer", "--hostname=foo",
-                                   self.mktemp())
+        rc, out, err = yield run_cli(
+            "create-stats-gatherer", "--hostname=foo", self.mktemp()
+        )
         self.assertEqual(rc, 0)
-        rc,out,err = yield run_cli("create-stats-gatherer",
-                                   "--location=tcp:foo:1234",
-                                   "--port=tcp:1234", self.mktemp())
+        rc, out, err = yield run_cli(
+            "create-stats-gatherer",
+            "--location=tcp:foo:1234",
+            "--port=tcp:1234",
+            self.mktemp(),
+        )
         self.assertEqual(rc, 0)
-
 
     def test_stats_gatherer_bad_args(self):
         def _test(args):
@@ -286,8 +313,9 @@ class CreateNode(unittest.TestCase):
         _test("create-stats-gatherer --hostname=foo --location=foo --port=foo D")
 
 
-class RunNode(common_util.SignalMixin, unittest.TestCase, pollmixin.PollMixin,
-              RunBinTahoeMixin):
+class RunNode(
+    common_util.SignalMixin, unittest.TestCase, pollmixin.PollMixin, RunBinTahoeMixin
+):
     """
     exercise "tahoe run" for both introducer, client node, and key-generator,
     by spawning "tahoe run" (or "tahoe start") as a subprocess. This doesn't
@@ -316,25 +344,29 @@ class RunNode(common_util.SignalMixin, unittest.TestCase, pollmixin.PollMixin,
         tahoe = CLINodeAPI(reactor, FilePath(c1))
         self.addCleanup(tahoe.stop_and_wait)
 
-        out, err, rc_or_sig = yield self.run_bintahoe([
-            "--quiet",
-            "create-introducer",
-            "--basedir", c1,
-            "--hostname", "127.0.0.1",
-        ])
+        out, err, rc_or_sig = yield self.run_bintahoe(
+            [
+                "--quiet",
+                "create-introducer",
+                "--basedir",
+                c1,
+                "--hostname",
+                "127.0.0.1",
+            ]
+        )
 
         self.assertEqual(rc_or_sig, 0)
 
         # This makes sure that node.url is written, which allows us to
         # detect when the introducer restarts in _node_has_restarted below.
         config = fileutil.read(tahoe.config_file.path)
-        self.assertIn('{}web.port = {}'.format(linesep, linesep), config)
+        self.assertIn("{}web.port = {}".format(linesep, linesep), config)
         fileutil.write(
             tahoe.config_file.path,
             config.replace(
-                '{}web.port = {}'.format(linesep, linesep),
-                '{}web.port = 0{}'.format(linesep, linesep),
-            )
+                "{}web.port = {}".format(linesep, linesep),
+                "{}web.port = 0{}".format(linesep, linesep),
+            ),
         )
 
         p = Expect()
@@ -397,17 +429,24 @@ class RunNode(common_util.SignalMixin, unittest.TestCase, pollmixin.PollMixin,
         # Set this up right now so we don't forget later.
         self.addCleanup(tahoe.cleanup)
 
-        out, err, rc_or_sig = yield self.run_bintahoe([
-            "--quiet", "create-node", "--basedir", c1,
-            "--webport", "0",
-            "--hostname", "localhost",
-        ])
+        out, err, rc_or_sig = yield self.run_bintahoe(
+            [
+                "--quiet",
+                "create-node",
+                "--basedir",
+                c1,
+                "--webport",
+                "0",
+                "--hostname",
+                "localhost",
+            ]
+        )
         self.failUnlessEqual(rc_or_sig, 0)
 
         # Check that the --webport option worked.
         config = fileutil.read(tahoe.config_file.path)
         self.assertIn(
-            '{}web.port = 0{}'.format(linesep, linesep),
+            "{}web.port = 0{}".format(linesep, linesep),
             config,
         )
 
@@ -460,7 +499,6 @@ class RunNode(common_util.SignalMixin, unittest.TestCase, pollmixin.PollMixin,
             # twistd.pid should be gone by now.
             self.assertFalse(tahoe.twistd_pid_file.exists())
 
-
     def _remove(self, res, file):
         fileutil.remove(file)
         return res
@@ -489,7 +527,7 @@ class RunNode(common_util.SignalMixin, unittest.TestCase, pollmixin.PollMixin,
                 tahoe.reactor,
                 tahoe.basedir.sibling(u"bogus"),
             ).run(p),
-            "does not look like a directory at all"
+            "does not look like a directory at all",
         )
 
     def test_stop_bad_directory(self):
@@ -539,10 +577,13 @@ class RunNode(common_util.SignalMixin, unittest.TestCase, pollmixin.PollMixin,
 
         client_running = p.expect(b"client running")
 
-        result, index = yield DeferredList([
-            p.expect(expected_message),
-            client_running,
-        ], fireOnOneCallback=True, consumeErrors=True,
+        result, index = yield DeferredList(
+            [
+                p.expect(expected_message),
+                client_running,
+            ],
+            fireOnOneCallback=True,
+            consumeErrors=True,
         )
 
         self.assertEqual(

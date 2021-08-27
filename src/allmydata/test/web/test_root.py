@@ -23,6 +23,7 @@ from ..common import (
     EMPTY_CLIENT_CONFIG,
 )
 
+
 class RenderSlashUri(unittest.TestCase):
     """
     Ensure that URIs starting with /uri?uri= only accept valid
@@ -37,10 +38,12 @@ class RenderSlashUri(unittest.TestCase):
         """
         A valid capbility does not result in error
         """
-        query_args = {b"uri": [
-            b"URI:CHK:nt2xxmrccp7sursd6yh2thhcky:"
-            b"mukesarwdjxiyqsjinbfiiro6q7kgmmekocxfjcngh23oxwyxtzq:2:5:5874882"
-        ]}
+        query_args = {
+            b"uri": [
+                b"URI:CHK:nt2xxmrccp7sursd6yh2thhcky:"
+                b"mukesarwdjxiyqsjinbfiiro6q7kgmmekocxfjcngh23oxwyxtzq:2:5:5874882"
+            ]
+        }
         response_body = self.successResultOf(
             render(self.res, query_args),
         )
@@ -71,9 +74,10 @@ class RenderServiceRow(unittest.TestCase):
         rendering servers that lacked nickname and version. This tests that
         we can render such minimal servers.
         """
-        ann = {"anonymous-storage-FURL": "pb://w2hqnbaa25yw4qgcvghl5psa3srpfgw3@tcp:127.0.0.1:51309/vucto2z4fxment3vfxbqecblbf6zyp6x",
-               "permutation-seed-base32": "w2hqnbaa25yw4qgcvghl5psa3srpfgw3",
-               }
+        ann = {
+            "anonymous-storage-FURL": "pb://w2hqnbaa25yw4qgcvghl5psa3srpfgw3@tcp:127.0.0.1:51309/vucto2z4fxment3vfxbqecblbf6zyp6x",
+            "permutation-seed-base32": "w2hqnbaa25yw4qgcvghl5psa3srpfgw3",
+        }
         srv = NativeStorageServer("server_id", ann, None, {}, EMPTY_CLIENT_CONFIG)
         srv.get_connection_status = lambda: ConnectionStatus(False, "summary", {}, 0, 0)
 

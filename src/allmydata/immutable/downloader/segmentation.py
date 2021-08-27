@@ -7,10 +7,34 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import time
+
 now = time.time
 from zope.interface import implementer
 from twisted.internet import defer
@@ -22,6 +46,7 @@ from allmydata.interfaces import DownloadStopped
 
 from .common import BadSegmentNumberError, WrongSegmentError
 
+
 @implementer(IPushProducer)
 class Segmentation(object):
     """I am responsible for a single offset+size read of the file. I handle
@@ -30,6 +55,7 @@ class Segmentation(object):
     match the offset+size span. I use the Producer/Consumer interface to only
     request one segment at a time.
     """
+
     def __init__(self, node, offset, size, consumer, read_ev, logparent=None):
         self._node = node
         self._hungry = True
@@ -39,7 +65,7 @@ class Segmentation(object):
         # want to download file[offset:offset+size]
         self._offset = offset
         self._size = size
-        assert offset+size <= node._verifycap.size
+        assert offset + size <= node._verifycap.size
         self._consumer = consumer
         self._read_ev = read_ev
         self._start_pause = None
@@ -83,11 +109,17 @@ class Segmentation(object):
         else:
             # this might be a guess
             wanted_segnum = self._offset // segment_size
-        log.msg(format="_fetch_next(offset=%(offset)d) %(guess)swants segnum=%(segnum)d",
-                offset=self._offset, guess=guess_s, segnum=wanted_segnum,
-                level=log.NOISY, parent=self._lp, umid="5WfN0w")
+        log.msg(
+            format="_fetch_next(offset=%(offset)d) %(guess)swants segnum=%(segnum)d",
+            offset=self._offset,
+            guess=guess_s,
+            segnum=wanted_segnum,
+            level=log.NOISY,
+            parent=self._lp,
+            umid="5WfN0w",
+        )
         self._active_segnum = wanted_segnum
-        d,c = n.get_segment(wanted_segnum, self._lp)
+        d, c = n.get_segment(wanted_segnum, self._lp)
         self._cancel_segment_request = c
         d.addBoth(self._request_retired)
         d.addCallback(self._got_segment, wanted_segnum)
@@ -106,29 +138,44 @@ class Segmentation(object):
         self._cancel_segment_request = None
         # we got file[segment_start:segment_start+len(segment)]
         # we want file[self._offset:self._offset+self._size]
-        log.msg(format="Segmentation got data:"
-                " want [%(wantstart)d-%(wantend)d),"
-                " given [%(segstart)d-%(segend)d), for segnum=%(segnum)d",
-                wantstart=self._offset, wantend=self._offset+self._size,
-                segstart=segment_start, segend=segment_start+len(segment),
-                segnum=wanted_segnum,
-                level=log.OPERATIONAL, parent=self._lp, umid="32dHcg")
+        log.msg(
+            format="Segmentation got data:"
+            " want [%(wantstart)d-%(wantend)d),"
+            " given [%(segstart)d-%(segend)d), for segnum=%(segnum)d",
+            wantstart=self._offset,
+            wantend=self._offset + self._size,
+            segstart=segment_start,
+            segend=segment_start + len(segment),
+            segnum=wanted_segnum,
+            level=log.OPERATIONAL,
+            parent=self._lp,
+            umid="32dHcg",
+        )
 
-        o = overlap(segment_start, len(segment),  self._offset, self._size)
+        o = overlap(segment_start, len(segment), self._offset, self._size)
         # the overlap is file[o[0]:o[0]+o[1]]
         if not o or o[0] != self._offset:
             # we didn't get the first byte, so we can't use this segment
-            log.msg("Segmentation handed wrong data:"
-                    " want [%d-%d), given [%d-%d), for segnum=%d,"
-                    " for si=%s"
-                    % (self._offset, self._offset+self._size,
-                       segment_start, segment_start+len(segment),
-                       wanted_segnum, self._node._si_prefix),
-                    level=log.UNUSUAL, parent=self._lp, umid="STlIiA")
+            log.msg(
+                "Segmentation handed wrong data:"
+                " want [%d-%d), given [%d-%d), for segnum=%d,"
+                " for si=%s"
+                % (
+                    self._offset,
+                    self._offset + self._size,
+                    segment_start,
+                    segment_start + len(segment),
+                    wanted_segnum,
+                    self._node._si_prefix,
+                ),
+                level=log.UNUSUAL,
+                parent=self._lp,
+                umid="STlIiA",
+            )
             # we may retry if the segnum we asked was based on a guess
             raise WrongSegmentError("I was given the wrong data.")
         offset_in_segment = self._offset - segment_start
-        desired_data = segment[offset_in_segment:offset_in_segment+o[1]]
+        desired_data = segment[offset_in_segment : offset_in_segment + o[1]]
 
         self._offset += len(desired_data)
         self._size -= len(desired_data)
@@ -150,15 +197,21 @@ class Segmentation(object):
         return self._maybe_fetch_next()
 
     def _error(self, f):
-        log.msg("Error in Segmentation", failure=f,
-                level=log.WEIRD, parent=self._lp, umid="EYlXBg")
+        log.msg(
+            "Error in Segmentation",
+            failure=f,
+            level=log.WEIRD,
+            parent=self._lp,
+            umid="EYlXBg",
+        )
         self._alive = False
         self._hungry = False
         self._deferred.errback(f)
 
     def stopProducing(self):
-        log.msg("asked to stopProducing",
-                level=log.NOISY, parent=self._lp, umid="XIyL9w")
+        log.msg(
+            "asked to stopProducing", level=log.NOISY, parent=self._lp, umid="XIyL9w"
+        )
         self._hungry = False
         self._alive = False
         # cancel any outstanding segment request
@@ -171,6 +224,7 @@ class Segmentation(object):
     def pauseProducing(self):
         self._hungry = False
         self._start_pause = now()
+
     def resumeProducing(self):
         self._hungry = True
         eventually(self._maybe_fetch_next)

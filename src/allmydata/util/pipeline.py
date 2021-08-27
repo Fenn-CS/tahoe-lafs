@@ -10,8 +10,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 from twisted.internet import defer
 from twisted.python.failure import Failure
@@ -22,13 +45,16 @@ from allmydata.util.assertutil import precondition
 class PipelineError(Exception):
     """One of the pipelined messages returned an error. The received Failure
     object is stored in my .error attribute."""
+
     def __init__(self, error):
         self.error = error
 
     def __repr__(self):
         return "<PipelineError error=(%r)>" % (self.error,)
+
     def __str__(self):
         return "<PipelineError error=(%s)>" % (self.error,)
+
 
 class SingleFileError(Exception):
     """You are not permitted to add a job to a full pipeline."""
@@ -48,11 +74,13 @@ class ExpandableDeferredList(defer.Deferred, object):
         self.closed = False
 
     def addDeferred(self, d):
-        precondition(not self.closed, "don't call addDeferred() on a closed ExpandableDeferredList")
+        precondition(
+            not self.closed,
+            "don't call addDeferred() on a closed ExpandableDeferredList",
+        )
         index = len(self.resultList)
         self.resultList.append(None)
-        d.addCallbacks(self._cbDeferred, self._ebDeferred,
-                       callbackArgs=(index,))
+        d.addCallbacks(self._cbDeferred, self._ebDeferred, callbackArgs=(index,))
         return d
 
     def close(self):
@@ -86,10 +114,10 @@ class Pipeline(object):
     callRemote() messages."""
 
     def __init__(self, capacity):
-        self.capacity = capacity # how full we can be
-        self.gauge = 0 # how full we are
+        self.capacity = capacity  # how full we can be
+        self.gauge = 0  # how full we are
         self.failure = None
-        self.waiting = [] # callers of add() who are blocked
+        self.waiting = []  # callers of add() who are blocked
         self.unflushed = ExpandableDeferredList()
 
     def add(self, _size, _func, *args, **kwargs):
@@ -121,7 +149,7 @@ class Pipeline(object):
         return d
 
     def _flushed_error(self, f):
-        precondition(self.failure) # should have been set by _call_finished
+        precondition(self.failure)  # should have been set by _call_finished
         return self.failure
 
     def _call_finished(self, res, size):

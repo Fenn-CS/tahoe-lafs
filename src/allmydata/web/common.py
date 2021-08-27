@@ -76,13 +76,16 @@ from allmydata.util.encodingutil import (
 
 # Originally part of this module, so still part of its API:
 from .common_py3 import (  # noqa: F401
-    get_arg, abbreviate_time, MultiFormatResource, WebError,
+    get_arg,
+    abbreviate_time,
+    MultiFormatResource,
+    WebError,
 )
 
 
 def get_filenode_metadata(filenode):
-    metadata = {'mutable': filenode.is_mutable()}
-    if metadata['mutable']:
+    metadata = {"mutable": filenode.is_mutable()}
+    if metadata["mutable"]:
         mutable_type = filenode.get_version()
         assert mutable_type in (SDMF_VERSION, MDMF_VERSION)
         if mutable_type == MDMF_VERSION:
@@ -91,17 +94,19 @@ def get_filenode_metadata(filenode):
             file_format = "SDMF"
     else:
         file_format = "CHK"
-    metadata['format'] = file_format
+    metadata["format"] = file_format
     size = filenode.get_size()
     if size is not None:
-        metadata['size'] = size
+        metadata["size"] = size
     return metadata
+
 
 def boolean_of_arg(arg):
     # TODO: ""
     if arg.lower() not in ("true", "t", "1", "false", "f", "0", "on", "off"):
         raise WebError("invalid boolean argument: %r" % (arg,), http.BAD_REQUEST)
     return arg.lower() in ("true", "t", "1", "on")
+
 
 def parse_replace_arg(replace):
     if replace.lower() == "only-files":
@@ -125,10 +130,12 @@ def get_format(req, default="CHK"):
     elif arg.upper() == "MDMF":
         return "MDMF"
     else:
-        raise WebError("Unknown format: %s, I know CHK, SDMF, MDMF" % arg,
-                       http.BAD_REQUEST)
+        raise WebError(
+            "Unknown format: %s, I know CHK, SDMF, MDMF" % arg, http.BAD_REQUEST
+        )
 
-def get_mutable_type(file_format): # accepts result of get_format()
+
+def get_mutable_type(file_format):  # accepts result of get_format()
     if file_format == "SDMF":
         return SDMF_VERSION
     elif file_format == "MDMF":
@@ -196,10 +203,10 @@ def convert_children_json(nodemaker, children_json):
 
 def compute_rate(bytes, seconds):
     if bytes is None:
-      return None
+        return None
 
     if seconds is None or seconds == 0:
-      return None
+        return None
 
     # negative values don't make sense here
     assert bytes > -1
@@ -207,16 +214,18 @@ def compute_rate(bytes, seconds):
 
     return 1.0 * bytes / seconds
 
+
 def abbreviate_rate(data):
     # 21.8kBps, 554.4kBps 4.37MBps
     if data is None:
         return ""
     r = float(data)
     if r > 1000000:
-        return "%1.2fMBps" % (r/1000000)
+        return "%1.2fMBps" % (r / 1000000)
     if r > 1000:
-        return "%.1fkBps" % (r/1000)
+        return "%.1fkBps" % (r / 1000)
     return "%.0fBps" % r
+
 
 def abbreviate_size(data):
     # 21.8kB, 554.4kB 4.37MB
@@ -224,12 +233,13 @@ def abbreviate_size(data):
         return ""
     r = float(data)
     if r > 1000000000:
-        return "%1.2fGB" % (r/1000000000)
+        return "%1.2fGB" % (r / 1000000000)
     if r > 1000000:
-        return "%1.2fMB" % (r/1000000)
+        return "%1.2fMB" % (r / 1000000)
     if r > 1000:
-        return "%.1fkB" % (r/1000)
+        return "%.1fkB" % (r / 1000)
     return "%.0fB" % r
+
 
 def plural(sequence_or_length):
     if isinstance(sequence_or_length, int):
@@ -240,19 +250,24 @@ def plural(sequence_or_length):
         return ""
     return "s"
 
+
 def text_plain(text, req):
     req.setHeader("content-type", "text/plain")
     req.setHeader("content-length", b"%d" % len(text))
     return text
 
+
 def spaces_to_nbsp(text):
-    return unicode(text).replace(u' ', u'\u00A0')
+    return unicode(text).replace(u" ", u"\u00A0")
+
 
 def render_time_delta(time_1, time_2):
     return spaces_to_nbsp(format_delta(time_1, time_2))
 
+
 def render_time(t):
     return spaces_to_nbsp(format_time(time.localtime(t)))
+
 
 def render_time_attr(t):
     return format_time(time.localtime(t))
@@ -263,10 +278,14 @@ def render_time_attr(t):
 # or make sure that childFactory returns a WebErrorResource (and never an
 # actual exception). The latter is growing increasingly annoying.
 
+
 def should_create_intermediate_directories(req):
     t = get_arg(req, "t", "").strip()
-    return bool(req.method in ("PUT", "POST") and
-                t not in ("delete", "rename", "rename-form", "check"))
+    return bool(
+        req.method in ("PUT", "POST")
+        and t not in ("delete", "rename", "rename-form", "check")
+    )
+
 
 def humanize_exception(exc):
     """
@@ -277,78 +296,100 @@ def humanize_exception(exc):
     :return: See ``humanize_failure``.
     """
     if isinstance(exc, EmptyPathnameComponentError):
-        return ("The webapi does not allow empty pathname components, "
-                "i.e. a double slash", http.BAD_REQUEST)
+        return (
+            "The webapi does not allow empty pathname components, "
+            "i.e. a double slash",
+            http.BAD_REQUEST,
+        )
     if isinstance(exc, ExistingChildError):
-        return ("There was already a child by that name, and you asked me "
-                "to not replace it.", http.CONFLICT)
+        return (
+            "There was already a child by that name, and you asked me "
+            "to not replace it.",
+            http.CONFLICT,
+        )
     if isinstance(exc, NoSuchChildError):
         quoted_name = quote_output(exc.args[0], encoding="utf-8", quotemarks=False)
         return ("No such child: %s" % quoted_name, http.NOT_FOUND)
     if isinstance(exc, NotEnoughSharesError):
-        t = ("NotEnoughSharesError: This indicates that some "
-             "servers were unavailable, or that shares have been "
-             "lost to server departure, hard drive failure, or disk "
-             "corruption. You should perform a filecheck on "
-             "this object to learn more.\n\nThe full error message is:\n"
-             "%s") % str(exc)
+        t = (
+            "NotEnoughSharesError: This indicates that some "
+            "servers were unavailable, or that shares have been "
+            "lost to server departure, hard drive failure, or disk "
+            "corruption. You should perform a filecheck on "
+            "this object to learn more.\n\nThe full error message is:\n"
+            "%s"
+        ) % str(exc)
         return (t, http.GONE)
     if isinstance(exc, NoSharesError):
-        t = ("NoSharesError: no shares could be found. "
-             "Zero shares usually indicates a corrupt URI, or that "
-             "no servers were connected, but it might also indicate "
-             "severe corruption. You should perform a filecheck on "
-             "this object to learn more.\n\nThe full error message is:\n"
-             "%s") % str(exc)
+        t = (
+            "NoSharesError: no shares could be found. "
+            "Zero shares usually indicates a corrupt URI, or that "
+            "no servers were connected, but it might also indicate "
+            "severe corruption. You should perform a filecheck on "
+            "this object to learn more.\n\nThe full error message is:\n"
+            "%s"
+        ) % str(exc)
         return (t, http.GONE)
     if isinstance(exc, UnrecoverableFileError):
-        t = ("UnrecoverableFileError: the directory (or mutable file) could "
-             "not be retrieved, because there were insufficient good shares. "
-             "This might indicate that no servers were connected, "
-             "insufficient servers were connected, the URI was corrupt, or "
-             "that shares have been lost due to server departure, hard drive "
-             "failure, or disk corruption. You should perform a filecheck on "
-             "this object to learn more.")
+        t = (
+            "UnrecoverableFileError: the directory (or mutable file) could "
+            "not be retrieved, because there were insufficient good shares. "
+            "This might indicate that no servers were connected, "
+            "insufficient servers were connected, the URI was corrupt, or "
+            "that shares have been lost due to server departure, hard drive "
+            "failure, or disk corruption. You should perform a filecheck on "
+            "this object to learn more."
+        )
         return (t, http.GONE)
     if isinstance(exc, MustNotBeUnknownRWError):
         quoted_name = quote_output(exc.args[1], encoding="utf-8")
         immutable = exc.args[2]
         if immutable:
-            t = ("MustNotBeUnknownRWError: an operation to add a child named "
-                 "%s to a directory was given an unknown cap in a write slot.\n"
-                 "If the cap is actually an immutable readcap, then using a "
-                 "webapi server that supports a later version of Tahoe may help.\n\n"
-                 "If you are using the webapi directly, then specifying an immutable "
-                 "readcap in the read slot (ro_uri) of the JSON PROPDICT, and "
-                 "omitting the write slot (rw_uri), would also work in this "
-                 "case.") % quoted_name
+            t = (
+                "MustNotBeUnknownRWError: an operation to add a child named "
+                "%s to a directory was given an unknown cap in a write slot.\n"
+                "If the cap is actually an immutable readcap, then using a "
+                "webapi server that supports a later version of Tahoe may help.\n\n"
+                "If you are using the webapi directly, then specifying an immutable "
+                "readcap in the read slot (ro_uri) of the JSON PROPDICT, and "
+                "omitting the write slot (rw_uri), would also work in this "
+                "case."
+            ) % quoted_name
         else:
-            t = ("MustNotBeUnknownRWError: an operation to add a child named "
-                 "%s to a directory was given an unknown cap in a write slot.\n"
-                 "Using a webapi server that supports a later version of Tahoe "
-                 "may help.\n\n"
-                 "If you are using the webapi directly, specifying a readcap in "
-                 "the read slot (ro_uri) of the JSON PROPDICT, as well as a "
-                 "writecap in the write slot if desired, would also work in this "
-                 "case.") % quoted_name
+            t = (
+                "MustNotBeUnknownRWError: an operation to add a child named "
+                "%s to a directory was given an unknown cap in a write slot.\n"
+                "Using a webapi server that supports a later version of Tahoe "
+                "may help.\n\n"
+                "If you are using the webapi directly, specifying a readcap in "
+                "the read slot (ro_uri) of the JSON PROPDICT, as well as a "
+                "writecap in the write slot if desired, would also work in this "
+                "case."
+            ) % quoted_name
         return (t, http.BAD_REQUEST)
     if isinstance(exc, MustBeDeepImmutableError):
         quoted_name = quote_output(exc.args[1], encoding="utf-8")
-        t = ("MustBeDeepImmutableError: a cap passed to this operation for "
-             "the child named %s, needed to be immutable but was not. Either "
-             "the cap is being added to an immutable directory, or it was "
-             "originally retrieved from an immutable directory as an unknown "
-             "cap.") % quoted_name
+        t = (
+            "MustBeDeepImmutableError: a cap passed to this operation for "
+            "the child named %s, needed to be immutable but was not. Either "
+            "the cap is being added to an immutable directory, or it was "
+            "originally retrieved from an immutable directory as an unknown "
+            "cap."
+        ) % quoted_name
         return (t, http.BAD_REQUEST)
     if isinstance(exc, MustBeReadonlyError):
         quoted_name = quote_output(exc.args[1], encoding="utf-8")
-        t = ("MustBeReadonlyError: a cap passed to this operation for "
-             "the child named '%s', needed to be read-only but was not. "
-             "The cap is being passed in a read slot (ro_uri), or was retrieved "
-             "from a read slot as an unknown cap.") % quoted_name
+        t = (
+            "MustBeReadonlyError: a cap passed to this operation for "
+            "the child named '%s', needed to be read-only but was not. "
+            "The cap is being passed in a read slot (ro_uri), or was retrieved "
+            "from a read slot as an unknown cap."
+        ) % quoted_name
         return (t, http.BAD_REQUEST)
     if isinstance(exc, blacklist.FileProhibited):
-        t = "Access Prohibited: %s" % quote_output(exc.reason, encoding="utf-8", quotemarks=False)
+        t = "Access Prohibited: %s" % quote_output(
+            exc.reason, encoding="utf-8", quotemarks=False
+        )
         return (t, http.FORBIDDEN)
     if isinstance(exc, WebError):
         return (exc.text, exc.code)
@@ -414,7 +455,7 @@ class SlotsSequenceElement(template.Element):
         items.
         """
         if len(self.seq) > 0:
-            return u''
+            return u""
         else:
             return tag
 
@@ -424,6 +465,7 @@ def exception_to_child(getChild):
     Decorate ``getChild`` method with exception handling behavior to render an
     error page reflecting the exception.
     """
+
     @wraps(getChild)
     def g(self, name, req):
         # Bind the method to the instance so it has a better
@@ -446,6 +488,7 @@ def exception_to_child(getChild):
             )
             result = result.addActionFinish()
         return DeferredResource(result)
+
     return g
 
 
@@ -469,6 +512,7 @@ def render_exception(render):
     Decorate a ``render_*`` method with exception handling behavior to render
     an error page reflecting the exception.
     """
+
     @wraps(render)
     def g(self, request):
         # Bind the method to the instance so it has a better
@@ -577,11 +621,13 @@ def _finish(result, render, request):
         Message.log(
             message_type=u"allmydata:web:common-render:unknown",
         )
-        log.err("Request for {!r} handled by {!r} returned unusable {!r}".format(
-            request.uri,
-            fullyQualifiedName(render),
-            result,
-        ))
+        log.err(
+            "Request for {!r} handled by {!r} returned unusable {!r}".format(
+                request.uri,
+                fullyQualifiedName(render),
+                result,
+            )
+        )
         request.setResponseCode(http.INTERNAL_SERVER_ERROR)
         _finish(b"Internal Server Error", render, request)
 

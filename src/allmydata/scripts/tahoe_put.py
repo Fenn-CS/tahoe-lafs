@@ -3,10 +3,19 @@ from __future__ import print_function
 from six.moves import cStringIO as StringIO
 import urllib
 
-from allmydata.scripts.common_http import do_http, format_http_success, format_http_error
-from allmydata.scripts.common import get_alias, DEFAULT_ALIAS, escape_path, \
-                                     UnknownAliasError
+from allmydata.scripts.common_http import (
+    do_http,
+    format_http_success,
+    format_http_error,
+)
+from allmydata.scripts.common import (
+    get_alias,
+    DEFAULT_ALIAS,
+    escape_path,
+    UnknownAliasError,
+)
 from allmydata.util.encodingutil import quote_output
+
 
 def put(options):
     """
@@ -14,13 +23,13 @@ def put(options):
 
     @return: a Deferred which eventually fires with the exit code
     """
-    nodeurl = options['node-url']
+    nodeurl = options["node-url"]
     aliases = options.aliases
     from_file = options.from_file
     to_file = options.to_file
-    mutable = options['mutable']
-    format = options['format']
-    if options['quiet']:
+    mutable = options["mutable"]
+    format = options["format"]
+    if options["quiet"]:
         verbosity = 0
     else:
         verbosity = 2
@@ -55,8 +64,14 @@ def put(options):
                 return 1
             if path.startswith("/"):
                 suggestion = to_file.replace(u"/", u"", 1)
-                print("Error: The remote filename must not start with a slash", file=stderr)
-                print("Please try again, perhaps with %s" % quote_output(suggestion), file=stderr)
+                print(
+                    "Error: The remote filename must not start with a slash",
+                    file=stderr,
+                )
+                print(
+                    "Please try again, perhaps with %s" % quote_output(suggestion),
+                    file=stderr,
+                )
                 return 1
             url = nodeurl + "uri/%s/" % urllib.quote(rootcap)
             if path:
@@ -85,7 +100,10 @@ def put(options):
 
     resp = do_http("PUT", url, infileobj)
 
-    if resp.status in (200, 201,):
+    if resp.status in (
+        200,
+        201,
+    ):
         print(format_http_success(resp), file=stderr)
         print(quote_output(resp.read(), quotemarks=False), file=stdout)
         return 0

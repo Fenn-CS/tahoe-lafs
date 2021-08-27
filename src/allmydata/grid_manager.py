@@ -1,4 +1,3 @@
-
 import sys
 import json
 from datetime import (
@@ -22,7 +21,9 @@ class _GridManagerStorageServer(object):
     """
 
     name = attr.ib()
-    public_key = attr.ib(validator=attr.validators.instance_of(ed25519.Ed25519PublicKey))
+    public_key = attr.ib(
+        validator=attr.validators.instance_of(ed25519.Ed25519PublicKey)
+    )
     certificates = attr.ib(
         default=attr.Factory(list),
         validator=attr.validators.instance_of(list),
@@ -49,7 +50,9 @@ class _GridManagerCertificate(object):
     filename = attr.ib()
     index = attr.ib(validator=attr.validators.instance_of(int))
     expires = attr.ib(validator=attr.validators.instance_of(datetime))
-    public_key = attr.ib(validator=attr.validators.instance_of(ed25519.Ed25519PublicKey))
+    public_key = attr.ib(
+        validator=attr.validators.instance_of(ed25519.Ed25519PublicKey)
+    )
 
 
 def create_grid_manager():
@@ -82,17 +85,17 @@ def _load_certificates_for(config_path, name, gm_key=None):
     if config_path is None:
         return []
     cert_index = 0
-    cert_path = config_path.child('{}.cert.{}'.format(name, cert_index))
+    cert_path = config_path.child("{}.cert.{}".format(name, cert_index))
     certificates = []
     while cert_path.exists():
-        container = json.load(cert_path.open('r'))
+        container = json.load(cert_path.open("r"))
         if gm_key is not None:
             validate_grid_manager_certificate(gm_key, container)
-        cert_data = json.loads(container['certificate'])
-        if cert_data['version'] != 1:
+        cert_data = json.loads(container["certificate"])
+        if cert_data["version"] != 1:
             raise ValueError(
                 "Unknown certificate version '{}' in '{}'".format(
-                    cert_data['version'],
+                    cert_data["version"],
                     cert_path.path,
                 )
             )
@@ -100,12 +103,14 @@ def _load_certificates_for(config_path, name, gm_key=None):
             _GridManagerCertificate(
                 filename=cert_path.path,
                 index=cert_index,
-                expires=datetime.utcfromtimestamp(cert_data['expires']),
-                public_key=ed25519.verifying_key_from_string(cert_data['public_key'].encode('ascii')),
+                expires=datetime.utcfromtimestamp(cert_data["expires"]),
+                public_key=ed25519.verifying_key_from_string(
+                    cert_data["public_key"].encode("ascii")
+                ),
             )
         )
         cert_index += 1
-        cert_path = config_path.child('{}.cert.{}'.format(name, cert_index))
+        cert_path = config_path.child("{}.cert.{}".format(name, cert_index))
     return certificates
 
 
@@ -130,35 +135,27 @@ def load_grid_manager(config_path):
     with config_file:
         config = json.load(config_file)
 
-    gm_version = config.get(u'grid_manager_config_version', None)
+    gm_version = config.get(u"grid_manager_config_version", None)
     if gm_version != 0:
         raise ValueError(
-            "Missing or unknown version '{}' of Grid Manager config".format(
-                gm_version
-            )
+            "Missing or unknown version '{}' of Grid Manager config".format(gm_version)
         )
-    if 'private_key' not in config:
-        raise ValueError(
-            "'private_key' required in config"
-        )
+    if "private_key" not in config:
+        raise ValueError("'private_key' required in config")
 
-    private_key_bytes = config['private_key'].encode('ascii')
+    private_key_bytes = config["private_key"].encode("ascii")
     try:
         private_key, public_key = ed25519.signing_keypair_from_string(private_key_bytes)
     except Exception as e:
-        raise ValueError(
-            "Invalid Grid Manager private_key: {}".format(e)
-        )
+        raise ValueError("Invalid Grid Manager private_key: {}".format(e))
 
     storage_servers = dict()
-    for name, srv_config in config.get(u'storage_servers', {}).items():
-        if 'public_key' not in srv_config:
-            raise ValueError(
-                "No 'public_key' for storage server '{}'".format(name)
-            )
+    for name, srv_config in config.get(u"storage_servers", {}).items():
+        if "public_key" not in srv_config:
+            raise ValueError("No 'public_key' for storage server '{}'".format(name))
         storage_servers[name] = _GridManagerStorageServer(
             name,
-            ed25519.verifying_key_from_string(srv_config['public_key'].encode('ascii')),
+            ed25519.verifying_key_from_string(srv_config["public_key"].encode("ascii")),
             _load_certificates_for(config_path, name, public_key),
         )
 
@@ -173,7 +170,9 @@ class _GridManager(object):
     def __init__(self, private_key_bytes, storage_servers):
         self._storage_servers = dict() if storage_servers is None else storage_servers
         self._private_key_bytes = private_key_bytes
-        self._private_key, self._public_key = ed25519.signing_keypair_from_string(self._private_key_bytes)
+        self._private_key, self._public_key = ed25519.signing_keypair_from_string(
+            self._private_key_bytes
+        )
         self._version = 0
 
     @property
@@ -198,9 +197,7 @@ class _GridManager(object):
         try:
             srv = self._storage_servers[name]
         except KeyError:
-            raise KeyError(
-                "No storage server named '{}'".format(name)
-            )
+            raise KeyError("No storage server named '{}'".format(name))
         expiration = datetime.utcnow() + expiry
         epoch_offset = (expiration - datetime(1970, 1, 1)).total_seconds()
         cert_info = {
@@ -208,7 +205,9 @@ class _GridManager(object):
             "public_key": srv.public_key_string(),
             "version": 1,
         }
-        cert_data = json.dumps(cert_info, separators=(',',':'), sort_keys=True).encode('utf8')
+        cert_data = json.dumps(cert_info, separators=(",", ":"), sort_keys=True).encode(
+            "utf8"
+        )
         sig = ed25519.sign_data(self._private_key, cert_data)
         certificate = {
             u"certificate": cert_data,
@@ -229,9 +228,7 @@ class _GridManager(object):
             for the client)
         """
         if name in self._storage_servers:
-            raise KeyError(
-                "Already have a storage server called '{}'".format(name)
-            )
+            raise KeyError("Already have a storage server called '{}'".format(name))
         ss = _GridManagerStorageServer(name, public_key, [])
         self._storage_servers[name] = ss
         return ss
@@ -243,20 +240,16 @@ class _GridManager(object):
         try:
             del self._storage_servers[name]
         except KeyError:
-            raise KeyError(
-                "No storage server called '{}'".format(name)
-            )
+            raise KeyError("No storage server called '{}'".format(name))
 
     def marshal(self):
         data = {
             u"grid_manager_config_version": self._version,
-            u"private_key": self._private_key_bytes.decode('ascii'),
+            u"private_key": self._private_key_bytes.decode("ascii"),
         }
         if self._storage_servers:
             data[u"storage_servers"] = {
-                name: srv.marshal()
-                for name, srv
-                in self._storage_servers.items()
+                name: srv.marshal() for name, srv in self._storage_servers.items()
             }
         return data
 
@@ -301,22 +294,20 @@ def parse_grid_manager_certificate(gm_data):
     """
 
     required_keys = {
-        'certificate',
-        'signature',
+        "certificate",
+        "signature",
     }
 
     js = json.loads(gm_data)
 
     if not isinstance(js, dict):
-        raise ValueError(
-            "Grid Manager certificate must be a dict"
-        )
+        raise ValueError("Grid Manager certificate must be a dict")
     if set(js.keys()) != required_keys:
-            raise ValueError(
-                "Grid Manager certificate must contain: {}".format(
-                    ", ".join("'{}'".format(k) for k in js.keys()),
-                )
+        raise ValueError(
+            "Grid Manager certificate must contain: {}".format(
+                ", ".join("'{}'".format(k) for k in js.keys()),
             )
+        )
     return js
 
 
@@ -336,13 +327,13 @@ def validate_grid_manager_certificate(gm_key, alleged_cert):
     try:
         ed25519.verify_signature(
             gm_key,
-            base32.a2b(alleged_cert['signature'].encode('ascii')),
-            alleged_cert['certificate'].encode('ascii'),
+            base32.a2b(alleged_cert["signature"].encode("ascii")),
+            alleged_cert["certificate"].encode("ascii"),
         )
     except ed25519.BadSignature:
         return None
     # signature is valid; now we can load the actual data
-    cert = json.loads(alleged_cert['certificate'])
+    cert = json.loads(alleged_cert["certificate"])
     return cert
 
 
@@ -399,7 +390,7 @@ def create_grid_manager_verifier(keys, certs, public_key, now_fn=None, bad_cert=
             """
             print(
                 "Grid Manager certificate signature failed. Certificate: "
-                "\"{cert}\" for key \"{key}\".".format(
+                '"{cert}" for key "{key}".'.format(
                     cert=alleged_cert,
                     key=ed25519.string_from_verifying_key(key),
                 )
@@ -418,8 +409,8 @@ def create_grid_manager_verifier(keys, certs, public_key, now_fn=None, bad_cert=
         now = now_fn()
         # if *any* certificate is still valid then we consider the server valid
         for cert in valid_certs:
-            expires = datetime.utcfromtimestamp(cert['expires'])
-            if cert['public_key'] == public_key:
+            expires = datetime.utcfromtimestamp(cert["expires"])
+            if cert["public_key"] == public_key:
                 if expires > now:
                     # not-expired
                     return True

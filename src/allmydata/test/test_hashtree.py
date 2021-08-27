@@ -10,8 +10,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 
 from twisted.trial import unittest
@@ -25,6 +48,7 @@ def make_tree(numleaves):
     leaf_hashes = [tagged_hash(b"tag", leaf) for leaf in leaves]
     ht = hashtree.HashTree(leaf_hashes)
     return ht
+
 
 class Complete(unittest.TestCase):
     def test_create(self):
@@ -51,13 +75,26 @@ class Complete(unittest.TestCase):
 
     def test_dump(self):
         ht = make_tree(6)
-        expected = [(0,0),
-                    (1,1), (3,2), (7,3), (8,3), (4,2), (9,3), (10,3),
-                    (2,1), (5,2), (11,3), (12,3), (6,2), (13,3), (14,3),
-                    ]
+        expected = [
+            (0, 0),
+            (1, 1),
+            (3, 2),
+            (7, 3),
+            (8, 3),
+            (4, 2),
+            (9, 3),
+            (10, 3),
+            (2, 1),
+            (5, 2),
+            (11, 3),
+            (12, 3),
+            (6, 2),
+            (13, 3),
+            (14, 3),
+        ]
         self.failUnlessEqual(list(ht.depth_first()), expected)
         d = "\n" + ht.dump()
-        #print(d)
+        # print(d)
         self.failUnless("\n  0:" in d)
         self.failUnless("\n    1:" in d)
         self.failUnless("\n      3:" in d)
@@ -65,8 +102,8 @@ class Complete(unittest.TestCase):
         self.failUnless("\n        8:" in d)
         self.failUnless("\n      4:" in d)
 
-class Incomplete(unittest.TestCase):
 
+class Incomplete(unittest.TestCase):
     def test_create(self):
         ht = hashtree.IncompleteHashTree(6)
         ht = hashtree.IncompleteHashTree(9)
@@ -97,12 +134,12 @@ class Incomplete(unittest.TestCase):
     def test_depth_of(self):
         hashtree.IncompleteHashTree(8)
         self.failUnlessEqual(hashtree.depth_of(0), 0)
-        for i in [1,2]:
-            self.failUnlessEqual(hashtree.depth_of(i), 1, "i=%d"%i)
-        for i in [3,4,5,6]:
-            self.failUnlessEqual(hashtree.depth_of(i), 2, "i=%d"%i)
-        for i in [7,8,9,10,11,12,13,14]:
-            self.failUnlessEqual(hashtree.depth_of(i), 3, "i=%d"%i)
+        for i in [1, 2]:
+            self.failUnlessEqual(hashtree.depth_of(i), 1, "i=%d" % i)
+        for i in [3, 4, 5, 6]:
+            self.failUnlessEqual(hashtree.depth_of(i), 2, "i=%d" % i)
+        for i in [7, 8, 9, 10, 11, 12, 13, 14]:
+            self.failUnlessEqual(hashtree.depth_of(i), 3, "i=%d" % i)
 
     def test_large(self):
         # IncompleteHashTree.set_hashes() used to take O(N**2). This test is
@@ -130,7 +167,7 @@ class Incomplete(unittest.TestCase):
         needed = set()
         for i in range(SIZE):
             needed.update(ht.needed_hashes(i, True))
-        all = dict([ (i, ht[i]) for i in needed])
+        all = dict([(i, ht[i]) for i in needed])
         iht.set_hashes(hashes=all)
 
     def test_check(self):
@@ -144,7 +181,7 @@ class Incomplete(unittest.TestCase):
         self.failUnlessEqual(iht.needed_hashes(0), set([8, 4, 2]))
         self.failUnlessEqual(iht.needed_hashes(0, True), set([7, 8, 4, 2]))
         self.failUnlessEqual(iht.needed_hashes(1), set([7, 4, 2]))
-        iht[0] = ht[0] # set the root
+        iht[0] = ht[0]  # set the root
         self.failUnlessEqual(iht.needed_hashes(0), set([8, 4, 2]))
         self.failUnlessEqual(iht.needed_hashes(1), set([7, 4, 2]))
         iht[5] = ht[5]

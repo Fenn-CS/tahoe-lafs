@@ -140,6 +140,7 @@ class EliotLoggedRunTest(object):
 
     :ivar _run_tests_with_factory: A factory for the other *RunTest*.
     """
+
     _run_tests_with_factory = attr.ib()
     case = attr.ib()
     handlers = attr.ib(default=None)

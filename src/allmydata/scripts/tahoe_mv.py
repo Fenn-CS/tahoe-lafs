@@ -3,15 +3,20 @@ from __future__ import print_function
 import re
 import urllib
 import json
-from allmydata.scripts.common import get_alias, DEFAULT_ALIAS, escape_path, \
-                                     UnknownAliasError
+from allmydata.scripts.common import (
+    get_alias,
+    DEFAULT_ALIAS,
+    escape_path,
+    UnknownAliasError,
+)
 from allmydata.scripts.common_http import do_http, format_http_error
 from allmydata.util.encodingutil import to_bytes
 
 # this script is used for both 'mv' and 'ln'
 
+
 def mv(options, mode="move"):
-    nodeurl = options['node-url']
+    nodeurl = options["node-url"]
     aliases = options.aliases
     from_file = options.from_file
     to_file = options.to_file
@@ -30,7 +35,7 @@ def mv(options, mode="move"):
         from_url += "/" + escape_path(from_path)
     # figure out the source cap
     resp = do_http("GET", from_url + "?t=json")
-    if not re.search(r'^2\d\d$', str(resp.status)):
+    if not re.search(r"^2\d\d$", str(resp.status)):
         print(format_http_error("Error", resp), file=stderr)
         return 1
     data = resp.read()
@@ -49,13 +54,13 @@ def mv(options, mode="move"):
 
     if to_url.endswith("/"):
         # "mv foo.txt bar/" == "mv foo.txt bar/foo.txt"
-        to_url += escape_path(from_path[from_path.rfind("/")+1:])
+        to_url += escape_path(from_path[from_path.rfind("/") + 1 :])
 
     to_url += "?t=uri&replace=only-files"
 
     resp = do_http("PUT", to_url, cap)
     status = resp.status
-    if not re.search(r'^2\d\d$', str(status)):
+    if not re.search(r"^2\d\d$", str(status)):
         if status == 409:
             print("Error: You can't overwrite a directory with a file", file=stderr)
         else:
@@ -67,8 +72,11 @@ def mv(options, mode="move"):
     if mode == "move":
         # now remove the original
         resp = do_http("DELETE", from_url)
-        if not re.search(r'^2\d\d$', str(resp.status)):
-            print(format_http_error("Error deleting original after move", resp), file=stderr)
+        if not re.search(r"^2\d\d$", str(resp.status)):
+            print(
+                format_http_error("Error deleting original after move", resp),
+                file=stderr,
+            )
             return 2
 
     print("OK", file=stdout)

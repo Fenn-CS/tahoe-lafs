@@ -1,15 +1,24 @@
 from __future__ import print_function
 
 import urllib
-from allmydata.scripts.common_http import do_http, format_http_success, format_http_error
-from allmydata.scripts.common import get_alias, DEFAULT_ALIAS, escape_path, \
-                                     UnknownAliasError
+from allmydata.scripts.common_http import (
+    do_http,
+    format_http_success,
+    format_http_error,
+)
+from allmydata.scripts.common import (
+    get_alias,
+    DEFAULT_ALIAS,
+    escape_path,
+    UnknownAliasError,
+)
+
 
 def unlink(options, command="unlink"):
     """
     @return: a Deferred which eventually fires with the exit code
     """
-    nodeurl = options['node-url']
+    nodeurl = options["node-url"]
     aliases = options.aliases
     where = options.where
     stdout = options.stdout
@@ -23,8 +32,12 @@ def unlink(options, command="unlink"):
         e.display(stderr)
         return 1
     if not path:
-        print("""
-'tahoe %s' can only unlink directory entries, so a path must be given.""" % (command,), file=stderr)
+        print(
+            """
+'tahoe %s' can only unlink directory entries, so a path must be given."""
+            % (command,),
+            file=stderr,
+        )
         return 1
 
     url = nodeurl + "uri/%s" % urllib.quote(rootcap)

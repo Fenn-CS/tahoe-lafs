@@ -4,16 +4,38 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
     # We omit anything that might end up in pickle, just in case.
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import time, os, pickle, struct
 from allmydata.storage.crawler import ShareCrawler
 from allmydata.storage.shares import get_share_file
-from allmydata.storage.common import UnknownMutableContainerVersionError, \
-     UnknownImmutableContainerVersionError
+from allmydata.storage.common import (
+    UnknownMutableContainerVersionError,
+    UnknownImmutableContainerVersionError,
+)
 from twisted.python import log as twlog
+
 
 class LeaseCheckingCrawler(ShareCrawler):
     """I examine the leases on all shares, determining which are still valid
@@ -55,14 +77,20 @@ class LeaseCheckingCrawler(ShareCrawler):
 
     """
 
-    slow_start = 360 # wait 6 minutes after startup
-    minimum_cycle_time = 12*60*60 # not more than twice per day
+    slow_start = 360  # wait 6 minutes after startup
+    minimum_cycle_time = 12 * 60 * 60  # not more than twice per day
 
-    def __init__(self, server, statefile, historyfile,
-                 expiration_enabled, mode,
-                 override_lease_duration, # used if expiration_mode=="age"
-                 cutoff_date, # used if expiration_mode=="cutoff-date"
-                 sharetypes):
+    def __init__(
+        self,
+        server,
+        statefile,
+        historyfile,
+        expiration_enabled,
+        mode,
+        override_lease_duration,  # used if expiration_mode=="age"
+        cutoff_date,  # used if expiration_mode=="cutoff-date"
+        sharetypes,
+    ):
         self.historyfile = historyfile
         self.expiration_enabled = expiration_enabled
         self.mode = mode
@@ -70,9 +98,9 @@ class LeaseCheckingCrawler(ShareCrawler):
         self.cutoff_date = None
         if self.mode == "age":
             assert isinstance(override_lease_duration, (int, type(None)))
-            self.override_lease_duration = override_lease_duration # seconds
+            self.override_lease_duration = override_lease_duration  # seconds
         elif self.mode == "cutoff-date":
-            assert isinstance(cutoff_date, int) # seconds-since-epoch
+            assert isinstance(cutoff_date, int)  # seconds-since-epoch
             assert cutoff_date is not None
             self.cutoff_date = cutoff_date
         else:
@@ -93,26 +121,27 @@ class LeaseCheckingCrawler(ShareCrawler):
 
         # initialize history
         if not os.path.exists(self.historyfile):
-            history = {} # cyclenum -> dict
+            history = {}  # cyclenum -> dict
             with open(self.historyfile, "wb") as f:
                 pickle.dump(history, f)
 
     def create_empty_cycle_dict(self):
         recovered = self.create_empty_recovered_dict()
-        so_far = {"corrupt-shares": [],
-                  "space-recovered": recovered,
-                  "lease-age-histogram": {}, # (minage,maxage)->count
-                  "leases-per-share-histogram": {}, # leasecount->numshares
-                  }
+        so_far = {
+            "corrupt-shares": [],
+            "space-recovered": recovered,
+            "lease-age-histogram": {},  # (minage,maxage)->count
+            "leases-per-share-histogram": {},  # leasecount->numshares
+        }
         return so_far
 
     def create_empty_recovered_dict(self):
         recovered = {}
         for a in ("actual", "original", "configured", "examined"):
             for b in ("buckets", "shares", "sharebytes", "diskbytes"):
-                recovered[a+"-"+b] = 0
-                recovered[a+"-"+b+"-mutable"] = 0
-                recovered[a+"-"+b+"-immutable"] = 0
+                recovered[a + "-" + b] = 0
+                recovered[a + "-" + b + "-mutable"] = 0
+                recovered[a + "-" + b + "-immutable"] = 0
         return recovered
 
     def started_cycle(self, cycle):
@@ -131,13 +160,15 @@ class LeaseCheckingCrawler(ShareCrawler):
             try:
                 shnum = int(fn)
             except ValueError:
-                continue # non-numeric means not a sharefile
+                continue  # non-numeric means not a sharefile
             sharefile = os.path.join(bucketdir, fn)
             try:
                 wks = self.process_share(sharefile)
-            except (UnknownMutableContainerVersionError,
-                    UnknownImmutableContainerVersionError,
-                    struct.error):
+            except (
+                UnknownMutableContainerVersionError,
+                UnknownImmutableContainerVersionError,
+                struct.error,
+            ):
                 twlog.msg("lease-checker error processing %s" % sharefile)
                 twlog.err()
                 which = (storage_index_b32, shnum)
@@ -152,13 +183,13 @@ class LeaseCheckingCrawler(ShareCrawler):
         rec = self.state["cycle-to-date"]["space-recovered"]
         self.increment(rec, "examined-buckets", 1)
         if sharetype:
-            self.increment(rec, "examined-buckets-"+sharetype, 1)
+            self.increment(rec, "examined-buckets-" + sharetype, 1)
         del wks
 
         try:
             bucket_diskbytes = s.st_blocks * 512
         except AttributeError:
-            bucket_diskbytes = 0 # no stat().st_blocks on windows
+            bucket_diskbytes = 0  # no stat().st_blocks on windows
         if sum([wks[0] for wks in would_keep_shares]) == 0:
             self.increment_bucketspace("original", bucket_diskbytes, sharetype)
         if sum([wks[1] for wks in would_keep_shares]) == 0:
@@ -244,21 +275,21 @@ class LeaseCheckingCrawler(ShareCrawler):
             # MacOS. But it isn't available on windows.
             diskbytes = sharebytes
         so_far_sr = self.state["cycle-to-date"]["space-recovered"]
-        self.increment(so_far_sr, a+"-shares", 1)
-        self.increment(so_far_sr, a+"-sharebytes", sharebytes)
-        self.increment(so_far_sr, a+"-diskbytes", diskbytes)
+        self.increment(so_far_sr, a + "-shares", 1)
+        self.increment(so_far_sr, a + "-sharebytes", sharebytes)
+        self.increment(so_far_sr, a + "-diskbytes", diskbytes)
         if sharetype:
-            self.increment(so_far_sr, a+"-shares-"+sharetype, 1)
-            self.increment(so_far_sr, a+"-sharebytes-"+sharetype, sharebytes)
-            self.increment(so_far_sr, a+"-diskbytes-"+sharetype, diskbytes)
+            self.increment(so_far_sr, a + "-shares-" + sharetype, 1)
+            self.increment(so_far_sr, a + "-sharebytes-" + sharetype, sharebytes)
+            self.increment(so_far_sr, a + "-diskbytes-" + sharetype, diskbytes)
 
     def increment_bucketspace(self, a, bucket_diskbytes, sharetype):
         rec = self.state["cycle-to-date"]["space-recovered"]
-        self.increment(rec, a+"-diskbytes", bucket_diskbytes)
-        self.increment(rec, a+"-buckets", 1)
+        self.increment(rec, a + "-diskbytes", bucket_diskbytes)
+        self.increment(rec, a + "-buckets", 1)
         if sharetype:
-            self.increment(rec, a+"-diskbytes-"+sharetype, bucket_diskbytes)
-            self.increment(rec, a+"-buckets-"+sharetype, 1)
+            self.increment(rec, a + "-diskbytes-" + sharetype, bucket_diskbytes)
+            self.increment(rec, a + "-buckets-" + sharetype, 1)
 
     def increment(self, d, k, delta=1):
         if k not in d:
@@ -266,8 +297,8 @@ class LeaseCheckingCrawler(ShareCrawler):
         d[k] += delta
 
     def add_lease_age_to_histogram(self, age):
-        bucket_interval = 24*60*60
-        bucket_number = int(age/bucket_interval)
+        bucket_interval = 24 * 60 * 60
+        bucket_number = int(age / bucket_interval)
         bucket_start = bucket_number * bucket_interval
         bucket_end = bucket_start + bucket_interval
         k = (bucket_start, bucket_end)
@@ -279,8 +310,8 @@ class LeaseCheckingCrawler(ShareCrawler):
         # string keys).
         json_safe_lah = []
         for k in sorted(lah):
-            (minage,maxage) = k
-            json_safe_lah.append( (minage, maxage, lah[k]) )
+            (minage, maxage) = k
+            json_safe_lah.append((minage, maxage, lah[k]))
         return json_safe_lah
 
     def finished_cycle(self, cycle):
@@ -291,10 +322,12 @@ class LeaseCheckingCrawler(ShareCrawler):
         now = time.time()
         h["cycle-start-finish-times"] = (start, now)
         h["expiration-enabled"] = self.expiration_enabled
-        h["configured-expiration-mode"] = (self.mode,
-                                           self.override_lease_duration,
-                                           self.cutoff_date,
-                                           self.sharetypes_to_expire)
+        h["configured-expiration-mode"] = (
+            self.mode,
+            self.override_lease_duration,
+            self.cutoff_date,
+            self.sharetypes_to_expire,
+        )
 
         s = self.state["cycle-to-date"]
 
@@ -387,7 +420,7 @@ class LeaseCheckingCrawler(ShareCrawler):
         """
         progress = self.get_progress()
 
-        state = ShareCrawler.get_state(self) # does a shallow copy
+        state = ShareCrawler.get_state(self)  # does a shallow copy
         with open(self.historyfile, "rb") as f:
             history = pickle.load(f)
         state["history"] = history
@@ -402,10 +435,12 @@ class LeaseCheckingCrawler(ShareCrawler):
         lah = so_far["lease-age-histogram"]
         so_far["lease-age-histogram"] = self.convert_lease_age_histogram(lah)
         so_far["expiration-enabled"] = self.expiration_enabled
-        so_far["configured-expiration-mode"] = (self.mode,
-                                                self.override_lease_duration,
-                                                self.cutoff_date,
-                                                self.sharetypes_to_expire)
+        so_far["configured-expiration-mode"] = (
+            self.mode,
+            self.override_lease_duration,
+            self.cutoff_date,
+            self.sharetypes_to_expire,
+        )
 
         so_far_sr = so_far["space-recovered"]
         remaining_sr = {}
@@ -415,18 +450,18 @@ class LeaseCheckingCrawler(ShareCrawler):
 
         if progress["cycle-complete-percentage"] > 0.0:
             pc = progress["cycle-complete-percentage"] / 100.0
-            m = (1-pc)/pc
+            m = (1 - pc) / pc
             for a in ("actual", "original", "configured", "examined"):
                 for b in ("buckets", "shares", "sharebytes", "diskbytes"):
                     for c in ("", "-mutable", "-immutable"):
-                        k = a+"-"+b+c
+                        k = a + "-" + b + c
                         remaining_sr[k] = m * so_far_sr[k]
                         cycle_sr[k] = so_far_sr[k] + remaining_sr[k]
         else:
             for a in ("actual", "original", "configured", "examined"):
                 for b in ("buckets", "shares", "sharebytes", "diskbytes"):
                     for c in ("", "-mutable", "-immutable"):
-                        k = a+"-"+b+c
+                        k = a + "-" + b + c
                         remaining_sr[k] = None
                         cycle_sr[k] = None
 

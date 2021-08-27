@@ -2,17 +2,8 @@ from future.utils import PY2
 
 import time, json
 from twisted.python.filepath import FilePath
-from twisted.web.template import (
-    Element,
-    XMLFile,
-    tags as T,
-    renderer,
-    renderElement
-)
-from allmydata.web.common_py3 import (
-    abbreviate_time,
-    MultiFormatResource
-)
+from twisted.web.template import Element, XMLFile, tags as T, renderer, renderElement
+from allmydata.web.common_py3 import abbreviate_time, MultiFormatResource
 from allmydata.util.abbreviate import abbreviate_space
 from allmydata.util import time_format, idlib
 
@@ -20,7 +11,7 @@ from allmydata.util import time_format, idlib
 def remove_prefix(s, prefix):
     if not s.startswith(prefix):
         return None
-    return s[len(prefix):]
+    return s[len(prefix) :]
 
 
 class StorageStatusElement(Element):
@@ -93,18 +84,18 @@ class StorageStatusElement(Element):
         available = self._get_storage_stat("storage_server.disk_avail")
 
         tag.fillSlots(
-            disk_total = self.render_space(total),
-            disk_total_abbrev = self.render_abbrev_space(total),
-            disk_used = self.render_space(used),
-            disk_used_abbrev = self.render_abbrev_space(used),
-            disk_free_for_root = self.render_space(free_root),
-            disk_free_for_root_abbrev = self.render_abbrev_space(free_root),
-            disk_free_for_nonroot = self.render_space(free_nonroot),
-            disk_free_for_nonroot_abbrev = self.render_abbrev_space(free_nonroot),
-            reserved_space = self.render_space(reserved),
-            reserved_space_abbrev = self.render_abbrev_space(reserved),
-            disk_avail = self.render_space(available),
-            disk_avail_abbrev = self.render_abbrev_space(available)
+            disk_total=self.render_space(total),
+            disk_total_abbrev=self.render_abbrev_space(total),
+            disk_used=self.render_space(used),
+            disk_used_abbrev=self.render_abbrev_space(used),
+            disk_free_for_root=self.render_space(free_root),
+            disk_free_for_root_abbrev=self.render_abbrev_space(free_root),
+            disk_free_for_nonroot=self.render_space(free_nonroot),
+            disk_free_for_nonroot_abbrev=self.render_abbrev_space(free_nonroot),
+            reserved_space=self.render_space(reserved),
+            reserved_space_abbrev=self.render_abbrev_space(reserved),
+            disk_avail=self.render_space(available),
+            disk_avail_abbrev=self.render_abbrev_space(available),
         )
         return tag
 
@@ -141,15 +132,15 @@ class StorageStatusElement(Element):
             if eta is not None:
                 eta_s = " (ETA %ds)" % eta
 
-            return ["Current crawl %.1f%% complete" % pct,
-                    eta_s,
-                    " (next work in %s)" % abbreviate_time(soon),
-                    cycletime_s,
-                    ]
+            return [
+                "Current crawl %.1f%% complete" % pct,
+                eta_s,
+                " (next work in %s)" % abbreviate_time(soon),
+                cycletime_s,
+            ]
         else:
             soon = p["remaining-wait-time"]
-            return ["Next crawl in %s" % abbreviate_time(soon),
-                    cycletime_s]
+            return ["Next crawl in %s" % abbreviate_time(soon), cycletime_s]
 
     @renderer
     def storage_running(self, req, tag):
@@ -170,22 +161,34 @@ class StorageStatusElement(Element):
         lc = self._storage.lease_checker
         if lc.mode == "age":
             if lc.override_lease_duration is None:
-                tag("Leases will expire naturally, probably 31 days after "
-                    "creation or renewal.")
+                tag(
+                    "Leases will expire naturally, probably 31 days after "
+                    "creation or renewal."
+                )
             else:
-                tag("Leases created or last renewed more than %s ago "
+                tag(
+                    "Leases created or last renewed more than %s ago "
                     "will be considered expired."
-                    % abbreviate_time(lc.override_lease_duration))
+                    % abbreviate_time(lc.override_lease_duration)
+                )
         else:
             assert lc.mode == "cutoff-date"
             localizedutcdate = time.strftime("%d-%b-%Y", time.gmtime(lc.cutoff_date))
             isoutcdate = time_format.iso_utc_date(lc.cutoff_date)
-            tag("Leases created or last renewed before %s (%s) UTC "
+            tag(
+                "Leases created or last renewed before %s (%s) UTC "
                 "will be considered expired."
-                % (isoutcdate, localizedutcdate, ))
+                % (
+                    isoutcdate,
+                    localizedutcdate,
+                )
+            )
         if len(lc.mode) > 2:
-            tag(" The following sharetypes will be expired: ",
-                " ".join(sorted(lc.sharetypes_to_expire)), ".")
+            tag(
+                " The following sharetypes will be expired: ",
+                " ".join(sorted(lc.sharetypes_to_expire)),
+                ".",
+            )
         return tag
 
     @renderer
@@ -209,6 +212,7 @@ class StorageStatusElement(Element):
         ecr = ec["space-recovered"]
 
         p = T.ul()
+
         def add(*pieces):
             p(T.li(pieces))
 
@@ -216,39 +220,66 @@ class StorageStatusElement(Element):
             if d is None:
                 return "?"
             return "%d" % d
-        add("So far, this cycle has examined %d shares in %d buckets"
+
+        add(
+            "So far, this cycle has examined %d shares in %d buckets"
             % (sr["examined-shares"], sr["examined-buckets"]),
             " (%d mutable / %d immutable)"
             % (sr["examined-buckets-mutable"], sr["examined-buckets-immutable"]),
-            " (%s / %s)" % (abbreviate_space(sr["examined-diskbytes-mutable"]),
-                            abbreviate_space(sr["examined-diskbytes-immutable"])),
-            )
+            " (%s / %s)"
+            % (
+                abbreviate_space(sr["examined-diskbytes-mutable"]),
+                abbreviate_space(sr["examined-diskbytes-immutable"]),
+            ),
+        )
         add("and has recovered: ", self.format_recovered(sr, "actual"))
         if so_far["expiration-enabled"]:
-            add("The remainder of this cycle is expected to recover: ",
-                self.format_recovered(esr, "actual"))
-            add("The whole cycle is expected to examine %s shares in %s buckets"
-                % (maybe(ecr["examined-shares"]), maybe(ecr["examined-buckets"])))
+            add(
+                "The remainder of this cycle is expected to recover: ",
+                self.format_recovered(esr, "actual"),
+            )
+            add(
+                "The whole cycle is expected to examine %s shares in %s buckets"
+                % (maybe(ecr["examined-shares"]), maybe(ecr["examined-buckets"]))
+            )
             add("and to recover: ", self.format_recovered(ecr, "actual"))
 
         else:
-            add("If expiration were enabled, we would have recovered: ",
-                self.format_recovered(sr, "configured"), " by now")
-            add("and the remainder of this cycle would probably recover: ",
-                self.format_recovered(esr, "configured"))
-            add("and the whole cycle would probably recover: ",
-                self.format_recovered(ecr, "configured"))
+            add(
+                "If expiration were enabled, we would have recovered: ",
+                self.format_recovered(sr, "configured"),
+                " by now",
+            )
+            add(
+                "and the remainder of this cycle would probably recover: ",
+                self.format_recovered(esr, "configured"),
+            )
+            add(
+                "and the whole cycle would probably recover: ",
+                self.format_recovered(ecr, "configured"),
+            )
 
-        add("if we were strictly using each lease's default 31-day lease lifetime "
+        add(
+            "if we were strictly using each lease's default 31-day lease lifetime "
             "(instead of our configured behavior), "
             "this cycle would be expected to recover: ",
-            self.format_recovered(ecr, "original"))
+            self.format_recovered(ecr, "original"),
+        )
 
         if so_far["corrupt-shares"]:
-            add("Corrupt shares:",
-                T.ul( (T.li( ["SI %s shnum %d" % corrupt_share
-                              for corrupt_share in so_far["corrupt-shares"] ]
-                             ))))
+            add(
+                "Corrupt shares:",
+                T.ul(
+                    (
+                        T.li(
+                            [
+                                "SI %s shnum %d" % corrupt_share
+                                for corrupt_share in so_far["corrupt-shares"]
+                            ]
+                        )
+                    )
+                ),
+            )
         return tag("Current cycle:", p)
 
     @renderer
@@ -260,10 +291,12 @@ class StorageStatusElement(Element):
         last = h[max(h.keys())]
 
         start, end = last["cycle-start-finish-times"]
-        tag("Last complete cycle (which took %s and finished %s ago)"
-            " recovered: " % (abbreviate_time(end-start),
-                              abbreviate_time(time.time() - end)),
-            self.format_recovered(last["space-recovered"], "actual"))
+        tag(
+            "Last complete cycle (which took %s and finished %s ago)"
+            " recovered: "
+            % (abbreviate_time(end - start), abbreviate_time(time.time() - end)),
+            self.format_recovered(last["space-recovered"], "actual"),
+        )
 
         p = T.ul()
 
@@ -275,14 +308,26 @@ class StorageStatusElement(Element):
 
         if not last["expiration-enabled"]:
             rec = self.format_recovered(last["space-recovered"], "configured")
-            add("but expiration was not enabled. If it had been, "
-                "it would have recovered: ", rec)
+            add(
+                "but expiration was not enabled. If it had been, "
+                "it would have recovered: ",
+                rec,
+            )
 
         if last["corrupt-shares"]:
-            add("Corrupt shares:",
-                T.ul( (T.li( ["SI %s shnum %d" % corrupt_share
-                              for corrupt_share in last["corrupt-shares"] ]
-                             ))))
+            add(
+                "Corrupt shares:",
+                T.ul(
+                    (
+                        T.li(
+                            [
+                                "SI %s shnum %d" % corrupt_share
+                                for corrupt_share in last["corrupt-shares"]
+                            ]
+                        )
+                    )
+                ),
+            )
 
         return tag(p)
 
@@ -292,15 +337,17 @@ class StorageStatusElement(Element):
             if d is None:
                 return "?"
             return "%d" % d
-        return "%s shares, %s buckets (%s mutable / %s immutable), %s (%s / %s)" % \
-               (maybe(sr["%s-shares" % a]),
-                maybe(sr["%s-buckets" % a]),
-                maybe(sr["%s-buckets-mutable" % a]),
-                maybe(sr["%s-buckets-immutable" % a]),
-                abbreviate_space(sr["%s-diskbytes" % a]),
-                abbreviate_space(sr["%s-diskbytes-mutable" % a]),
-                abbreviate_space(sr["%s-diskbytes-immutable" % a]),
-                )
+
+        return "%s shares, %s buckets (%s mutable / %s immutable), %s (%s / %s)" % (
+            maybe(sr["%s-shares" % a]),
+            maybe(sr["%s-buckets" % a]),
+            maybe(sr["%s-buckets-mutable" % a]),
+            maybe(sr["%s-buckets-immutable" % a]),
+            abbreviate_space(sr["%s-diskbytes" % a]),
+            abbreviate_space(sr["%s-diskbytes-mutable" % a]),
+            abbreviate_space(sr["%s-diskbytes-immutable" % a]),
+        )
+
 
 class StorageStatus(MultiFormatResource):
     def __init__(self, storage, nickname=""):
@@ -313,11 +360,12 @@ class StorageStatus(MultiFormatResource):
 
     def render_JSON(self, req):
         req.setHeader("content-type", "text/plain")
-        d = {"stats": self._storage.get_stats(),
-             "bucket-counter": self._storage.bucket_counter.get_state(),
-             "lease-checker": self._storage.lease_checker.get_state(),
-             "lease-checker-progress": self._storage.lease_checker.get_progress(),
-             }
+        d = {
+            "stats": self._storage.get_stats(),
+            "bucket-counter": self._storage.bucket_counter.get_state(),
+            "lease-checker": self._storage.lease_checker.get_state(),
+            "lease-checker-progress": self._storage.lease_checker.get_progress(),
+        }
         result = json.dumps(d, indent=1) + "\n"
         if PY2:
             result = result.decode("utf-8")

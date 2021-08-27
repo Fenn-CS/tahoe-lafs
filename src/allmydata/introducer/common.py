@@ -12,8 +12,9 @@ def get_tubid_string_from_ann(ann):
         furl = furl.encode("utf-8")
     return get_tubid_string(furl)
 
+
 def get_tubid_string(furl):
-    m = re.match(br'pb://(\w+)@', furl)
+    m = re.match(br"pb://(\w+)@", furl)
     assert m
     return m.group(1).lower()
 
@@ -31,9 +32,7 @@ def sign_to_foolscap(announcement, signing_key):
     # will use JSON({msg:b64(JSON(msg).utf8), sig:v0-b64(sig),
     # pubkey:v0-b64(pubkey)}) .
     msg = json.dumps(announcement).encode("utf-8")
-    sig = b"v0-" + base32.b2a(
-        ed25519.sign_data(signing_key, msg)
-    )
+    sig = b"v0-" + base32.b2a(ed25519.sign_data(signing_key, msg))
     verifying_key_string = ed25519.string_from_verifying_key(
         ed25519.verifying_key_from_signing_key(signing_key)
     )
@@ -75,9 +74,9 @@ class SubscriberDescriptor(object):
     .tubid: for subscribers connecting with Foolscap, their tubid (string)
     """
 
-    def __init__(self, service_name, when,
-                 nickname, version, app_versions,
-                 remote_address, tubid):
+    def __init__(
+        self, service_name, when, nickname, version, app_versions, remote_address, tubid
+    ):
         self.service_name = service_name
         self.when = when
         self.nickname = nickname
@@ -85,6 +84,7 @@ class SubscriberDescriptor(object):
         self.app_versions = app_versions
         self.remote_address = remote_address
         self.tubid = tubid
+
 
 class AnnouncementDescriptor(object):
     """This describes an announcement, for status display purposes. It

@@ -26,6 +26,7 @@ def is_new_style(cls):
     # All new-style classes are instances of type.  By definition.
     return isinstance(cls, type)
 
+
 def defined_here(cls, where):
     """
     :return bool: ``True`` if and only if the given class was defined in a
@@ -35,10 +36,12 @@ def defined_here(cls, where):
     """
     return cls.__module__ == where
 
+
 class PythonTwoRegressions(TestCase):
     """
     Regression tests for Python 2 behaviors related to Python 3 porting.
     """
+
     def test_new_style_classes(self):
         """
         All classes in Tahoe-LAFS are new-style.

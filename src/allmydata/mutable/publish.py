@@ -7,8 +7,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import os, time
 from io import BytesIO
@@ -19,21 +42,32 @@ from twisted.python import failure
 
 from allmydata.crypto import aes
 from allmydata.crypto import rsa
-from allmydata.interfaces import IPublishStatus, SDMF_VERSION, MDMF_VERSION, \
-                                 IMutableUploadable
+from allmydata.interfaces import (
+    IPublishStatus,
+    SDMF_VERSION,
+    MDMF_VERSION,
+    IMutableUploadable,
+)
 from allmydata.util import base32, hashutil, mathutil, log
 from allmydata.util.dictutil import DictOfSets
 from allmydata import hashtree, codec
 from allmydata.storage.server import si_b2a
 from foolscap.api import eventually, fireEventually
-from allmydata.mutable.common import MODE_WRITE, MODE_CHECK, MODE_REPAIR, \
-     UncoordinatedWriteError, NotEnoughServersError
+from allmydata.mutable.common import (
+    MODE_WRITE,
+    MODE_CHECK,
+    MODE_REPAIR,
+    UncoordinatedWriteError,
+    NotEnoughServersError,
+)
 from allmydata.mutable.servermap import ServerMap
-from allmydata.mutable.layout import get_version_from_checkstring,\
-                                     unpack_mdmf_checkstring, \
-                                     unpack_sdmf_checkstring, \
-                                     MDMFSlotWriteProxy, \
-                                     SDMFSlotWriteProxy
+from allmydata.mutable.layout import (
+    get_version_from_checkstring,
+    unpack_mdmf_checkstring,
+    unpack_sdmf_checkstring,
+    MDMFSlotWriteProxy,
+    SDMFSlotWriteProxy,
+)
 
 from eliot import (
     Message,
@@ -46,9 +80,11 @@ PUSHING_BLOCKS_STATE = 0
 PUSHING_EVERYTHING_ELSE_STATE = 1
 DONE_STATE = 2
 
+
 @implementer(IPublishStatus)
 class PublishStatus(object):
     statusid_counter = count(0)
+
     def __init__(self):
         self.timings = {}
         self.timings["send_per_server"] = {}
@@ -70,53 +106,74 @@ class PublishStatus(object):
         if server not in self.timings["send_per_server"]:
             self.timings["send_per_server"][server] = []
         self.timings["send_per_server"][server].append(elapsed)
+
     def accumulate_encode_time(self, elapsed):
         self.timings["encode"] += elapsed
+
     def accumulate_encrypt_time(self, elapsed):
         self.timings["encrypt"] += elapsed
 
     def get_started(self):
         return self.started
+
     def get_storage_index(self):
         return self.storage_index
+
     def get_encoding(self):
         return self.encoding
+
     def using_helper(self):
         return self.helper
+
     def get_servermap(self):
         return self.servermap
+
     def get_size(self):
         return self.size
+
     def get_status(self):
         return self.status
+
     def get_progress(self):
         return self.progress
+
     def get_active(self):
         return self.active
+
     def get_counter(self):
         return self.counter
+
     def get_problems(self):
         return self._problems
 
     def set_storage_index(self, si):
         self.storage_index = si
+
     def set_helper(self, helper):
         self.helper = helper
+
     def set_servermap(self, servermap):
         self.servermap = servermap
+
     def set_encoding(self, k, n):
         self.encoding = (k, n)
+
     def set_size(self, size):
         self.size = size
+
     def set_status(self, status):
         self.status = status
+
     def set_progress(self, value):
         self.progress = value
+
     def set_active(self, value):
         self.active = value
 
+
 class LoopLimitExceededError(Exception):
     pass
+
 
 class Publish(object):
     """I represent a single act of publishing the mutable file to the grid. I
@@ -146,17 +203,15 @@ class Publish(object):
         self._version = self._node.get_version()
         assert self._version in (SDMF_VERSION, MDMF_VERSION)
 
-
     def get_status(self):
         return self._status
 
     def log(self, *args, **kwargs):
-        if 'parent' not in kwargs:
-            kwargs['parent'] = self._log_number
+        if "parent" not in kwargs:
+            kwargs["parent"] = self._log_number
         if "facility" not in kwargs:
             kwargs["facility"] = "tahoe.mutable.publish"
         return log.msg(*args, **kwargs)
-
 
     def update(self, data, offset, blockhashes, version):
         """
@@ -187,8 +242,9 @@ class Publish(object):
             self.datalength = data.get_size()
 
         self.log("starting update")
-        self.log("adding new data of length %d at offset %d" % \
-                    (data.get_size(), offset))
+        self.log(
+            "adding new data of length %d at offset %d" % (data.get_size(), offset)
+        )
         self.log("new data length is %d" % self.datalength)
         self._status.set_size(self.datalength)
         self._status.set_status("Started")
@@ -203,14 +259,21 @@ class Publish(object):
         # servermap was updated in MODE_WRITE, so we can depend upon the
         # serverlist computed by that process instead of computing our own.
         assert self._servermap
-        assert self._servermap.get_last_update()[0] in (MODE_WRITE, MODE_CHECK, MODE_REPAIR)
+        assert self._servermap.get_last_update()[0] in (
+            MODE_WRITE,
+            MODE_CHECK,
+            MODE_REPAIR,
+        )
         # we will push a version that is one larger than anything present
         # in the grid, according to the servermap.
         self._new_seqnum = self._servermap.highest_seqnum() + 1
         self._status.set_servermap(self._servermap)
 
-        self.log(format="new seqnum will be %(seqnum)d",
-                 seqnum=self._new_seqnum, level=log.NOISY)
+        self.log(
+            format="new seqnum will be %(seqnum)d",
+            seqnum=self._new_seqnum,
+            level=log.NOISY,
+        )
 
         # We're updating an existing file, so all of the following
         # should be available.
@@ -229,8 +292,8 @@ class Publish(object):
 
         sb = self._storage_broker
         full_serverlist = list(sb.get_servers_for_psi(self._storage_index))
-        self.full_serverlist = full_serverlist # for use later, immutable
-        self.bad_servers = set() # servers who have errbacked/refused requests
+        self.full_serverlist = full_serverlist  # for use later, immutable
+        self.bad_servers = set()  # servers who have errbacked/refused requests
 
         # This will set self.segment_size, self.num_segments, and
         # self.fec. TODO: Does it know how to do the offset? Probably
@@ -246,7 +309,7 @@ class Publish(object):
         # we keep track of three tables. The first is our goal: which share
         # we want to see on which servers. This is initially populated by the
         # existing servermap.
-        self.goal = set() # pairs of (server, shnum) tuples
+        self.goal = set()  # pairs of (server, shnum) tuples
 
         # the number of outstanding queries: those that are in flight and
         # may or may not be delivered, accepted, or acknowledged. This is
@@ -257,7 +320,7 @@ class Publish(object):
         # the third is a table of successes: share which have actually been
         # placed. These are populated when responses come back with success.
         # When self.placed == self.goal, we're done.
-        self.placed = set() # (server, shnum) tuples
+        self.placed = set()  # (server, shnum) tuples
 
         self.bad_share_checkstrings = {}
 
@@ -280,33 +343,41 @@ class Publish(object):
         # For each (server, shnum) in self.goal, we make a
         # write proxy for that server. We'll use this to write
         # shares to the server.
-        for (server,shnum) in self.goal:
+        for (server, shnum) in self.goal:
             write_enabler = self._node.get_write_enabler(server)
             renew_secret = self._node.get_renewal_secret(server)
             cancel_secret = self._node.get_cancel_secret(server)
             secrets = (write_enabler, renew_secret, cancel_secret)
 
-            writer = writer_class(shnum,
-                                  server.get_storage_server(),
-                                  self._storage_index,
-                                  secrets,
-                                  self._new_seqnum,
-                                  self.required_shares,
-                                  self.total_shares,
-                                  self.segment_size,
-                                  self.datalength)
+            writer = writer_class(
+                shnum,
+                server.get_storage_server(),
+                self._storage_index,
+                secrets,
+                self._new_seqnum,
+                self.required_shares,
+                self.total_shares,
+                self.segment_size,
+                self.datalength,
+            )
 
             self.writers.add(shnum, writer)
             writer.server = server
             known_shares = self._servermap.get_known_shares()
             assert (server, shnum) in known_shares
-            old_versionid, old_timestamp = known_shares[(server,shnum)]
-            (old_seqnum, old_root_hash, old_salt, old_segsize,
-             old_datalength, old_k, old_N, old_prefix,
-             old_offsets_tuple) = old_versionid
-            writer.set_checkstring(old_seqnum,
-                                   old_root_hash,
-                                   old_salt)
+            old_versionid, old_timestamp = known_shares[(server, shnum)]
+            (
+                old_seqnum,
+                old_root_hash,
+                old_salt,
+                old_segsize,
+                old_datalength,
+                old_k,
+                old_N,
+                old_prefix,
+                old_offsets_tuple,
+            ) = old_versionid
+            writer.set_checkstring(old_seqnum, old_root_hash, old_salt)
 
         # Our remote shares will not have a complete checkstring until
         # after we are done writing share data and have started to write
@@ -321,15 +392,14 @@ class Publish(object):
 
         # Our update process fetched these for us. We need to update
         # them in place as publishing happens.
-        self.blockhashes = {} # (shnum, [blochashes])
+        self.blockhashes = {}  # (shnum, [blochashes])
         for (i, bht) in list(blockhashes.items()):
             # We need to extract the leaves from our old hash tree.
-            old_segcount = mathutil.div_ceil(version[4],
-                                             version[3])
+            old_segcount = mathutil.div_ceil(version[4], version[3])
             h = hashtree.IncompleteHashTree(old_segcount)
             bht = dict(enumerate(bht))
             h.set_hashes(bht)
-            leaves = h[h.get_leaf_index(0):]
+            leaves = h[h.get_leaf_index(0) :]
             for j in range(self.num_segments - len(leaves)):
                 leaves.append(None)
 
@@ -340,16 +410,16 @@ class Publish(object):
             # power-of-two. If we exceed a power of two boundary, we
             # should be encoding the file over again, and should not be
             # here. So, we have
-            #assert len(self.blockhashes[i]) == \
+            # assert len(self.blockhashes[i]) == \
             #    hashtree.roundup_pow2(self.num_segments), \
             #        len(self.blockhashes[i])
             # XXX: Except this doesn't work. Figure out why.
 
         # These are filled in later, after we've modified the block hash
         # tree suitably.
-        self.sharehash_leaves = None # eventually [sharehashes]
-        self.sharehashes = {} # shnum -> [sharehash leaves necessary to
-                              # validate the share]
+        self.sharehash_leaves = None  # eventually [sharehashes]
+        self.sharehashes = {}  # shnum -> [sharehash leaves necessary to
+        # validate the share]
 
         self.log("Starting push")
 
@@ -357,7 +427,6 @@ class Publish(object):
         self._push()
 
         return self.done_deferred
-
 
     def publish(self, newdata):
         """Publish the filenode's current contents.  Returns a Deferred that
@@ -372,9 +441,9 @@ class Publish(object):
 
         self.data = newdata
         self.datalength = newdata.get_size()
-        #if self.datalength >= DEFAULT_MAX_SEGMENT_SIZE:
+        # if self.datalength >= DEFAULT_MAX_SEGMENT_SIZE:
         #    self._version = MDMF_VERSION
-        #else:
+        # else:
         #    self._version = SDMF_VERSION
 
         self.log("starting publish, datalen is %s" % self.datalength)
@@ -391,7 +460,11 @@ class Publish(object):
         # servermap was updated in MODE_WRITE, so we can depend upon the
         # serverlist computed by that process instead of computing our own.
         if self._servermap:
-            assert self._servermap.get_last_update()[0] in (MODE_WRITE, MODE_CHECK, MODE_REPAIR)
+            assert self._servermap.get_last_update()[0] in (
+                MODE_WRITE,
+                MODE_CHECK,
+                MODE_REPAIR,
+            )
             # we will push a version that is one larger than anything present
             # in the grid, according to the servermap.
             self._new_seqnum = self._servermap.highest_seqnum() + 1
@@ -402,8 +475,11 @@ class Publish(object):
             self._servermap = ServerMap()
         self._status.set_servermap(self._servermap)
 
-        self.log(format="new seqnum will be %(seqnum)d",
-                 seqnum=self._new_seqnum, level=log.NOISY)
+        self.log(
+            format="new seqnum will be %(seqnum)d",
+            seqnum=self._new_seqnum,
+            level=log.NOISY,
+        )
 
         # having an up-to-date servermap (or using a filenode that was just
         # created for the first time) also guarantees that the following
@@ -423,8 +499,8 @@ class Publish(object):
 
         sb = self._storage_broker
         full_serverlist = list(sb.get_servers_for_psi(self._storage_index))
-        self.full_serverlist = full_serverlist # for use later, immutable
-        self.bad_servers = set() # servers who have errbacked/refused requests
+        self.full_serverlist = full_serverlist  # for use later, immutable
+        self.bad_servers = set()  # servers who have errbacked/refused requests
 
         # This will set self.segment_size, self.num_segments, and
         # self.fec.
@@ -439,7 +515,7 @@ class Publish(object):
         # we keep track of three tables. The first is our goal: which share
         # we want to see on which servers. This is initially populated by the
         # existing servermap.
-        self.goal = set() # pairs of (server, shnum) tuples
+        self.goal = set()  # pairs of (server, shnum) tuples
 
         # the number of outstanding queries: those that are in flight and
         # may or may not be delivered, accepted, or acknowledged. This is
@@ -450,7 +526,7 @@ class Publish(object):
         # the third is a table of successes: share which have actually been
         # placed. These are populated when responses come back with success.
         # When self.placed == self.goal, we're done.
-        self.placed = set() # (server, shnum) tuples
+        self.placed = set()  # (server, shnum) tuples
 
         self.bad_share_checkstrings = {}
 
@@ -465,8 +541,8 @@ class Publish(object):
         # signatures, etc). We want to replace these.
         for key, old_checkstring in list(self._servermap.get_bad_shares().items()):
             (server, shnum) = key
-            self.goal.add( (server,shnum) )
-            self.bad_share_checkstrings[(server,shnum)] = old_checkstring
+            self.goal.add((server, shnum))
+            self.bad_share_checkstrings[(server, shnum)] = old_checkstring
 
         # TODO: Make this part do server selection.
         self.update_goal()
@@ -482,32 +558,40 @@ class Publish(object):
         # For each (server, shnum) in self.goal, we make a
         # write proxy for that server. We'll use this to write
         # shares to the server.
-        for (server,shnum) in self.goal:
+        for (server, shnum) in self.goal:
             write_enabler = self._node.get_write_enabler(server)
             renew_secret = self._node.get_renewal_secret(server)
             cancel_secret = self._node.get_cancel_secret(server)
             secrets = (write_enabler, renew_secret, cancel_secret)
 
-            writer =  writer_class(shnum,
-                                   server.get_storage_server(),
-                                   self._storage_index,
-                                   secrets,
-                                   self._new_seqnum,
-                                   self.required_shares,
-                                   self.total_shares,
-                                   self.segment_size,
-                                   self.datalength)
+            writer = writer_class(
+                shnum,
+                server.get_storage_server(),
+                self._storage_index,
+                secrets,
+                self._new_seqnum,
+                self.required_shares,
+                self.total_shares,
+                self.segment_size,
+                self.datalength,
+            )
             self.writers.add(shnum, writer)
             writer.server = server
             known_shares = self._servermap.get_known_shares()
             if (server, shnum) in known_shares:
-                old_versionid, old_timestamp = known_shares[(server,shnum)]
-                (old_seqnum, old_root_hash, old_salt, old_segsize,
-                 old_datalength, old_k, old_N, old_prefix,
-                 old_offsets_tuple) = old_versionid
-                writer.set_checkstring(old_seqnum,
-                                       old_root_hash,
-                                       old_salt)
+                old_versionid, old_timestamp = known_shares[(server, shnum)]
+                (
+                    old_seqnum,
+                    old_root_hash,
+                    old_salt,
+                    old_segsize,
+                    old_datalength,
+                    old_k,
+                    old_N,
+                    old_prefix,
+                    old_offsets_tuple,
+                ) = old_versionid
+                writer.set_checkstring(old_seqnum, old_root_hash, old_salt)
             elif (server, shnum) in self.bad_share_checkstrings:
                 old_checkstring = self.bad_share_checkstrings[(server, shnum)]
                 writer.set_checkstring(old_checkstring)
@@ -531,9 +615,9 @@ class Publish(object):
             blocks = self.blockhashes[i]
             for j in range(self.num_segments):
                 blocks.append(None)
-        self.sharehash_leaves = None # eventually [sharehashes]
-        self.sharehashes = {} # shnum -> [sharehash leaves necessary to
-                              # validate the share]
+        self.sharehash_leaves = None  # eventually [sharehashes]
+        self.sharehashes = {}  # shnum -> [sharehash leaves necessary to
+        # validate the share]
 
         self.log("Starting push")
 
@@ -546,22 +630,20 @@ class Publish(object):
         return list(list(self.writers.values())[0])[0]
 
     def _update_status(self):
-        self._status.set_status("Sending Shares: %d placed out of %d, "
-                                "%d messages outstanding" %
-                                (len(self.placed),
-                                 len(self.goal),
-                                 self.num_outstanding))
+        self._status.set_status(
+            "Sending Shares: %d placed out of %d, "
+            "%d messages outstanding"
+            % (len(self.placed), len(self.goal), self.num_outstanding)
+        )
         self._status.set_progress(1.0 * len(self.placed) / len(self.goal))
-
 
     def setup_encoding_parameters(self, offset=0):
         if self._version == MDMF_VERSION:
-            segment_size = DEFAULT_MAX_SEGMENT_SIZE # 128 KiB by default
+            segment_size = DEFAULT_MAX_SEGMENT_SIZE  # 128 KiB by default
         else:
-            segment_size = self.datalength # SDMF is only one segment
+            segment_size = self.datalength  # SDMF is only one segment
         # this must be a multiple of self.required_shares
-        segment_size = mathutil.next_multiple(segment_size,
-                                              self.required_shares)
+        segment_size = mathutil.next_multiple(segment_size, self.required_shares)
         self.segment_size = segment_size
 
         # Calculate the starting segment for the upload.
@@ -575,8 +657,7 @@ class Publish(object):
             # because it ignores the extra data. div_ceil will give us
             # the right number of segments for the data that we're
             # given.
-            self.num_segments = mathutil.div_ceil(self.datalength,
-                                                  segment_size)
+            self.num_segments = mathutil.div_ceil(self.datalength, segment_size)
 
             self.starting_segment = offset // segment_size
 
@@ -584,13 +665,12 @@ class Publish(object):
             self.num_segments = 0
             self.starting_segment = 0
 
-
         self.log("building encoding parameters for file")
         self.log("got segsize %d" % self.segment_size)
         self.log("got %d segments" % self.num_segments)
 
         if self._version == SDMF_VERSION:
-            assert self.num_segments in (0, 1) # SDMF
+            assert self.num_segments in (0, 1)  # SDMF
         # calculate the tail segment size.
 
         if segment_size and self.datalength:
@@ -605,8 +685,7 @@ class Publish(object):
 
         # Make FEC encoders
         fec = codec.CRSEncoder()
-        fec.set_params(self.segment_size,
-                       self.required_shares, self.total_shares)
+        fec.set_params(self.segment_size, self.required_shares, self.total_shares)
         self.piece_size = fec.get_block_size()
         self.fec = fec
 
@@ -614,9 +693,9 @@ class Publish(object):
             self.tail_fec = self.fec
         else:
             tail_fec = codec.CRSEncoder()
-            tail_fec.set_params(self.tail_segment_size,
-                                self.required_shares,
-                                self.total_shares)
+            tail_fec.set_params(
+                self.tail_segment_size, self.required_shares, self.total_shares
+            )
             self.tail_fec = tail_fec
 
         self._current_segment = self.starting_segment
@@ -634,7 +713,6 @@ class Publish(object):
 
         self.log("got start segment %d" % self.starting_segment)
         self.log("got end segment %d" % self.end_segment)
-
 
     def _push(self, ignored=None):
         """
@@ -662,7 +740,6 @@ class Publish(object):
         # file.
         return self._done()
 
-
     def push_segment(self, segnum):
         if self.num_segments == 0 and self._version == SDMF_VERSION:
             self._add_dummy_salts()
@@ -674,8 +751,10 @@ class Publish(object):
 
         d = self._encode_segment(segnum)
         d.addCallback(self._push_segment, segnum)
+
         def _increment_segnum(ign):
             self._current_segment += 1
+
         # XXX: I don't think we need to do addBoth here -- any errBacks
         # should be handled within push_segment.
         d.addCallback(_increment_segnum)
@@ -683,14 +762,12 @@ class Publish(object):
         d.addCallback(self._push)
         d.addErrback(self._failure)
 
-
     def _turn_barrier(self, result):
         """
         I help the publish process avoid the recursion limit issues
         described in #237.
         """
         return fireEventually(result)
-
 
     def _add_dummy_salts(self):
         """
@@ -705,7 +782,6 @@ class Publish(object):
             for writer in writers:
                 writer.put_salt(salt)
 
-
     def _encode_segment(self, segnum):
         """
         I encrypt and encode the segment segnum.
@@ -716,7 +792,6 @@ class Publish(object):
             segsize = self.tail_segment_size
         else:
             segsize = self.segment_size
-
 
         self.log("Pushing segment %d of %d" % (segnum + 1, self.num_segments))
         data = self.data.read(segsize)
@@ -749,18 +824,19 @@ class Publish(object):
         piece_size = fec.get_block_size()
         for i in range(len(crypttext_pieces)):
             offset = i * piece_size
-            piece = crypttext[offset:offset+piece_size]
-            piece = piece + b"\x00"*(piece_size - len(piece)) # padding
+            piece = crypttext[offset : offset + piece_size]
+            piece = piece + b"\x00" * (piece_size - len(piece))  # padding
             crypttext_pieces[i] = piece
             assert len(piece) == piece_size
         d = fec.encode(crypttext_pieces)
+
         def _done_encoding(res):
             elapsed = time.time() - started
             self._status.accumulate_encode_time(elapsed)
             return (res, salt)
+
         d.addCallback(_done_encoding)
         return d
-
 
     def _push_segment(self, encoded_and_salt, segnum):
         """
@@ -783,7 +859,6 @@ class Publish(object):
             for writer in writers:
                 writer.put_block(sharedata, segnum, salt)
 
-
     def push_everything_else(self):
         """
         I put everything else associated with a share.
@@ -794,12 +869,13 @@ class Publish(object):
         self.push_sharehashes()
         self.push_toplevel_hashes_and_signature()
         d = self.finish_publishing()
+
         def _change_state(ignored):
             self._state = DONE_STATE
+
         d.addCallback(_change_state)
         d.addCallback(self._push)
         return d
-
 
     def push_encprivkey(self):
         encprivkey = self._encprivkey
@@ -807,7 +883,6 @@ class Publish(object):
         for shnum, writers in self.writers.items():
             for writer in writers:
                 writer.put_encprivkey(encprivkey)
-
 
     def push_blockhashes(self):
         self.sharehash_leaves = [None] * len(self.blockhashes)
@@ -822,19 +897,18 @@ class Publish(object):
             for writer in writers:
                 writer.put_blockhashes(self.blockhashes[shnum])
 
-
     def push_sharehashes(self):
         self._status.set_status("Building and pushing share hash chain")
         share_hash_tree = hashtree.HashTree(self.sharehash_leaves)
         for shnum in range(len(self.sharehash_leaves)):
             needed_indices = share_hash_tree.needed_hashes(shnum)
-            self.sharehashes[shnum] = dict( [ (i, share_hash_tree[i])
-                                             for i in needed_indices] )
+            self.sharehashes[shnum] = dict(
+                [(i, share_hash_tree[i]) for i in needed_indices]
+            )
             writers = self.writers[shnum]
             for writer in writers:
                 writer.put_sharehashes(self.sharehashes[shnum])
         self.root_hash = share_hash_tree[0]
-
 
     def push_toplevel_hashes_and_signature(self):
         # We need to to three things here:
@@ -849,7 +923,6 @@ class Publish(object):
         self._update_checkstring()
         self._make_and_place_signature()
 
-
     def _update_checkstring(self):
         """
         After putting the root hash, MDMF files will have the
@@ -859,7 +932,6 @@ class Publish(object):
         so we need not do anything.
         """
         self._checkstring = self._get_some_writer().get_checkstring()
-
 
     def _make_and_place_signature(self):
         """
@@ -873,8 +945,7 @@ class Publish(object):
         for (shnum, writers) in self.writers.items():
             for writer in writers:
                 writer.put_signature(self.signature)
-        self._status.timings['sign'] = time.time() - started
-
+        self._status.timings["sign"] = time.time() - started
 
     def finish_publishing(self):
         # We're almost done -- we just need to put the verification key
@@ -889,6 +960,7 @@ class Publish(object):
             for writer in writers:
                 writer.put_verification_key(verification_key)
                 self.num_outstanding += 1
+
                 def _no_longer_outstanding(res):
                     self.num_outstanding -= 1
                     return res
@@ -899,13 +971,11 @@ class Publish(object):
                 d.addCallback(self._got_write_answer, writer, started)
                 ds.append(d)
         self._record_verinfo()
-        self._status.timings['pack'] = time.time() - started
+        self._status.timings["pack"] = time.time() - started
         return defer.DeferredList(ds)
-
 
     def _record_verinfo(self):
         self.versioninfo = self._get_some_writer().get_verinfo()
-
 
     def _connection_problem(self, f, writer):
         """
@@ -916,22 +986,28 @@ class Publish(object):
         self._last_failure = f
         self.writers.discard(writer.shnum, writer)
 
-
     def log_goal(self, goal, message=""):
         logmsg = [message]
-        for (shnum, server) in sorted([(s,p) for (p,s) in goal], key=lambda t: (id(t[0]), id(t[1]))):
+        for (shnum, server) in sorted(
+            [(s, p) for (p, s) in goal], key=lambda t: (id(t[0]), id(t[1]))
+        ):
             logmsg.append("sh%d to [%s]" % (shnum, server.get_name()))
         self.log("current goal: %s" % (", ".join(logmsg)), level=log.NOISY)
-        self.log("we are planning to push new seqnum=#%d" % self._new_seqnum,
-                 level=log.NOISY)
+        self.log(
+            "we are planning to push new seqnum=#%d" % self._new_seqnum, level=log.NOISY
+        )
 
     def update_goal(self):
         self.log_goal(self.goal, "before update: ")
 
         # first, remove any bad servers from our goal
-        self.goal = set([ (server, shnum)
-                          for (server, shnum) in self.goal
-                          if server not in self.bad_servers ])
+        self.goal = set(
+            [
+                (server, shnum)
+                for (server, shnum) in self.goal
+                if server not in self.bad_servers
+            ]
+        )
 
         # find the homeless shares:
         homefull_shares = set([shnum for (server, shnum) in self.goal])
@@ -962,7 +1038,7 @@ class Publish(object):
         serverlist = []
 
         action = start_action(
-            action_type=u"mutable:upload:update_goal",
+            action_type="mutable:upload:update_goal",
             homeless_shares=len(homeless_shares),
         )
         with action:
@@ -970,7 +1046,7 @@ class Publish(object):
                 serverid = server.get_serverid()
                 if server in self.bad_servers:
                     Message.log(
-                        message_type=u"mutable:upload:bad-server",
+                        message_type="mutable:upload:bad-server",
                         server_id=server.get_server_id(),
                     )
                     continue
@@ -978,7 +1054,7 @@ class Publish(object):
                 # a valid certificate for this server
                 if not server.upload_permitted():
                     Message.log(
-                        message_type=u"mutable:upload:no-gm-certs",
+                        message_type="mutable:upload:no-gm-certs",
                         server_id=server.get_server_id(),
                     )
                     continue
@@ -988,10 +1064,11 @@ class Publish(object):
         serverlist.sort()
 
         if not serverlist:
-            raise NotEnoughServersError("Ran out of non-bad servers, "
-                                        "first_error=%s" %
-                                        str(self._first_write_error),
-                                        self._first_write_error)
+            raise NotEnoughServersError(
+                "Ran out of non-bad servers, "
+                "first_error=%s" % str(self._first_write_error),
+                self._first_write_error,
+            )
 
         # we then index this serverlist with an integer, because we may have
         # to wrap. We update the goal as we go.
@@ -1006,12 +1083,11 @@ class Publish(object):
             # this, otherwise it would cause the publish to fail with an
             # UncoordinatedWriteError. See #546 for details of the trouble
             # this used to cause.
-            self.goal.add( (server, shnum) )
+            self.goal.add((server, shnum))
             i += 1
             if i >= len(serverlist):
                 i = 0
         self.log_goal(self.goal, "after update: ")
-
 
     def _got_write_answer(self, answer, writer, started):
         if not answer:
@@ -1023,8 +1099,9 @@ class Publish(object):
             return
 
         server = writer.server
-        lp = self.log("_got_write_answer from %s, share %d" %
-                      (server.get_name(), writer.shnum))
+        lp = self.log(
+            "_got_write_answer from %s, share %d" % (server.get_name(), writer.shnum)
+        )
 
         now = time.time()
         elapsed = now - started
@@ -1044,8 +1121,7 @@ class Publish(object):
             shares.extend([x.shnum for x in writers if x.server == server])
         known_shnums = set(shares)
         surprise_shares -= known_shnums
-        self.log("found the following surprise shares: %s" %
-                 str(surprise_shares))
+        self.log("found the following surprise shares: %s" % str(surprise_shares))
 
         # Now surprise shares contains all of the shares that we did not
         # expect to be there.
@@ -1063,7 +1139,7 @@ class Publish(object):
             if checkstring == self._checkstring:
                 # they have the right share, somehow
 
-                if (server,shnum) in self.goal:
+                if (server, shnum) in self.goal:
                     # and we want them to have it, so we probably sent them a
                     # copy in an earlier write. This is ok, and avoids the
                     # #546 problem.
@@ -1114,9 +1190,13 @@ class Publish(object):
                 surprised = True
 
         if surprised:
-            self.log("they had shares %s that we didn't know about" %
-                     (list(surprise_shares),),
-                     parent=lp, level=log.WEIRD, umid="un9CSQ")
+            self.log(
+                "they had shares %s that we didn't know about"
+                % (list(surprise_shares),),
+                parent=lp,
+                level=log.WEIRD,
+                umid="un9CSQ",
+            )
             self.surprised = True
 
         if not wrote:
@@ -1135,39 +1215,56 @@ class Publish(object):
             # If the testv failed, log it, set self.surprised, but don't
             # bother adding to self.bad_servers .
 
-            self.log("our testv failed, so the write did not happen",
-                     parent=lp, level=log.WEIRD, umid="8sc26g")
+            self.log(
+                "our testv failed, so the write did not happen",
+                parent=lp,
+                level=log.WEIRD,
+                umid="8sc26g",
+            )
             self.surprised = True
-            self.bad_servers.add(server) # don't ask them again
+            self.bad_servers.add(server)  # don't ask them again
             # use the checkstring to add information to the log message
             unknown_format = False
-            for (shnum,readv) in list(read_data.items()):
+            for (shnum, readv) in list(read_data.items()):
                 checkstring = readv[0]
                 version = get_version_from_checkstring(checkstring)
                 if version == MDMF_VERSION:
-                    (other_seqnum,
-                     other_roothash) = unpack_mdmf_checkstring(checkstring)
+                    (other_seqnum, other_roothash) = unpack_mdmf_checkstring(
+                        checkstring
+                    )
                 elif version == SDMF_VERSION:
-                    (other_seqnum,
-                     other_roothash,
-                     other_IV) = unpack_sdmf_checkstring(checkstring)
+                    (other_seqnum, other_roothash, other_IV) = unpack_sdmf_checkstring(
+                        checkstring
+                    )
                 else:
                     unknown_format = True
-                expected_version = self._servermap.version_on_server(server,
-                                                                     shnum)
+                expected_version = self._servermap.version_on_server(server, shnum)
                 if expected_version:
-                    (seqnum, root_hash, IV, segsize, datalength, k, N, prefix,
-                     offsets_tuple) = expected_version
-                    msg = ("somebody modified the share on us:"
-                           " shnum=%d: I thought they had #%d:R=%s," %
-                           (shnum,
-                            seqnum, base32.b2a(root_hash)[:4]))
+                    (
+                        seqnum,
+                        root_hash,
+                        IV,
+                        segsize,
+                        datalength,
+                        k,
+                        N,
+                        prefix,
+                        offsets_tuple,
+                    ) = expected_version
+                    msg = (
+                        "somebody modified the share on us:"
+                        " shnum=%d: I thought they had #%d:R=%s,"
+                        % (shnum, seqnum, base32.b2a(root_hash)[:4])
+                    )
                     if unknown_format:
-                        msg += (" but I don't know how to read share"
-                                " format %d" % version)
+                        msg += (
+                            " but I don't know how to read share" " format %d" % version
+                        )
                     else:
-                        msg += " but testv reported #%d:R=%s" % \
-                               (other_seqnum, base32.b2a(other_roothash)[:4])
+                        msg += " but testv reported #%d:R=%s" % (
+                            other_seqnum,
+                            base32.b2a(other_roothash)[:4],
+                        )
                     self.log(msg, parent=lp, level=log.NOISY)
                 # if expected_version==None, then we didn't expect to see a
                 # share on that server, and the 'surprise_shares' clause
@@ -1180,14 +1277,14 @@ class Publish(object):
         # shares, and can safely execute these statements.
         if self.versioninfo:
             self.log("wrote successfully: adding new share to servermap")
-            self._servermap.add_new_share(server, writer.shnum,
-                                          self.versioninfo, started)
-            self.placed.add( (server, writer.shnum) )
+            self._servermap.add_new_share(
+                server, writer.shnum, self.versioninfo, started
+            )
+            self.placed.add((server, writer.shnum))
         self._update_status()
         # the next method in the deferred chain will check to see if
         # we're done and successful.
         return
-
 
     def _done(self):
         if not self._running:
@@ -1197,7 +1294,7 @@ class Publish(object):
         self._status.timings["total"] = now - self._started
 
         elapsed = now - self._started_pushing
-        self._status.timings['push'] = elapsed
+        self._status.timings["push"] = elapsed
 
         self._status.set_active(False)
         self.log("Publish done, success")
@@ -1205,8 +1302,8 @@ class Publish(object):
         self._status.set_progress(1.0)
         # Get k and segsize, then give them to the caller.
         hints = {}
-        hints['segsize'] = self.segment_size
-        hints['k'] = self.required_shares
+        hints["segsize"] = self.segment_size
+        hints["k"] = self.required_shares
         self._node.set_downloader_hints(hints)
         eventually(self.done_deferred.callback, None)
 
@@ -1253,7 +1350,6 @@ class MutableFileHandle(object):
         # We have not yet read anything, so our position is 0.
         self._marker = 0
 
-
     def get_size(self):
         """
         I return the amount of data in my filehandle.
@@ -1272,14 +1368,12 @@ class MutableFileHandle(object):
         assert hasattr(self, "_size")
         return self._size
 
-
     def pos(self):
         """
         I return the position of my read marker -- i.e., how much data I
         have already read and returned to callers.
         """
         return self._marker
-
 
     def read(self, length):
         """
@@ -1292,7 +1386,6 @@ class MutableFileHandle(object):
         results = self._filehandle.read(length)
         self._marker += len(results)
         return [results]
-
 
     def close(self):
         """
@@ -1323,7 +1416,6 @@ class TransformingUploadable(object):
     read, I handle merging of boundary segments.
     """
 
-
     def __init__(self, data, offset, segment_size, start, end):
         assert IMutableUploadable.providedBy(data)
 
@@ -1342,18 +1434,15 @@ class TransformingUploadable(object):
         self.log("got fso: %d" % self._first_segment_offset)
         self.log("got offset: %d" % self._offset)
 
-
     def log(self, *args, **kwargs):
-        if 'parent' not in kwargs:
-            kwargs['parent'] = self._log_number
+        if "parent" not in kwargs:
+            kwargs["parent"] = self._log_number
         if "facility" not in kwargs:
             kwargs["facility"] = "tahoe.mutable.transforminguploadable"
         return log.msg(*args, **kwargs)
 
-
     def get_size(self):
         return self._offset + self._newdata.get_size()
-
 
     def read(self, length):
         # We can get data from 3 sources here.
@@ -1372,7 +1461,7 @@ class TransformingUploadable(object):
             self.log("returning %d bytes of old start data" % old_data_length)
 
             old_data_end = old_data_length + self._read_marker
-            old_start_data = self._start[self._read_marker:old_data_end]
+            old_start_data = self._start[self._read_marker : old_data_end]
             length -= old_data_length
         else:
             # otherwise calculations later get screwed up.
@@ -1380,16 +1469,16 @@ class TransformingUploadable(object):
 
         # Is there enough new data to satisfy this read? If not, we need
         # to pad the end of the data with data from our last segment.
-        old_end_length = length - \
-            (self._newdata.get_size() - self._newdata.pos())
+        old_end_length = length - (self._newdata.get_size() - self._newdata.pos())
         old_end_data = b""
         if old_end_length > 0:
             self.log("reading %d bytes of old end data" % old_end_length)
 
             # TODO: We're not explicitly checking for tail segment size
             # here. Is that a problem?
-            old_data_offset = (length - old_end_length + \
-                               old_data_length) % self._segment_size
+            old_data_offset = (
+                length - old_end_length + old_data_length
+            ) % self._segment_size
             self.log("reading at offset %d" % old_data_offset)
             old_end = old_data_offset + old_end_length
             old_end_data = self._end[old_data_offset:old_end]
