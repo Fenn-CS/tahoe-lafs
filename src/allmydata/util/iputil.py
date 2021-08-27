@@ -10,8 +10,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2, native_str
+
 if PY2:
-    from builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import os, socket
 
@@ -39,10 +62,11 @@ from .gcutil import (
 
 fcntl = requireModule("fcntl")
 
-from foolscap.util import allocate_tcp_port # re-exported
+from foolscap.util import allocate_tcp_port  # re-exported
 
 try:
     import resource
+
     def increase_rlimits():
         # We'd like to raise our soft resource.RLIMIT_NOFILE, since certain
         # systems (OS-X, probably solaris) start with a relatively low limit
@@ -73,30 +97,35 @@ try:
         try:
             if current[1] > 0 and current[1] < 1000000:
                 # solaris reports (256, 65536)
-                resource.setrlimit(resource.RLIMIT_NOFILE,
-                                   (current[1], current[1]))
+                resource.setrlimit(resource.RLIMIT_NOFILE, (current[1], current[1]))
             else:
                 # this one works on OS-X (bsd), and gives us 10240, but
                 # it doesn't work on linux (on which both the hard and
                 # soft limits are set to 1024 by default).
-                resource.setrlimit(resource.RLIMIT_NOFILE, (-1,-1))
+                resource.setrlimit(resource.RLIMIT_NOFILE, (-1, -1))
                 new = resource.getrlimit(resource.RLIMIT_NOFILE)
                 if new[0] == current[0]:
                     # probably cygwin, which ignores -1. Use a real value.
-                    resource.setrlimit(resource.RLIMIT_NOFILE, (3200,-1))
+                    resource.setrlimit(resource.RLIMIT_NOFILE, (3200, -1))
 
         except ValueError:
-            log.msg("unable to set RLIMIT_NOFILE: current value %s"
-                     % (resource.getrlimit(resource.RLIMIT_NOFILE),))
+            log.msg(
+                "unable to set RLIMIT_NOFILE: current value %s"
+                % (resource.getrlimit(resource.RLIMIT_NOFILE),)
+            )
         except:
             # who knows what. It isn't very important, so log it and continue
             log.err()
+
+
 except ImportError:
+
     def _increase_rlimits():
         # TODO: implement this for Windows.  Although I suspect the
         # solution might be "be running under the iocp reactor and
         # make this function be a no-op".
         pass
+
     # pyflakes complains about two 'def FOO' statements in the same time,
     # since one might be shadowing the other. This hack appeases pyflakes.
     increase_rlimits = _increase_rlimits
@@ -111,10 +140,8 @@ def get_local_addresses_sync():
     """
     return list(
         native_str(address[native_str("addr")])
-        for iface_name
-        in interfaces()
-        for address
-        in ifaddresses(iface_name).get(socket.AF_INET, [])
+        for iface_name in interfaces()
+        for address in ifaddresses(iface_name).get(socket.AF_INET, [])
     )
 
 
@@ -133,13 +160,14 @@ def _foolscapEndpointForPortNumber(portnum):
         # Bury this reactor import here to minimize the chances of it having
         # the effect of installing the default reactor.
         from twisted.internet import reactor
+
         if fcntl is not None and IReactorSocket.providedBy(reactor):
             # On POSIX we can take this very safe approach of binding the
             # actual socket to an address.  Once the bind succeeds here, we're
             # no longer subject to any future EADDRINUSE problems.
             s = socket.socket()
             try:
-                s.bind(('', 0))
+                s.bind(("", 0))
                 portnum = s.getsockname()[1]
                 s.listen(1)
                 # File descriptors are a relatively scarce resource.  The
@@ -186,6 +214,7 @@ class CleanupEndpoint(object):
     :ivar bool _listened: A flag recording whether or not ``listen`` has been
         called.
     """
+
     _wrapped = attr.ib()
     _fd = attr.ib()
     _listened = attr.ib(default=False)
@@ -220,8 +249,9 @@ def listenOnUnused(tub, portnum=None):
     return portnum
 
 
-__all__ = ["allocate_tcp_port",
-           "increase_rlimits",
-           "get_local_addresses_sync",
-           "listenOnUnused",
-           ]
+__all__ = [
+    "allocate_tcp_port",
+    "increase_rlimits",
+    "get_local_addresses_sync",
+    "listenOnUnused",
+]

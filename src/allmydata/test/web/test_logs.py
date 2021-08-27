@@ -12,8 +12,31 @@ from __future__ import (
 )
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import json
 
@@ -22,7 +45,11 @@ from twisted.internet.defer import inlineCallbacks
 
 from eliot import log_call
 
-from autobahn.twisted.testing import create_memory_agent, MemoryReactorClockResolver, create_pumper
+from autobahn.twisted.testing import (
+    create_memory_agent,
+    MemoryReactorClockResolver,
+    create_pumper,
+)
 
 from testtools.matchers import (
     Equals,
@@ -55,14 +82,16 @@ from ...web.logs import (
     TokenAuthenticatedWebSocketServerProtocol,
 )
 
+
 class StreamingEliotLogsTests(SyncTestCase):
     """
     Tests for the log streaming resources created by ``create_log_resources``.
     """
+
     def setUp(self):
         self.resource = create_log_resources()
         self.agent = RequestTraversalAgent(self.resource)
-        self.client =  HTTPClient(self.agent)
+        self.client = HTTPClient(self.agent)
         return super(StreamingEliotLogsTests, self).setUp()
 
     def test_v1(self):
@@ -83,7 +112,9 @@ class TestStreamingLogs(unittest.TestCase):
     def setUp(self):
         self.reactor = MemoryReactorClockResolver()
         self.pumper = create_pumper()
-        self.agent = create_memory_agent(self.reactor, self.pumper, TokenAuthenticatedWebSocketServerProtocol)
+        self.agent = create_memory_agent(
+            self.reactor, self.pumper, TokenAuthenticatedWebSocketServerProtocol
+        )
         return self.pumper.start()
 
     def tearDown(self):
@@ -96,28 +127,32 @@ class TestStreamingLogs(unittest.TestCase):
         """
 
         proto = yield self.agent.open(
-            transport_config=u"ws://localhost:1234/ws",
+            transport_config="ws://localhost:1234/ws",
             options={},
         )
 
         messages = []
+
         def got_message(msg, is_binary=False):
             messages.append(json.loads(msg))
+
         proto.on("message", got_message)
 
-        @log_call(action_type=u"test:cli:some-exciting-action")
+        @log_call(action_type="test:cli:some-exciting-action")
         def do_a_thing(arguments):
             pass
 
-        do_a_thing(arguments=[u"hello", b"good-\xff-day", 123, {"a": 35}, [None]])
+        do_a_thing(arguments=["hello", b"good-\xff-day", 123, {"a": 35}, [None]])
 
         proto.transport.loseConnection()
         yield proto.is_closed
 
         self.assertEqual(len(messages), 2)
         self.assertEqual(messages[0]["action_type"], "test:cli:some-exciting-action")
-        self.assertEqual(messages[0]["arguments"],
-                         ["hello", "good-\\xff-day", 123, {"a": 35}, [None]])
+        self.assertEqual(
+            messages[0]["arguments"],
+            ["hello", "good-\\xff-day", 123, {"a": 35}, [None]],
+        )
         self.assertEqual(messages[1]["action_type"], "test:cli:some-exciting-action")
         self.assertEqual("started", messages[0]["action_status"])
         self.assertEqual("succeeded", messages[1]["action_status"])

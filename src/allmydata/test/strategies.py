@@ -9,8 +9,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 from hypothesis.strategies import (
     one_of,
@@ -25,16 +48,19 @@ from ..uri import (
     MDMFDirectoryURI,
 )
 
+
 def write_capabilities():
     """
     Build ``IURI`` providers representing all kinds of write capabilities.
     """
-    return one_of([
-        ssk_capabilities(),
-        mdmf_capabilities(),
-        dir2_capabilities(),
-        dir2_mdmf_capabilities(),
-    ])
+    return one_of(
+        [
+            ssk_capabilities(),
+            mdmf_capabilities(),
+            dir2_capabilities(),
+            dir2_mdmf_capabilities(),
+        ]
+    )
 
 
 def ssk_capabilities():

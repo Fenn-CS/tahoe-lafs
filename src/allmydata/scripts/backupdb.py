@@ -7,8 +7,31 @@ from __future__ import division
 from __future__ import print_function
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import os.path, sys, time, random, stat
 
@@ -20,8 +43,8 @@ from allmydata.util.encodingutil import to_bytes
 from allmydata.util.dbutil import get_db, DBError
 
 
-DAY = 24*60*60
-MONTH = 30*DAY
+DAY = 24 * 60 * 60
+MONTH = 30 * DAY
 
 SCHEMA_v1 = """
 CREATE TABLE version -- added in v1
@@ -67,21 +90,32 @@ CREATE TABLE directories -- added in v2
 
 SCHEMA_v2 = SCHEMA_v1 + TABLE_DIRECTORY
 
-UPDATE_v1_to_v2 = TABLE_DIRECTORY + """
+UPDATE_v1_to_v2 = (
+    TABLE_DIRECTORY
+    + """
 UPDATE version SET version=2;
 """
+)
 
 UPDATERS = {
     2: UPDATE_v1_to_v2,
 }
 
-def get_backupdb(dbfile, stderr=sys.stderr,
-                 create_version=(SCHEMA_v2, 2), just_create=False):
+
+def get_backupdb(
+    dbfile, stderr=sys.stderr, create_version=(SCHEMA_v2, 2), just_create=False
+):
     # Open or create the given backupdb file. The parent directory must
     # exist.
     try:
-        (sqlite3, db) = get_db(dbfile, stderr, create_version, updaters=UPDATERS,
-                               just_create=just_create, dbname="backupdb")
+        (sqlite3, db) = get_db(
+            dbfile,
+            stderr,
+            create_version,
+            updaters=UPDATERS,
+            just_create=just_create,
+            dbname="backupdb",
+        )
         return BackupDB_v2(sqlite3, db)
     except DBError as e:
         print(e, file=stderr)
@@ -89,8 +123,7 @@ def get_backupdb(dbfile, stderr=sys.stderr,
 
 
 class FileResult(object):
-    def __init__(self, bdb, filecap, should_check,
-                 path, mtime, ctime, size):
+    def __init__(self, bdb, filecap, should_check, path, mtime, ctime, size):
         self.bdb = bdb
         self.filecap = filecap
         self.should_check_p = should_check
@@ -106,8 +139,7 @@ class FileResult(object):
         return False
 
     def did_upload(self, filecap):
-        self.bdb.did_upload_file(filecap, self.path,
-                                 self.mtime, self.ctime, self.size)
+        self.bdb.did_upload_file(filecap, self.path, self.mtime, self.ctime, self.size)
 
     def should_check(self):
         return self.should_check_p
@@ -140,8 +172,8 @@ class DirectoryResult(object):
 
 class BackupDB_v2(object):
     VERSION = 2
-    NO_CHECK_BEFORE = 1*MONTH
-    ALWAYS_CHECK_AFTER = 2*MONTH
+    NO_CHECK_BEFORE = 1 * MONTH
+    ALWAYS_CHECK_AFTER = 2 * MONTH
 
     def __init__(self, sqlite_module, connection):
         self.sqlite_module = sqlite_module
@@ -194,27 +226,31 @@ class BackupDB_v2(object):
         now = time.time()
         c = self.cursor
 
-        c.execute("SELECT size,mtime,ctime,fileid"
-                  " FROM local_files"
-                  " WHERE path=?",
-                  (path,))
+        c.execute(
+            "SELECT size,mtime,ctime,fileid" " FROM local_files" " WHERE path=?",
+            (path,),
+        )
         row = self.cursor.fetchone()
         if not row:
             return FileResult(self, None, False, path, mtime, ctime, size)
-        (last_size,last_mtime,last_ctime,last_fileid) = row
+        (last_size, last_mtime, last_ctime, last_fileid) = row
 
-        c.execute("SELECT caps.filecap, last_upload.last_checked"
-                  " FROM caps,last_upload"
-                  " WHERE caps.fileid=? AND last_upload.fileid=?",
-                  (last_fileid, last_fileid))
+        c.execute(
+            "SELECT caps.filecap, last_upload.last_checked"
+            " FROM caps,last_upload"
+            " WHERE caps.fileid=? AND last_upload.fileid=?",
+            (last_fileid, last_fileid),
+        )
         row2 = c.fetchone()
 
-        if ((last_size != size
-             or not use_timestamps
-             or last_mtime != mtime
-             or last_ctime != ctime) # the file has been changed
-            or (not row2) # we somehow forgot where we put the file last time
-            ):
+        if (
+            last_size != size
+            or not use_timestamps
+            or last_mtime != mtime
+            or last_ctime != ctime
+        ) or (  # the file has been changed
+            not row2
+        ):  # we somehow forgot where we put the file last time
             c.execute("DELETE FROM local_files WHERE path=?", (path,))
             self.connection.commit()
             return FileResult(self, None, False, path, mtime, ctime, size)
@@ -223,13 +259,15 @@ class BackupDB_v2(object):
         (filecap, last_checked) = row2
         age = now - last_checked
 
-        probability = ((age - self.NO_CHECK_BEFORE) /
-                       (self.ALWAYS_CHECK_AFTER - self.NO_CHECK_BEFORE))
+        probability = (age - self.NO_CHECK_BEFORE) / (
+            self.ALWAYS_CHECK_AFTER - self.NO_CHECK_BEFORE
+        )
         probability = min(max(probability, 0.0), 1.0)
         should_check = bool(random.random() < probability)
 
-        return FileResult(self, to_bytes(filecap), should_check,
-                          path, mtime, ctime, size)
+        return FileResult(
+            self, to_bytes(filecap), should_check, path, mtime, ctime, size
+        )
 
     def get_or_allocate_fileid_for_cap(self, filecap):
         # find an existing fileid for this filecap, or insert a new one. The
@@ -255,30 +293,36 @@ class BackupDB_v2(object):
         now = time.time()
         fileid = self.get_or_allocate_fileid_for_cap(filecap)
         try:
-            self.cursor.execute("INSERT INTO last_upload VALUES (?,?,?)",
-                                (fileid, now, now))
+            self.cursor.execute(
+                "INSERT INTO last_upload VALUES (?,?,?)", (fileid, now, now)
+            )
         except (self.sqlite_module.IntegrityError, self.sqlite_module.OperationalError):
-            self.cursor.execute("UPDATE last_upload"
-                                " SET last_uploaded=?, last_checked=?"
-                                " WHERE fileid=?",
-                                (now, now, fileid))
+            self.cursor.execute(
+                "UPDATE last_upload"
+                " SET last_uploaded=?, last_checked=?"
+                " WHERE fileid=?",
+                (now, now, fileid),
+            )
         try:
-            self.cursor.execute("INSERT INTO local_files VALUES (?,?,?,?,?)",
-                                (path, size, mtime, ctime, fileid))
+            self.cursor.execute(
+                "INSERT INTO local_files VALUES (?,?,?,?,?)",
+                (path, size, mtime, ctime, fileid),
+            )
         except (self.sqlite_module.IntegrityError, self.sqlite_module.OperationalError):
-            self.cursor.execute("UPDATE local_files"
-                                " SET size=?, mtime=?, ctime=?, fileid=?"
-                                " WHERE path=?",
-                                (size, mtime, ctime, fileid, path))
+            self.cursor.execute(
+                "UPDATE local_files"
+                " SET size=?, mtime=?, ctime=?, fileid=?"
+                " WHERE path=?",
+                (size, mtime, ctime, fileid, path),
+            )
         self.connection.commit()
 
     def did_check_file_healthy(self, filecap, results):
         now = time.time()
         fileid = self.get_or_allocate_fileid_for_cap(filecap)
-        self.cursor.execute("UPDATE last_upload"
-                            " SET last_checked=?"
-                            " WHERE fileid=?",
-                            (now, fileid))
+        self.cursor.execute(
+            "UPDATE last_upload" " SET last_checked=?" " WHERE fileid=?", (now, fileid)
+        )
         self.connection.commit()
 
     def check_directory(self, contents):
@@ -311,23 +355,27 @@ class BackupDB_v2(object):
         now = time.time()
         entries = []
         for name in contents:
-            entries.append( [name.encode("utf-8"), contents[name]] )
+            entries.append([name.encode("utf-8"), contents[name]])
         entries.sort()
-        data = b"".join([netstring(name_utf8)+netstring(cap)
-                         for (name_utf8,cap) in entries])
+        data = b"".join(
+            [netstring(name_utf8) + netstring(cap) for (name_utf8, cap) in entries]
+        )
         dirhash = backupdb_dirhash(data)
         dirhash_s = base32.b2a(dirhash)
         c = self.cursor
-        c.execute("SELECT dircap, last_checked"
-                  " FROM directories WHERE dirhash=?", (dirhash_s,))
+        c.execute(
+            "SELECT dircap, last_checked" " FROM directories WHERE dirhash=?",
+            (dirhash_s,),
+        )
         row = c.fetchone()
         if not row:
             return DirectoryResult(self, dirhash_s, None, False)
         (dircap, last_checked) = row
         age = now - last_checked
 
-        probability = ((age - self.NO_CHECK_BEFORE) /
-                       (self.ALWAYS_CHECK_AFTER - self.NO_CHECK_BEFORE))
+        probability = (age - self.NO_CHECK_BEFORE) / (
+            self.ALWAYS_CHECK_AFTER - self.NO_CHECK_BEFORE
+        )
         probability = min(max(probability, 0.0), 1.0)
         should_check = bool(random.random() < probability)
 
@@ -338,14 +386,14 @@ class BackupDB_v2(object):
         # if the dirhash is already present (i.e. we've re-uploaded an
         # existing directory, possibly replacing the dircap with a new one),
         # update the record in place. Otherwise create a new record.)
-        self.cursor.execute("REPLACE INTO directories VALUES (?,?,?,?)",
-                            (dirhash, dircap, now, now))
+        self.cursor.execute(
+            "REPLACE INTO directories VALUES (?,?,?,?)", (dirhash, dircap, now, now)
+        )
         self.connection.commit()
 
     def did_check_directory_healthy(self, dircap, results):
         now = time.time()
-        self.cursor.execute("UPDATE directories"
-                            " SET last_checked=?"
-                            " WHERE dircap=?",
-                            (now, dircap))
+        self.cursor.execute(
+            "UPDATE directories" " SET last_checked=?" " WHERE dircap=?", (now, dircap)
+        )
         self.connection.commit()

@@ -7,8 +7,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import json
 
@@ -22,8 +45,8 @@ from allmydata.util import encodingutil
 
 # see also test_create_alias
 
-class ListAlias(GridTestMixin, CLITestMixin, unittest.TestCase):
 
+class ListAlias(GridTestMixin, CLITestMixin, unittest.TestCase):
     @inlineCallbacks
     def _check_create_alias(self, alias, encoding):
         """
@@ -56,14 +79,14 @@ class ListAlias(GridTestMixin, CLITestMixin, unittest.TestCase):
         self.patch(encodingutil, "io_encoding", encoding or "ascii")
 
         rc, stdout, stderr = yield self.do_cli_unicode(
-            u"create-alias",
+            "create-alias",
             [alias],
             encoding=encoding,
         )
 
         # Make sure the result of the create-alias command is as we want it to
         # be.
-        self.assertEqual(u"Alias '{}' created\n".format(alias), stdout)
+        self.assertEqual("Alias '{}' created\n".format(alias), stdout)
         self.assertEqual("", stderr)
         self.assertEqual(0, rc)
 
@@ -76,8 +99,8 @@ class ListAlias(GridTestMixin, CLITestMixin, unittest.TestCase):
         # And inspect the state via the user interface list-aliases command
         # too.
         rc, stdout, stderr = yield self.do_cli_unicode(
-            u"list-aliases",
-            [u"--json"],
+            "list-aliases",
+            ["--json"],
             encoding=encoding,
         )
 
@@ -85,9 +108,8 @@ class ListAlias(GridTestMixin, CLITestMixin, unittest.TestCase):
         data = json.loads(stdout)
         self.assertIn(alias, data)
         data = data[alias]
-        self.assertIn(u"readwrite", data)
-        self.assertIn(u"readonly", data)
-
+        self.assertIn("readwrite", data)
+        self.assertIn("readonly", data)
 
     def test_list_none(self):
         """
@@ -95,10 +117,9 @@ class ListAlias(GridTestMixin, CLITestMixin, unittest.TestCase):
         stdio aren't clearly marked with an encoding.
         """
         return self._check_create_alias(
-            u"tahoe",
+            "tahoe",
             encoding=None,
         )
-
 
     def test_list_ascii(self):
         """
@@ -106,10 +127,9 @@ class ListAlias(GridTestMixin, CLITestMixin, unittest.TestCase):
         the active encoding is ASCII.
         """
         return self._check_create_alias(
-            u"tahoe",
+            "tahoe",
             encoding="ascii",
         )
-
 
     def test_list_utf_8(self):
         """
@@ -117,6 +137,6 @@ class ListAlias(GridTestMixin, CLITestMixin, unittest.TestCase):
         the active encoding is UTF-8.
         """
         return self._check_create_alias(
-            u"tahoe\N{SNOWMAN}",
+            "tahoe\N{SNOWMAN}",
             encoding="utf-8",
         )

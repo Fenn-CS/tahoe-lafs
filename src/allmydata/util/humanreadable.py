@@ -10,11 +10,35 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import os
 from reprlib import Repr
+
 
 class BetterRepr(Repr, object):
     def __init__(self):
@@ -29,24 +53,48 @@ class BetterRepr(Repr, object):
         self.maxother = 300
 
     def repr_function(self, obj, level):
-        if hasattr(obj, '__code__'):
-            return '<' + obj.__name__ + '() at ' + os.path.basename(obj.__code__.co_filename) + ':' + str(obj.__code__.co_firstlineno) + '>'
+        if hasattr(obj, "__code__"):
+            return (
+                "<"
+                + obj.__name__
+                + "() at "
+                + os.path.basename(obj.__code__.co_filename)
+                + ":"
+                + str(obj.__code__.co_firstlineno)
+                + ">"
+            )
         else:
-            return '<' + obj.__name__ + '() at (builtin)'
+            return "<" + obj.__name__ + "() at (builtin)"
 
     def repr_instance_method(self, obj, level):
-        if hasattr(obj, '__code__'):
-            return '<' + obj.__self__.__class__.__name__ + '.' + obj.__func__.__name__ + '() at ' + os.path.basename(obj.__func__.__code__.co_filename) + ':' + str(obj.__func__.__code__.co_firstlineno) + '>'
+        if hasattr(obj, "__code__"):
+            return (
+                "<"
+                + obj.__self__.__class__.__name__
+                + "."
+                + obj.__func__.__name__
+                + "() at "
+                + os.path.basename(obj.__func__.__code__.co_filename)
+                + ":"
+                + str(obj.__func__.__code__.co_firstlineno)
+                + ">"
+            )
         else:
-            return '<' + obj.__self__.__class__.__name__ + '.' + obj.__func__.__name__ + '() at (builtin)'
+            return (
+                "<"
+                + obj.__self__.__class__.__name__
+                + "."
+                + obj.__func__.__name__
+                + "() at (builtin)"
+            )
 
     def repr_long(self, obj, level):
-        s = repr(obj) # XXX Hope this isn't too slow...
+        s = repr(obj)  # XXX Hope this isn't too slow...
         if len(s) > self.maxlong:
-            i = max(0, (self.maxlong-3) // 2)
-            j = max(0, self.maxlong-3-i)
-            s = s[:i] + '...' + s[len(s)-j:]
-        if s[-1] == 'L':
+            i = max(0, (self.maxlong - 3) // 2)
+            j = max(0, self.maxlong - 3 - i)
+            s = s[:i] + "..." + s[len(s) - j :]
+        if s[-1] == "L":
             return s[:-1]
         return s
 
@@ -65,13 +113,25 @@ class BetterRepr(Repr, object):
             tml = self.maxlist
             self.maxlist = max(12, tml * 4)
             try:
-                if hasattr(obj, 'args'):
+                if hasattr(obj, "args"):
                     if len(obj.args) == 1:
-                        return '<' + obj.__class__.__name__ + ': ' + self.repr1(obj.args[0], level-1) + '>'
+                        return (
+                            "<"
+                            + obj.__class__.__name__
+                            + ": "
+                            + self.repr1(obj.args[0], level - 1)
+                            + ">"
+                        )
                     else:
-                        return '<' + obj.__class__.__name__ + ': ' + self.repr1(obj.args, level-1) + '>'
+                        return (
+                            "<"
+                            + obj.__class__.__name__
+                            + ": "
+                            + self.repr1(obj.args, level - 1)
+                            + ">"
+                        )
                 else:
-                    return '<' + obj.__class__.__name__ + '>'
+                    return "<" + obj.__class__.__name__ + ">"
             finally:
                 self.maxstring = tms
                 self.maxlist = tml
@@ -88,32 +148,39 @@ class BetterRepr(Repr, object):
         """
         copied from standard repr.py and fixed to work on multithreadedly mutating lists.
         """
-        if level <= 0: return '[...]'
+        if level <= 0:
+            return "[...]"
         n = len(obj)
-        myl = obj[:min(n, self.maxlist)]
-        s = ''
+        myl = obj[: min(n, self.maxlist)]
+        s = ""
         for item in myl:
-            entry = self.repr1(item, level-1)
-            if s: s = s + ', '
+            entry = self.repr1(item, level - 1)
+            if s:
+                s = s + ", "
             s = s + entry
-        if n > self.maxlist: s = s + ', ...'
-        return '[' + s + ']'
+        if n > self.maxlist:
+            s = s + ", ..."
+        return "[" + s + "]"
 
     def repr_dict(self, obj, level):
         """
         copied from standard repr.py and fixed to work on multithreadedly mutating dicts.
         """
-        if level <= 0: return '{...}'
-        s = ''
+        if level <= 0:
+            return "{...}"
+        s = ""
         n = len(obj)
-        items = list(obj.items())[:min(n, self.maxdict)]
+        items = list(obj.items())[: min(n, self.maxdict)]
         items.sort()
         for key, val in items:
-            entry = self.repr1(key, level-1) + ':' + self.repr1(val, level-1)
-            if s: s = s + ', '
+            entry = self.repr1(key, level - 1) + ":" + self.repr1(val, level - 1)
+            if s:
+                s = s + ", "
             s = s + entry
-        if n > self.maxdict: s = s + ', ...'
-        return '{' + s + '}'
+        if n > self.maxdict:
+            s = s + ", ..."
+        return "{" + s + "}"
+
 
 # This object can be changed by other code updating this module's "brepr"
 # variables.  This is so that (a) code can use humanreadable with
@@ -121,6 +188,7 @@ class BetterRepr(Repr, object):
 # humanreadable to provide application-specific human readable output
 # (e.g. libbase32's base32id.AbbrevRepr).
 brepr = BetterRepr()
+
 
 def hr(x):
     return brepr.repr(x)

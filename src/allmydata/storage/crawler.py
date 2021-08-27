@@ -10,12 +10,32 @@ from __future__ import division
 from __future__ import print_function
 
 from future.utils import PY2, PY3
+
 if PY2:
     # We don't import bytes, object, dict, and list just in case they're used,
     # so as not to create brittle pickles with random magic objects.
-    from builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, range, str, max, min  # noqa: F401
+    from builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import os, time, struct
+
 try:
     import cPickle as pickle
 except ImportError:
@@ -25,8 +45,10 @@ from twisted.application import service
 from allmydata.storage.common import si_b2a
 from allmydata.util import fileutil
 
+
 class TimeSliceExceeded(Exception):
     pass
+
 
 class ShareCrawler(service.MultiService):
     """A ShareCrawler subclass is attached to a StorageServer, and
@@ -78,11 +100,11 @@ class ShareCrawler(service.MultiService):
     do any work. To make it stop doing work, call stopService().
     """
 
-    slow_start = 300 # don't start crawling for 5 minutes after startup
+    slow_start = 300  # don't start crawling for 5 minutes after startup
     # all three of these can be changed at any time
-    allowed_cpu_percentage = .10 # use up to 10% of the CPU, on average
-    cpu_slice = 1.0 # use up to 1.0 seconds before yielding
-    minimum_cycle_time = 300 # don't run a cycle faster than this
+    allowed_cpu_percentage = 0.10  # use up to 10% of the CPU, on average
+    cpu_slice = 1.0  # use up to 1.0 seconds before yielding
+    minimum_cycle_time = 300  # don't run a cycle faster than this
 
     def __init__(self, server, statefile, allowed_cpu_percentage=None):
         service.MultiService.__init__(self)
@@ -91,8 +113,9 @@ class ShareCrawler(service.MultiService):
         self.server = server
         self.sharedir = server.sharedir
         self.statefile = statefile
-        self.prefixes = [si_b2a(struct.pack(">H", i << (16-10)))[:2]
-                         for i in range(2**10)]
+        self.prefixes = [
+            si_b2a(struct.pack(">H", i << (16 - 10)))[:2] for i in range(2 ** 10)
+        ]
         if PY3:
             # On Python 3 we expect the paths to be unicode, not bytes.
             self.prefixes = [p.decode("ascii") for p in self.prefixes]
@@ -110,7 +133,7 @@ class ShareCrawler(service.MultiService):
     def minus_or_none(self, a, b):
         if a is None:
             return None
-        return a-b
+        return a - b
 
     def get_progress(self):
         """I return information about how much progress the crawler is
@@ -150,8 +173,9 @@ class ShareCrawler(service.MultiService):
         if self.state["current-cycle"] is None:
             d["cycle-in-progress"] = False
             d["next-crawl-time"] = self.next_wake_time
-            d["remaining-wait-time"] = self.minus_or_none(self.next_wake_time,
-                                                          time.time())
+            d["remaining-wait-time"] = self.minus_or_none(
+                self.next_wake_time, time.time()
+            )
         else:
             d["cycle-in-progress"] = True
             pct = 100.0 * self.last_complete_prefix_index / len(self.prefixes)
@@ -167,8 +191,9 @@ class ShareCrawler(service.MultiService):
             d["estimated-cycle-complete-time-left"] = remaining
             # it's possible to call get_progress() from inside a crawler's
             # finished_prefix() function
-            d["remaining-sleep-time"] = self.minus_or_none(self.next_wake_time,
-                                                           time.time())
+            d["remaining-sleep-time"] = self.minus_or_none(
+                self.next_wake_time, time.time()
+            )
         per_cycle = None
         if self.last_cycle_elapsed_time is not None:
             per_cycle = self.last_cycle_elapsed_time
@@ -189,7 +214,7 @@ class ShareCrawler(service.MultiService):
         Subclasses can override this to add computed keys to the return value,
         but don't forget to start with the upcall.
         """
-        state = self.state.copy() # it isn't a deepcopy, so don't go crazy
+        state = self.state.copy()  # it isn't a deepcopy, so don't go crazy
         return state
 
     def load_state(self):
@@ -216,13 +241,14 @@ class ShareCrawler(service.MultiService):
             with open(self.statefile, "rb") as f:
                 state = pickle.load(f)
         except Exception:
-            state = {"version": 1,
-                     "last-cycle-finished": None,
-                     "current-cycle": None,
-                     "last-complete-prefix": None,
-                     "last-complete-bucket": None,
-                     }
-        state.setdefault("current-cycle-start-time", time.time()) # approximate
+            state = {
+                "version": 1,
+                "last-cycle-finished": None,
+                "current-cycle": None,
+                "last-complete-prefix": None,
+                "last-complete-bucket": None,
+            }
+        state.setdefault("current-cycle-start-time", time.time())  # approximate
         self.state = state
         lcp = state["last-complete-prefix"]
         if lcp == None:
@@ -308,7 +334,7 @@ class ShareCrawler(service.MultiService):
             sleep_time = max(sleep_time, self.minimum_cycle_time)
         else:
             self.sleeping_between_cycles = False
-        self.current_sleep_time = sleep_time # for status page
+        self.current_sleep_time = sleep_time  # for status page
         self.next_wake_time = now + sleep_time
         self.yielding(sleep_time)
         self.timer = reactor.callLater(sleep_time, self.start_slice)
@@ -325,7 +351,7 @@ class ShareCrawler(service.MultiService):
             self.started_cycle(state["current-cycle"])
         cycle = state["current-cycle"]
 
-        for i in range(self.last_complete_prefix_index+1, len(self.prefixes)):
+        for i in range(self.last_complete_prefix_index + 1, len(self.prefixes)):
             # if we want to yield earlier, just raise TimeSliceExceeded()
             prefix = self.prefixes[i]
             prefixdir = os.path.join(self.sharedir, prefix)
@@ -338,8 +364,7 @@ class ShareCrawler(service.MultiService):
                 except EnvironmentError:
                     buckets = []
                 self.bucket_cache = (i, buckets)
-            self.process_prefixdir(cycle, prefix, prefixdir,
-                                   buckets, start_slice)
+            self.process_prefixdir(cycle, prefix, prefixdir, buckets, start_slice)
             self.last_complete_prefix_index = i
 
             now = time.time()
@@ -354,7 +379,7 @@ class ShareCrawler(service.MultiService):
 
         # yay! we finished the whole cycle
         self.last_complete_prefix_index = -1
-        self.last_prefix_finished_time = None # don't include the sleep
+        self.last_prefix_finished_time = None  # don't include the sleep
         now = time.time()
         if self.last_cycle_started_time is not None:
             self.last_cycle_elapsed_time = now - self.last_cycle_started_time
@@ -466,7 +491,7 @@ class BucketCountingCrawler(ShareCrawler):
     when more than one share is placed on a single server.
     """
 
-    minimum_cycle_time = 60*60 # we don't need this more than once an hour
+    minimum_cycle_time = 60 * 60  # we don't need this more than once an hour
 
     def __init__(self, server, statefile, num_sample_prefixes=1):
         ShareCrawler.__init__(self, server, statefile)
@@ -490,7 +515,7 @@ class BucketCountingCrawler(ShareCrawler):
         if cycle not in self.state["bucket-counts"]:
             self.state["bucket-counts"][cycle] = {}
         self.state["bucket-counts"][cycle][prefix] = len(buckets)
-        if prefix in self.prefixes[:self.num_sample_prefixes]:
+        if prefix in self.prefixes[: self.num_sample_prefixes]:
             self.state["storage-index-samples"][prefix] = (cycle, buckets)
 
     def finished_cycle(self, cycle):
@@ -505,7 +530,6 @@ class BucketCountingCrawler(ShareCrawler):
                     del self.state["bucket-counts"][old_cycle]
         # get rid of old samples too
         for prefix in list(self.state["storage-index-samples"].keys()):
-            old_cycle,buckets = self.state["storage-index-samples"][prefix]
+            old_cycle, buckets = self.state["storage-index-samples"][prefix]
             if old_cycle != cycle:
                 del self.state["storage-index-samples"][prefix]
-

@@ -7,10 +7,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import bytes_to_native_str, PY2
+
 if PY2:
     # Omit open() to get native behavior where open("w") always accepts native
     # strings. Omit bytes so we don't leak future's custom bytes.
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, pow, round, super, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        pow,
+        round,
+        super,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 
 import os, re, struct, time
@@ -23,13 +44,17 @@ from twisted.application import service
 from zope.interface import implementer
 from allmydata.interfaces import RIStorageServer, IStatsProducer
 from allmydata.util import fileutil, idlib, log, time_format
-import allmydata # for __full_version__
+import allmydata  # for __full_version__
 
 from allmydata.storage.common import si_b2a, si_a2b, storage_index_to_dir
-_pyflakes_hush = [si_b2a, si_a2b, storage_index_to_dir] # re-exported
+
+_pyflakes_hush = [si_b2a, si_a2b, storage_index_to_dir]  # re-exported
 from allmydata.storage.lease import LeaseInfo
-from allmydata.storage.mutable import MutableShareFile, EmptyShare, \
-     create_mutable_sharefile
+from allmydata.storage.mutable import (
+    MutableShareFile,
+    EmptyShare,
+    create_mutable_sharefile,
+)
 from allmydata.mutable.layout import MAX_MUTABLE_SHARE_SIZE
 from allmydata.storage.immutable import ShareFile, BucketWriter, BucketReader
 from allmydata.storage.crawler import BucketCountingCrawler
@@ -46,23 +71,28 @@ from allmydata.storage.expirer import LeaseCheckingCrawler
 # base-32 chars).
 
 # $SHARENUM matches this regex:
-NUM_RE=re.compile("^[0-9]+$")
-
+NUM_RE = re.compile("^[0-9]+$")
 
 
 @implementer(RIStorageServer, IStatsProducer)
 class StorageServer(service.MultiService, Referenceable):
-    name = 'storage'
+    name = "storage"
     LeaseCheckerClass = LeaseCheckingCrawler
 
-    def __init__(self, storedir, nodeid, reserved_space=0,
-                 discard_storage=False, readonly_storage=False,
-                 stats_provider=None,
-                 expiration_enabled=False,
-                 expiration_mode="age",
-                 expiration_override_lease_duration=None,
-                 expiration_cutoff_date=None,
-                 expiration_sharetypes=("mutable", "immutable")):
+    def __init__(
+        self,
+        storedir,
+        nodeid,
+        reserved_space=0,
+        discard_storage=False,
+        readonly_storage=False,
+        stats_provider=None,
+        expiration_enabled=False,
+        expiration_mode="age",
+        expiration_override_lease_duration=None,
+        expiration_cutoff_date=None,
+        expiration_sharetypes=("mutable", "immutable"),
+    ):
         service.MultiService.__init__(self)
         assert isinstance(nodeid, bytes)
         assert len(nodeid) == 20
@@ -73,15 +103,14 @@ class StorageServer(service.MultiService, Referenceable):
         fileutil.make_dirs(sharedir)
         self.sharedir = sharedir
         # we don't actually create the corruption-advisory dir until necessary
-        self.corruption_advisory_dir = os.path.join(storedir,
-                                                    "corruption-advisories")
+        self.corruption_advisory_dir = os.path.join(storedir, "corruption-advisories")
         self.reserved_space = int(reserved_space)
         self.no_storage = discard_storage
         self.readonly_storage = readonly_storage
         self.stats_provider = stats_provider
         if self.stats_provider:
             self.stats_provider.register_producer(self)
-        self.incomingdir = os.path.join(sharedir, 'incoming')
+        self.incomingdir = os.path.join(sharedir, "incoming")
         self._clean_incomplete()
         fileutil.make_dirs(self.incomingdir)
         self._active_writers = weakref.WeakKeyDictionary()
@@ -89,30 +118,39 @@ class StorageServer(service.MultiService, Referenceable):
 
         if reserved_space:
             if self.get_available_space() is None:
-                log.msg("warning: [storage]reserved_space= is set, but this platform does not support an API to get disk statistics (statvfs(2) or GetDiskFreeSpaceEx), so this reservation cannot be honored",
-                        umin="0wZ27w", level=log.UNUSUAL)
+                log.msg(
+                    "warning: [storage]reserved_space= is set, but this platform does not support an API to get disk statistics (statvfs(2) or GetDiskFreeSpaceEx), so this reservation cannot be honored",
+                    umin="0wZ27w",
+                    level=log.UNUSUAL,
+                )
 
-        self.latencies = {"allocate": [], # immutable
-                          "write": [],
-                          "close": [],
-                          "read": [],
-                          "get": [],
-                          "writev": [], # mutable
-                          "readv": [],
-                          "add-lease": [], # both
-                          "renew": [],
-                          "cancel": [],
-                          }
+        self.latencies = {
+            "allocate": [],  # immutable
+            "write": [],
+            "close": [],
+            "read": [],
+            "get": [],
+            "writev": [],  # mutable
+            "readv": [],
+            "add-lease": [],  # both
+            "renew": [],
+            "cancel": [],
+        }
         self.add_bucket_counter()
 
         statefile = os.path.join(self.storedir, "lease_checker.state")
         historyfile = os.path.join(self.storedir, "lease_checker.history")
         klass = self.LeaseCheckerClass
-        self.lease_checker = klass(self, statefile, historyfile,
-                                   expiration_enabled, expiration_mode,
-                                   expiration_override_lease_duration,
-                                   expiration_cutoff_date,
-                                   expiration_sharetypes)
+        self.lease_checker = klass(
+            self,
+            statefile,
+            historyfile,
+            expiration_enabled,
+            expiration_mode,
+            expiration_override_lease_duration,
+            expiration_cutoff_date,
+            expiration_sharetypes,
+        )
         self.lease_checker.setServiceParent(self)
 
     def __repr__(self):
@@ -148,7 +186,7 @@ class StorageServer(service.MultiService, Referenceable):
         samples for a given percentile to be interpreted unambiguously
         that percentile will be reported as None. If no samples have been
         collected for the given category, then that category name will
-        not be present in the return value. """
+        not be present in the return value."""
         # note that Amazon's Dynamo paper says they use 99.9% percentile.
         output = {}
         for category in self.latencies:
@@ -164,14 +202,19 @@ class StorageServer(service.MultiService, Referenceable):
             else:
                 stats["mean"] = None
 
-            orderstatlist = [(0.01, "01_0_percentile", 100), (0.1, "10_0_percentile", 10),\
-                             (0.50, "50_0_percentile", 10), (0.90, "90_0_percentile", 10),\
-                             (0.95, "95_0_percentile", 20), (0.99, "99_0_percentile", 100),\
-                             (0.999, "99_9_percentile", 1000)]
+            orderstatlist = [
+                (0.01, "01_0_percentile", 100),
+                (0.1, "10_0_percentile", 10),
+                (0.50, "50_0_percentile", 10),
+                (0.90, "90_0_percentile", 10),
+                (0.95, "95_0_percentile", 20),
+                (0.99, "99_0_percentile", 100),
+                (0.999, "99_9_percentile", 1000),
+            ]
 
             for percentile, percentilestring, minnumtoobserve in orderstatlist:
                 if count >= minnumtoobserve:
-                    stats[percentilestring] = samples[int(percentile*count)]
+                    stats[percentilestring] = samples[int(percentile * count)]
                 else:
                     stats[percentilestring] = None
 
@@ -189,22 +232,24 @@ class StorageServer(service.MultiService, Referenceable):
     def get_stats(self):
         # remember: RIStatsProvider requires that our return dict
         # contains numeric values.
-        stats = { 'storage_server.allocated': self.allocated_size(), }
-        stats['storage_server.reserved_space'] = self.reserved_space
-        for category,ld in self.get_latencies().items():
-            for name,v in ld.items():
-                stats['storage_server.latencies.%s.%s' % (category, name)] = v
+        stats = {
+            "storage_server.allocated": self.allocated_size(),
+        }
+        stats["storage_server.reserved_space"] = self.reserved_space
+        for category, ld in self.get_latencies().items():
+            for name, v in ld.items():
+                stats["storage_server.latencies.%s.%s" % (category, name)] = v
 
         try:
             disk = fileutil.get_disk_stats(self.sharedir, self.reserved_space)
-            writeable = disk['avail'] > 0
+            writeable = disk["avail"] > 0
 
             # spacetime predictors should use disk_avail / (d(disk_used)/dt)
-            stats['storage_server.disk_total'] = disk['total']
-            stats['storage_server.disk_used'] = disk['used']
-            stats['storage_server.disk_free_for_root'] = disk['free_for_root']
-            stats['storage_server.disk_free_for_nonroot'] = disk['free_for_nonroot']
-            stats['storage_server.disk_avail'] = disk['avail']
+            stats["storage_server.disk_total"] = disk["total"]
+            stats["storage_server.disk_used"] = disk["used"]
+            stats["storage_server.disk_free_for_root"] = disk["free_for_root"]
+            stats["storage_server.disk_free_for_nonroot"] = disk["free_for_nonroot"]
+            stats["storage_server.disk_avail"] = disk["avail"]
         except AttributeError:
             writeable = True
         except EnvironmentError:
@@ -212,14 +257,14 @@ class StorageServer(service.MultiService, Referenceable):
             writeable = False
 
         if self.readonly_storage:
-            stats['storage_server.disk_avail'] = 0
+            stats["storage_server.disk_avail"] = 0
             writeable = False
 
-        stats['storage_server.accepting_immutable_shares'] = int(writeable)
+        stats["storage_server.accepting_immutable_shares"] = int(writeable)
         s = self.bucket_counter.get_state()
         bucket_count = s.get("last-complete-bucket-count")
         if bucket_count:
-            stats['storage_server.total_bucket_count'] = bucket_count
+            stats["storage_server.total_bucket_count"] = bucket_count
         return stats
 
     def get_available_space(self):
@@ -240,34 +285,41 @@ class StorageServer(service.MultiService, Referenceable):
         remaining_space = self.get_available_space()
         if remaining_space is None:
             # We're on a platform that has no API to get disk stats.
-            remaining_space = 2**64
+            remaining_space = 2 ** 64
 
         # Unicode strings might be nicer, but for now sticking to bytes since
         # this is what the wire protocol has always been.
-        version = { b"http://allmydata.org/tahoe/protocols/storage/v1" :
-                    { b"maximum-immutable-share-size": remaining_space,
-                      b"maximum-mutable-share-size": MAX_MUTABLE_SHARE_SIZE,
-                      b"available-space": remaining_space,
-                      b"tolerates-immutable-read-overrun": True,
-                      b"delete-mutable-shares-with-zero-length-writev": True,
-                      b"fills-holes-with-zero-bytes": True,
-                      b"prevents-read-past-end-of-share-data": True,
-                      },
-                    b"application-version": allmydata.__full_version__.encode("utf-8"),
-                    }
+        version = {
+            b"http://allmydata.org/tahoe/protocols/storage/v1": {
+                b"maximum-immutable-share-size": remaining_space,
+                b"maximum-mutable-share-size": MAX_MUTABLE_SHARE_SIZE,
+                b"available-space": remaining_space,
+                b"tolerates-immutable-read-overrun": True,
+                b"delete-mutable-shares-with-zero-length-writev": True,
+                b"fills-holes-with-zero-bytes": True,
+                b"prevents-read-past-end-of-share-data": True,
+            },
+            b"application-version": allmydata.__full_version__.encode("utf-8"),
+        }
         return version
 
-    def remote_allocate_buckets(self, storage_index,
-                                renew_secret, cancel_secret,
-                                sharenums, allocated_size,
-                                canary, owner_num=0):
+    def remote_allocate_buckets(
+        self,
+        storage_index,
+        renew_secret,
+        cancel_secret,
+        sharenums,
+        allocated_size,
+        canary,
+        owner_num=0,
+    ):
         # owner_num is not for clients to set, but rather it should be
         # curried into the PersonalStorageServer instance that is dedicated
         # to a particular owner.
         start = time.time()
         self.count("allocate")
         alreadygot = set()
-        bucketwriters = {} # k: shnum, v: BucketWriter
+        bucketwriters = {}  # k: shnum, v: BucketWriter
         si_dir = storage_index_to_dir(storage_index)
         si_s = si_b2a(storage_index)
 
@@ -277,10 +329,10 @@ class StorageServer(service.MultiService, Referenceable):
         # goes into the share files themselves. It could also be put into a
         # separate database. Note that the lease should not be added until
         # the BucketWriter has been closed.
-        expire_time = time.time() + 31*24*60*60
-        lease_info = LeaseInfo(owner_num,
-                               renew_secret, cancel_secret,
-                               expire_time, self.my_nodeid)
+        expire_time = time.time() + 31 * 24 * 60 * 60
+        lease_info = LeaseInfo(
+            owner_num, renew_secret, cancel_secret, expire_time, self.my_nodeid
+        )
 
         max_space_per_bucket = allocated_size
 
@@ -316,8 +368,14 @@ class StorageServer(service.MultiService, Referenceable):
                 pass
             elif (not limited) or (remaining_space >= max_space_per_bucket):
                 # ok! we need to create the new share file.
-                bw = BucketWriter(self, incominghome, finalhome,
-                                  max_space_per_bucket, lease_info, canary)
+                bw = BucketWriter(
+                    self,
+                    incominghome,
+                    finalhome,
+                    max_space_per_bucket,
+                    lease_info,
+                    canary,
+                )
                 if self.no_storage:
                     bw.throw_out_all_data = True
                 bucketwriters[shnum] = bw
@@ -336,7 +394,7 @@ class StorageServer(service.MultiService, Referenceable):
 
     def _iter_share_files(self, storage_index):
         for shnum, filename in self._get_bucket_shares(storage_index):
-            with open(filename, 'rb') as f:
+            with open(filename, "rb") as f:
                 header = f.read(32)
             if header[:32] == MutableShareFile.MAGIC:
                 sf = MutableShareFile(filename, self)
@@ -346,17 +404,16 @@ class StorageServer(service.MultiService, Referenceable):
             elif header[:4] == struct.pack(">L", 1):
                 sf = ShareFile(filename)
             else:
-                continue # non-sharefile
+                continue  # non-sharefile
             yield sf
 
-    def remote_add_lease(self, storage_index, renew_secret, cancel_secret,
-                         owner_num=1):
+    def remote_add_lease(self, storage_index, renew_secret, cancel_secret, owner_num=1):
         start = time.time()
         self.count("add-lease")
-        new_expire_time = time.time() + 31*24*60*60
-        lease_info = LeaseInfo(owner_num,
-                               renew_secret, cancel_secret,
-                               new_expire_time, self.my_nodeid)
+        new_expire_time = time.time() + 31 * 24 * 60 * 60
+        lease_info = LeaseInfo(
+            owner_num, renew_secret, cancel_secret, new_expire_time, self.my_nodeid
+        )
         for sf in self._iter_share_files(storage_index):
             sf.add_or_renew_lease(lease_info)
         self.add_latency("add-lease", time.time() - start)
@@ -365,7 +422,7 @@ class StorageServer(service.MultiService, Referenceable):
     def remote_renew_lease(self, storage_index, renew_secret):
         start = time.time()
         self.count("renew")
-        new_expire_time = time.time() + 31*24*60*60
+        new_expire_time = time.time() + 31 * 24 * 60 * 60
         found_buckets = False
         for sf in self._iter_share_files(storage_index):
             found_buckets = True
@@ -376,7 +433,7 @@ class StorageServer(service.MultiService, Referenceable):
 
     def bucket_writer_closed(self, bw, consumed_size):
         if self.stats_provider:
-            self.stats_provider.count('storage_server.bytes_added', consumed_size)
+            self.stats_provider.count("storage_server.bytes_added", consumed_size)
         del self._active_writers[bw]
 
     def _get_bucket_shares(self, storage_index):
@@ -398,10 +455,9 @@ class StorageServer(service.MultiService, Referenceable):
         self.count("get")
         si_s = si_b2a(storage_index)
         log.msg("storage: get_buckets %r" % si_s)
-        bucketreaders = {} # k: sharenum, v: BucketReader
+        bucketreaders = {}  # k: sharenum, v: BucketReader
         for shnum, filename in self._get_bucket_shares(storage_index):
-            bucketreaders[shnum] = BucketReader(self, filename,
-                                                storage_index, shnum)
+            bucketreaders[shnum] = BucketReader(self, filename, storage_index, shnum)
         self.add_latency("get", time.time() - start)
         return bucketreaders
 
@@ -489,8 +545,7 @@ class StorageServer(service.MultiService, Referenceable):
                 # compare the vectors against an empty share, in which all
                 # reads return empty strings.
                 if not EmptyShare().check_testv(testv):
-                    self.log("testv failed (empty): [%d] %r" % (sharenum,
-                                                                testv))
+                    self.log("testv failed (empty): [%d] %r" % (sharenum, testv))
                     return False
         return True
 
@@ -510,7 +565,9 @@ class StorageServer(service.MultiService, Referenceable):
             read_data[sharenum] = share.readv(read_vector)
         return read_data
 
-    def _evaluate_write_vectors(self, bucketdir, secrets, test_and_write_vectors, shares):
+    def _evaluate_write_vectors(
+        self, bucketdir, secrets, test_and_write_vectors, shares
+    ):
         """
         Execute write vectors against share data.
 
@@ -541,11 +598,10 @@ class StorageServer(service.MultiService, Referenceable):
             else:
                 if sharenum not in shares:
                     # allocate a new share
-                    allocated_size = 2000 # arbitrary, really
-                    share = self._allocate_slot_share(bucketdir, secrets,
-                                                      sharenum,
-                                                      allocated_size,
-                                                      owner_num=0)
+                    allocated_size = 2000  # arbitrary, really
+                    share = self._allocate_slot_share(
+                        bucketdir, secrets, sharenum, allocated_size, owner_num=0
+                    )
                     shares[sharenum] = share
                 shares[sharenum].writev(datav, new_length)
                 remaining_shares[sharenum] = shares[sharenum]
@@ -562,11 +618,11 @@ class StorageServer(service.MultiService, Referenceable):
         """
         :return LeaseInfo: Information for a new lease for a share.
         """
-        ownerid = 1 # TODO
-        expire_time = time.time() + 31*24*60*60   # one month
-        lease_info = LeaseInfo(ownerid,
-                               renew_secret, cancel_secret,
-                               expire_time, self.my_nodeid)
+        ownerid = 1  # TODO
+        expire_time = time.time() + 31 * 24 * 60 * 60  # one month
+        lease_info = LeaseInfo(
+            ownerid, renew_secret, cancel_secret, expire_time, self.my_nodeid
+        )
         return lease_info
 
     def _add_or_renew_leases(self, shares, lease_info):
@@ -582,12 +638,12 @@ class StorageServer(service.MultiService, Referenceable):
             share.add_or_renew_lease(lease_info)
 
     def slot_testv_and_readv_and_writev(  # type: ignore # warner/foolscap#78
-            self,
-            storage_index,
-            secrets,
-            test_and_write_vectors,
-            read_vector,
-            renew_leases,
+        self,
+        storage_index,
+        secrets,
+        test_and_write_vectors,
+        read_vector,
+        renew_leases,
     ):
         """
         Read data from shares and conditionally write some data to them.
@@ -643,10 +699,9 @@ class StorageServer(service.MultiService, Referenceable):
         self.add_latency("writev", time.time() - start)
         return (testv_is_good, read_data)
 
-    def remote_slot_testv_and_readv_and_writev(self, storage_index,
-                                               secrets,
-                                               test_and_write_vectors,
-                                               read_vector):
+    def remote_slot_testv_and_readv_and_writev(
+        self, storage_index, secrets, test_and_write_vectors, read_vector
+    ):
         return self.slot_testv_and_readv_and_writev(
             storage_index,
             secrets,
@@ -655,22 +710,25 @@ class StorageServer(service.MultiService, Referenceable):
             renew_leases=True,
         )
 
-    def _allocate_slot_share(self, bucketdir, secrets, sharenum,
-                             allocated_size, owner_num=0):
+    def _allocate_slot_share(
+        self, bucketdir, secrets, sharenum, allocated_size, owner_num=0
+    ):
         (write_enabler, renew_secret, cancel_secret) = secrets
         my_nodeid = self.my_nodeid
         fileutil.make_dirs(bucketdir)
         filename = os.path.join(bucketdir, "%d" % sharenum)
-        share = create_mutable_sharefile(filename, my_nodeid, write_enabler,
-                                         self)
+        share = create_mutable_sharefile(filename, my_nodeid, write_enabler, self)
         return share
 
     def remote_slot_readv(self, storage_index, shares, readv):
         start = time.time()
         self.count("readv")
         si_s = si_b2a(storage_index)
-        lp = log.msg("storage: slot_readv %r %r" % (si_s, shares),
-                     facility="tahoe.storage", level=log.OPERATIONAL)
+        lp = log.msg(
+            "storage: slot_readv %r %r" % (si_s, shares),
+            facility="tahoe.storage",
+            level=log.OPERATIONAL,
+        )
         si_dir = storage_index_to_dir(storage_index)
         # shares exist if there is a file for them
         bucketdir = os.path.join(self.sharedir, si_dir)
@@ -687,13 +745,16 @@ class StorageServer(service.MultiService, Referenceable):
                 filename = os.path.join(bucketdir, sharenum_s)
                 msf = MutableShareFile(filename, self)
                 datavs[sharenum] = msf.readv(readv)
-        log.msg("returning shares %s" % (list(datavs.keys()),),
-                facility="tahoe.storage", level=log.NOISY, parent=lp)
+        log.msg(
+            "returning shares %s" % (list(datavs.keys()),),
+            facility="tahoe.storage",
+            level=log.NOISY,
+            parent=lp,
+        )
         self.add_latency("readv", time.time() - start)
         return datavs
 
-    def remote_advise_corrupt_share(self, share_type, storage_index, shnum,
-                                    reason):
+    def remote_advise_corrupt_share(self, share_type, storage_index, shnum, reason):
         # This is a remote API, I believe, so this has to be bytes for legacy
         # protocol backwards compatibility reasons.
         assert isinstance(share_type, bytes)
@@ -702,8 +763,9 @@ class StorageServer(service.MultiService, Referenceable):
         now = time_format.iso_utc(sep="T")
         si_s = si_b2a(storage_index)
         # windows can't handle colons in the filename
-        fn = os.path.join(self.corruption_advisory_dir,
-                          "%s--%s-%d" % (now, str(si_s, "utf-8"), shnum)).replace(":","")
+        fn = os.path.join(
+            self.corruption_advisory_dir, "%s--%s-%d" % (now, str(si_s, "utf-8"), shnum)
+        ).replace(":", "")
         with open(fn, "w") as f:
             f.write("report: Share Corruption\n")
             f.write("type: %s\n" % bytes_to_native_str(share_type))
@@ -712,8 +774,16 @@ class StorageServer(service.MultiService, Referenceable):
             f.write("\n")
             f.write(bytes_to_native_str(reason))
             f.write("\n")
-        log.msg(format=("client claims corruption in (%(share_type)s) " +
-                        "%(si)s-%(shnum)d: %(reason)s"),
-                share_type=share_type, si=si_s, shnum=shnum, reason=reason,
-                level=log.SCARY, umid="SGx2fA")
+        log.msg(
+            format=(
+                "client claims corruption in (%(share_type)s) "
+                + "%(si)s-%(shnum)d: %(reason)s"
+            ),
+            share_type=share_type,
+            si=si_s,
+            shnum=shnum,
+            reason=reason,
+            level=log.SCARY,
+            umid="SGx2fA",
+        )
         return None

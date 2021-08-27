@@ -8,8 +8,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2, native_str
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 from past.builtins import long, unicode
 from six import ensure_str
 
@@ -29,10 +52,16 @@ from twisted.application import service
 from foolscap.api import Referenceable, Copyable, RemoteCopy
 
 from allmydata.crypto import aes
-from allmydata.util.hashutil import file_renewal_secret_hash, \
-     file_cancel_secret_hash, bucket_renewal_secret_hash, \
-     bucket_cancel_secret_hash, plaintext_hasher, \
-     storage_index_hash, plaintext_segment_hasher, convergence_hasher
+from allmydata.util.hashutil import (
+    file_renewal_secret_hash,
+    file_cancel_secret_hash,
+    bucket_renewal_secret_hash,
+    bucket_cancel_secret_hash,
+    plaintext_hasher,
+    storage_index_hash,
+    plaintext_segment_hasher,
+    convergence_hasher,
+)
 from allmydata.util.deferredutil import (
     timeout_call,
     until,
@@ -41,14 +70,26 @@ from allmydata import hashtree, uri
 from allmydata.storage.server import si_b2a
 from allmydata.immutable import encode
 from allmydata.util import base32, dictutil, idlib, log, mathutil
-from allmydata.util.happinessutil import servers_of_happiness, \
-    merge_servers, failure_message
+from allmydata.util.happinessutil import (
+    servers_of_happiness,
+    merge_servers,
+    failure_message,
+)
 from allmydata.util.assertutil import precondition, _assert
 from allmydata.util.rrefutil import add_version_to_remote_reference
-from allmydata.interfaces import IUploadable, IUploader, IUploadResults, \
-     IEncryptedUploadable, RIEncryptedUploadable, IUploadStatus, \
-     NoServersError, InsufficientVersionError, UploadUnhappinessError, \
-     DEFAULT_MAX_SEGMENT_SIZE, IPeerSelector
+from allmydata.interfaces import (
+    IUploadable,
+    IUploader,
+    IUploadResults,
+    IEncryptedUploadable,
+    RIEncryptedUploadable,
+    IUploadStatus,
+    NoServersError,
+    InsufficientVersionError,
+    UploadUnhappinessError,
+    DEFAULT_MAX_SEGMENT_SIZE,
+    IPeerSelector,
+)
 from allmydata.immutable import layout
 
 from io import BytesIO
@@ -66,106 +107,114 @@ from eliot import (
 )
 
 _TOTAL_SHARES = Field.for_types(
-    u"total_shares",
+    "total_shares",
     [int, long],
-    u"The total number of shares desired.",
+    "The total number of shares desired.",
 )
+
 
 def _serialize_peers(peers):
     return sorted(base32.b2a(p) for p in peers)
 
+
 _PEERS = Field(
-    u"peers",
+    "peers",
     _serialize_peers,
-    u"The read/write peers being considered.",
+    "The read/write peers being considered.",
 )
 
 _READONLY_PEERS = Field(
-    u"readonly_peers",
+    "readonly_peers",
     _serialize_peers,
-    u"The read-only peers being considered.",
+    "The read-only peers being considered.",
 )
+
 
 def _serialize_existing_shares(existing_shares):
-    return {
-        server: list(shares)
-        for (server, shares)
-        in existing_shares.items()
-    }
+    return {server: list(shares) for (server, shares) in existing_shares.items()}
+
 
 _EXISTING_SHARES = Field(
-    u"existing_shares",
+    "existing_shares",
     _serialize_existing_shares,
-    u"The shares that are believed to already have been placed.",
+    "The shares that are believed to already have been placed.",
 )
+
 
 def _serialize_happiness_mappings(happiness_mappings):
     return {
         sharenum: base32.b2a(serverid)
-        for (sharenum, serverid)
-        in happiness_mappings.items()
+        for (sharenum, serverid) in happiness_mappings.items()
     }
 
+
 _HAPPINESS_MAPPINGS = Field(
-    u"happiness_mappings",
+    "happiness_mappings",
     _serialize_happiness_mappings,
-    u"The computed happiness mapping for a particular upload.",
+    "The computed happiness mapping for a particular upload.",
 )
 
 _HAPPINESS = Field.for_types(
-    u"happiness",
+    "happiness",
     [int, long],
-    u"The computed happiness of a certain placement.",
+    "The computed happiness of a certain placement.",
 )
 
 _UPLOAD_TRACKERS = Field(
-    u"upload_trackers",
+    "upload_trackers",
     lambda trackers: list(
         dict(
             server=tracker.get_name(),
             shareids=sorted(tracker.buckets.keys()),
         )
-        for tracker
-        in trackers
+        for tracker in trackers
     ),
-    u"Some servers which have agreed to hold some shares for us.",
+    "Some servers which have agreed to hold some shares for us.",
 )
 
 _ALREADY_SERVERIDS = Field(
-    u"already_serverids",
+    "already_serverids",
     lambda d: d,
-    u"Some servers which are already holding some shares that we were interested in uploading.",
+    "Some servers which are already holding some shares that we were interested in uploading.",
 )
 
 LOCATE_ALL_SHAREHOLDERS = ActionType(
-    u"immutable:upload:locate-all-shareholders",
+    "immutable:upload:locate-all-shareholders",
     [],
     [_UPLOAD_TRACKERS, _ALREADY_SERVERIDS],
-    u"Existing shareholders are being identified to plan upload actions.",
+    "Existing shareholders are being identified to plan upload actions.",
 )
 
 GET_SHARE_PLACEMENTS = MessageType(
-    u"immutable:upload:get-share-placements",
-    [_TOTAL_SHARES, _PEERS, _READONLY_PEERS, _EXISTING_SHARES, _HAPPINESS_MAPPINGS, _HAPPINESS],
-    u"Share placement is being computed for an upload.",
+    "immutable:upload:get-share-placements",
+    [
+        _TOTAL_SHARES,
+        _PEERS,
+        _READONLY_PEERS,
+        _EXISTING_SHARES,
+        _HAPPINESS_MAPPINGS,
+        _HAPPINESS,
+    ],
+    "Share placement is being computed for an upload.",
 )
 
 _EFFECTIVE_HAPPINESS = Field.for_types(
-    u"effective_happiness",
+    "effective_happiness",
     [int, long],
-    u"The computed happiness value of a share placement map.",
+    "The computed happiness value of a share placement map.",
 )
 
 CONVERGED_HAPPINESS = MessageType(
-    u"immutable:upload:get-shareholders:converged-happiness",
+    "immutable:upload:get-shareholders:converged-happiness",
     [_EFFECTIVE_HAPPINESS],
-    u"The share placement algorithm has converged and placements efforts are complete.",
+    "The share placement algorithm has converged and placements efforts are complete.",
 )
 
 
 # this wants to live in storage, not here
 class TooFullError(Exception):
     pass
+
 
 # HelperUploadResults are what we get from the Helper, and to retain
 # backwards compatibility with old Helpers we can't change the format. We
@@ -185,28 +234,31 @@ class HelperUploadResults(Copyable, RemoteCopy):
     # instead of modifying existing ones.
 
     def __init__(self):
-        self.timings = {} # dict of name to number of seconds
-        self.sharemap = dictutil.DictOfSets() # {shnum: set(serverid)}
-        self.servermap = dictutil.DictOfSets() # {serverid: set(shnum)}
+        self.timings = {}  # dict of name to number of seconds
+        self.sharemap = dictutil.DictOfSets()  # {shnum: set(serverid)}
+        self.servermap = dictutil.DictOfSets()  # {serverid: set(shnum)}
         self.file_size = None
-        self.ciphertext_fetched = None # how much the helper fetched
+        self.ciphertext_fetched = None  # how much the helper fetched
         self.uri = None
-        self.preexisting_shares = None # count of shares already present
-        self.pushed_shares = None # count of shares we pushed
+        self.preexisting_shares = None  # count of shares already present
+        self.pushed_shares = None  # count of shares we pushed
+
 
 @implementer(IUploadResults)
 class UploadResults(object):
-
-    def __init__(self, file_size,
-                 ciphertext_fetched, # how much the helper fetched
-                 preexisting_shares, # count of shares already present
-                 pushed_shares, # count of shares we pushed
-                 sharemap, # {shnum: set(server)}
-                 servermap, # {server: set(shnum)}
-                 timings, # dict of name to number of seconds
-                 uri_extension_data,
-                 uri_extension_hash,
-                 verifycapstr):
+    def __init__(
+        self,
+        file_size,
+        ciphertext_fetched,  # how much the helper fetched
+        preexisting_shares,  # count of shares already present
+        pushed_shares,  # count of shares we pushed
+        sharemap,  # {shnum: set(server)}
+        servermap,  # {server: set(shnum)}
+        timings,  # dict of name to number of seconds
+        uri_extension_data,
+        uri_extension_hash,
+        verifycapstr,
+    ):
         self._file_size = file_size
         self._ciphertext_fetched = ciphertext_fetched
         self._preexisting_shares = preexisting_shares
@@ -223,24 +275,34 @@ class UploadResults(object):
 
     def get_file_size(self):
         return self._file_size
+
     def get_uri(self):
         return self._uri
+
     def get_ciphertext_fetched(self):
         return self._ciphertext_fetched
+
     def get_preexisting_shares(self):
         return self._preexisting_shares
+
     def get_pushed_shares(self):
         return self._pushed_shares
+
     def get_sharemap(self):
         return self._sharemap
+
     def get_servermap(self):
         return self._servermap
+
     def get_timings(self):
         return self._timings
+
     def get_uri_extension_data(self):
         return self._uri_extension_data
+
     def get_verifycapstr(self):
         return self._verifycapstr
+
 
 # our current uri_extension is 846 bytes for small files, a few bytes
 # more for larger ones (since the filesize is encoded in decimal in a
@@ -251,23 +313,42 @@ EXTENSION_SIZE = 1000
 # TODO: actual extensions are closer to 419 bytes, so we can probably lower
 # this.
 
+
 def pretty_print_shnum_to_servers(s):
-    return ', '.join([ "sh%s: %s" % (k, '+'.join([idlib.shortnodeid_b2a(x) for x in v])) for k, v in s.items() ])
+    return ", ".join(
+        [
+            "sh%s: %s" % (k, "+".join([idlib.shortnodeid_b2a(x) for x in v]))
+            for k, v in s.items()
+        ]
+    )
+
 
 class ServerTracker(object):
-    def __init__(self, server,
-                 sharesize, blocksize, num_segments, num_share_hashes,
-                 storage_index,
-                 bucket_renewal_secret, bucket_cancel_secret):
+    def __init__(
+        self,
+        server,
+        sharesize,
+        blocksize,
+        num_segments,
+        num_share_hashes,
+        storage_index,
+        bucket_renewal_secret,
+        bucket_cancel_secret,
+    ):
         self._server = server
-        self.buckets = {} # k: shareid, v: IRemoteBucketWriter
+        self.buckets = {}  # k: shareid, v: IRemoteBucketWriter
         self.sharesize = sharesize
 
-        wbp = layout.make_write_bucket_proxy(None, None, sharesize,
-                                             blocksize, num_segments,
-                                             num_share_hashes,
-                                             EXTENSION_SIZE)
-        self.wbp_class = wbp.__class__ # to create more of them
+        wbp = layout.make_write_bucket_proxy(
+            None,
+            None,
+            sharesize,
+            blocksize,
+            num_segments,
+            num_share_hashes,
+            EXTENSION_SIZE,
+        )
+        self.wbp_class = wbp.__class__  # to create more of them
         self.allocated_size = wbp.get_allocated_size()
         self.blocksize = blocksize
         self.num_segments = num_segments
@@ -278,13 +359,17 @@ class ServerTracker(object):
         self.cancel_secret = bucket_cancel_secret
 
     def __repr__(self):
-        return ("<ServerTracker for server %r and SI %r>"
-                % (self._server.get_name(), si_b2a(self.storage_index)[:5]))
+        return "<ServerTracker for server %r and SI %r>" % (
+            self._server.get_name(),
+            si_b2a(self.storage_index)[:5],
+        )
 
     def get_server(self):
         return self._server
+
     def get_serverid(self):
         return self._server.get_serverid()
+
     def get_name(self):
         return self._server.get_name()
 
@@ -306,19 +391,22 @@ class ServerTracker(object):
         return storage_server.get_buckets(self.storage_index)
 
     def _buckets_allocated(self, alreadygot_and_buckets):
-        #log.msg("%s._got_reply(%s)" % (self, (alreadygot, buckets)))
+        # log.msg("%s._got_reply(%s)" % (self, (alreadygot, buckets)))
         (alreadygot, buckets) = alreadygot_and_buckets
         b = {}
         for sharenum, rref in list(buckets.items()):
-            bp = self.wbp_class(rref, self._server, self.sharesize,
-                                self.blocksize,
-                                self.num_segments,
-                                self.num_share_hashes,
-                                EXTENSION_SIZE)
+            bp = self.wbp_class(
+                rref,
+                self._server,
+                self.sharesize,
+                self.blocksize,
+                self.num_segments,
+                self.num_share_hashes,
+                EXTENSION_SIZE,
+            )
             b[sharenum] = bp
         self.buckets.update(b)
         return (alreadygot, set(b.keys()))
-
 
     def abort(self):
         """
@@ -338,12 +426,14 @@ class ServerTracker(object):
 
 
 def str_shareloc(shnum, bucketwriter):
-    return "%s: %s" % (shnum, ensure_str(bucketwriter.get_servername()),)
+    return "%s: %s" % (
+        shnum,
+        ensure_str(bucketwriter.get_servername()),
+    )
 
 
 @implementer(IPeerSelector)
 class PeerSelector(object):
-
     def __init__(self, num_segments, total_shares, needed_shares, min_happiness):
         self.num_segments = num_segments
         self.total_shares = total_shares
@@ -385,7 +475,9 @@ class PeerSelector(object):
 
     def get_share_placements(self):
         shares = set(range(self.total_shares))
-        self.happiness_mappings = share_placement(self.peers, self.readonly_peers, shares, self.existing_shares)
+        self.happiness_mappings = share_placement(
+            self.peers, self.readonly_peers, shares, self.existing_shares
+        )
         self.happiness = calculate_happiness(self.happiness_mappings)
         GET_SHARE_PLACEMENTS.log(
             total_shares=self.total_shares,
@@ -402,7 +494,6 @@ class PeerSelector(object):
 
 
 class _QueryStatistics(object):
-
     def __init__(self):
         self.total = 0
         self.good = 0
@@ -412,7 +503,8 @@ class _QueryStatistics(object):
         self.contacted = 0
 
     def __str__(self):
-        return "QueryStatistics(total={} good={} bad={} full={} " \
+        return (
+            "QueryStatistics(total={} good={} bad={} full={} "
             "error={} contacted={})".format(
                 self.total,
                 self.good,
@@ -421,16 +513,18 @@ class _QueryStatistics(object):
                 self.error,
                 self.contacted,
             )
+        )
 
 
 class Tahoe2ServerSelector(log.PrefixingLogMixin):
-
     def __init__(self, upload_id, logparent=None, upload_status=None, reactor=None):
         self.upload_id = upload_id
         self._query_stats = _QueryStatistics()
         self.last_failure_msg = None
         self._status = IUploadStatus(upload_status)
-        log.PrefixingLogMixin.__init__(self, 'tahoe.immutable.upload', logparent, prefix=upload_id)
+        log.PrefixingLogMixin.__init__(
+            self, "tahoe.immutable.upload", logparent, prefix=upload_id
+        )
         self.log("starting", level=log.OPERATIONAL)
         if reactor is None:
             from twisted.internet import reactor
@@ -439,8 +533,14 @@ class Tahoe2ServerSelector(log.PrefixingLogMixin):
     def __repr__(self):
         return "<Tahoe2ServerSelector for upload %r>" % self.upload_id
 
-    def _create_trackers(self, candidate_servers, allocated_size,
-                         file_renewal_secret, file_cancel_secret, create_server_tracker):
+    def _create_trackers(
+        self,
+        candidate_servers,
+        allocated_size,
+        file_renewal_secret,
+        file_cancel_secret,
+        create_server_tracker,
+    ):
 
         # filter the list of servers according to which ones can accomodate
         # this request. This excludes older servers (which used a 4-byte size
@@ -454,7 +554,8 @@ class Tahoe2ServerSelector(log.PrefixingLogMixin):
         for server in candidate_servers:
             self.peer_selector.add_peer(server.get_serverid())
         writeable_servers = [
-            server for server in candidate_servers
+            server
+            for server in candidate_servers
             if _get_maxsize(server) >= allocated_size
         ]
         readonly_servers = set(candidate_servers) - set(writeable_servers)
@@ -484,10 +585,18 @@ class Tahoe2ServerSelector(log.PrefixingLogMixin):
         return readonly_trackers, write_trackers
 
     @inline_callbacks
-    def get_shareholders(self, storage_broker, secret_holder,
-                         storage_index, share_size, block_size,
-                         num_segments, total_shares, needed_shares,
-                         min_happiness):
+    def get_shareholders(
+        self,
+        storage_broker,
+        secret_holder,
+        storage_index,
+        share_size,
+        block_size,
+        num_segments,
+        total_shares,
+        needed_shares,
+        min_happiness,
+    ):
         """
         @return: (upload_trackers, already_serverids), where upload_trackers
                  is a set of ServerTracker instances that have agreed to hold
@@ -503,17 +612,18 @@ class Tahoe2ServerSelector(log.PrefixingLogMixin):
         if self._status:
             self._status.set_status("Contacting Servers..")
 
-        self.peer_selector = PeerSelector(num_segments, total_shares,
-                                          needed_shares, min_happiness)
+        self.peer_selector = PeerSelector(
+            num_segments, total_shares, needed_shares, min_happiness
+        )
 
         self.total_shares = total_shares
         self.min_happiness = min_happiness
         self.needed_shares = needed_shares
 
         self.homeless_shares = set(range(total_shares))
-        self.use_trackers = set() # ServerTrackers that have shares assigned
-                                  # to them
-        self.preexisting_shares = {} # shareid => set(serverids) holding shareid
+        self.use_trackers = set()  # ServerTrackers that have shares assigned
+        # to them
+        self.preexisting_shares = {}  # shareid => set(serverids) holding shareid
 
         # These servers have shares -- any shares -- for our SI. We keep
         # track of these to write an error message with them later.
@@ -527,9 +637,9 @@ class Tahoe2ServerSelector(log.PrefixingLogMixin):
         num_share_hashes = len(ht.needed_hashes(0, include_leaf=True))
 
         # figure out how much space to ask for
-        wbp = layout.make_write_bucket_proxy(None, None,
-                                             share_size, 0, num_segments,
-                                             num_share_hashes, EXTENSION_SIZE)
+        wbp = layout.make_write_bucket_proxy(
+            None, None, share_size, 0, num_segments, num_share_hashes, EXTENSION_SIZE
+        )
         allocated_size = wbp.get_allocated_size()
 
         # decide upon the renewal/cancel secrets, to include them in the
@@ -553,12 +663,18 @@ class Tahoe2ServerSelector(log.PrefixingLogMixin):
 
         def _create_server_tracker(server, renew, cancel):
             return ServerTracker(
-                server, share_size, block_size, num_segments, num_share_hashes,
-                storage_index, renew, cancel,
+                server,
+                share_size,
+                block_size,
+                num_segments,
+                num_share_hashes,
+                storage_index,
+                renew,
+                cancel,
             )
 
         readonly_trackers, write_trackers = self._create_trackers(
-            all_servers[:(2 * total_shares)],
+            all_servers[: (2 * total_shares)],
             allocated_size,
             file_renewal_secret,
             file_cancel_secret,
@@ -590,8 +706,10 @@ class Tahoe2ServerSelector(log.PrefixingLogMixin):
             d = timeout_call(self._reactor, tracker.ask_about_existing_shares(), 15)
             d.addBoth(self._handle_existing_response, tracker)
             ds.append(d)
-            self.log("asking server %r for any existing shares" %
-                     (tracker.get_name(),), level=log.NOISY)
+            self.log(
+                "asking server %r for any existing shares" % (tracker.get_name(),),
+                level=log.NOISY,
+            )
 
         for tracker in write_trackers:
             assert isinstance(tracker, ServerTracker)
@@ -602,11 +720,14 @@ class Tahoe2ServerSelector(log.PrefixingLogMixin):
                 write_trackers.remove(tracker)
                 readonly_trackers.append(tracker)
                 return f
+
             d.addErrback(timed_out, tracker)
             d.addBoth(self._handle_existing_write_response, tracker, set())
             ds.append(d)
-            self.log("asking server %r for any existing shares" %
-                     (tracker.get_name(),), level=log.NOISY)
+            self.log(
+                "asking server %r for any existing shares" % (tracker.get_name(),),
+                level=log.NOISY,
+            )
 
         trackers = set(write_trackers) | set(readonly_trackers)
 
@@ -649,8 +770,9 @@ class Tahoe2ServerSelector(log.PrefixingLogMixin):
 
         last_happiness = None
         effective_happiness = -1
-        while effective_happiness < min_happiness and \
-              (last_happiness is None or len(write_trackers)):
+        while effective_happiness < min_happiness and (
+            last_happiness is None or len(write_trackers)
+        ):
             errors_before = self._query_stats.bad
             self._share_placements = self.peer_selector.get_share_placements()
 
@@ -665,24 +787,32 @@ class Tahoe2ServerSelector(log.PrefixingLogMixin):
                 # confuses our statistics. However, if the server is a
                 # readonly sever, we *do* want to ask so it refreshes
                 # the share.
-                if shares_to_ask != set(tracker.buckets.keys()) or tracker in readonly_trackers:
+                if (
+                    shares_to_ask != set(tracker.buckets.keys())
+                    or tracker in readonly_trackers
+                ):
                     self._query_stats.total += 1
                     self._query_stats.contacted += 1
                     d = timeout_call(self._reactor, tracker.query(shares_to_ask), 15)
                     d.addBoth(self._buckets_allocated, tracker, shares_to_ask)
                     d.addErrback(lambda f, tr: _bad_server(f, tr), tracker)
-                    d.addCallback(lambda x, tr: _make_readonly(tr) if not x else x, tracker)
+                    d.addCallback(
+                        lambda x, tr: _make_readonly(tr) if not x else x, tracker
+                    )
                     placements.append(d)
 
             yield defer.DeferredList(placements)
-            merged = merge_servers(self.peer_selector.get_sharemap_of_preexisting_shares(), self.use_trackers)
+            merged = merge_servers(
+                self.peer_selector.get_sharemap_of_preexisting_shares(),
+                self.use_trackers,
+            )
             effective_happiness = servers_of_happiness(merged)
             if effective_happiness == last_happiness:
                 # print("effective happiness still {}".format(last_happiness))
                 # we haven't improved over the last iteration; give up
-                break;
+                break
             if errors_before == self._query_stats.bad:
-                break;
+                break
             last_happiness = effective_happiness
             # print("write trackers left: {}".format(len(write_trackers)))
 
@@ -694,7 +824,9 @@ class Tahoe2ServerSelector(log.PrefixingLogMixin):
         # no more servers. If we haven't placed enough shares, we fail.
         # XXX note sometimes we're not running the loop at least once,
         # and so 'merged' must be (re-)computed here.
-        merged = merge_servers(self.peer_selector.get_sharemap_of_preexisting_shares(), self.use_trackers)
+        merged = merge_servers(
+            self.peer_selector.get_sharemap_of_preexisting_shares(), self.use_trackers
+        )
         effective_happiness = servers_of_happiness(merged)
 
         # print("placements completed {} vs {}".format(effective_happiness, min_happiness))
@@ -712,9 +844,12 @@ class Tahoe2ServerSelector(log.PrefixingLogMixin):
                 happy=min_happiness,
                 effective_happy=effective_happiness,
             )
-            msg = ("server selection failed for %s: %s (%s), merged=%s" %
-                   (self, msg, self._get_progress_message(),
-                    pretty_print_shnum_to_servers(merged)))
+            msg = "server selection failed for %s: %s (%s), merged=%s" % (
+                self,
+                msg,
+                self._get_progress_message(),
+                pretty_print_shnum_to_servers(merged),
+            )
             if self.last_failure_msg:
                 msg += " (%s)" % (self.last_failure_msg,)
             self.log(msg, level=log.UNUSUAL)
@@ -724,16 +859,23 @@ class Tahoe2ServerSelector(log.PrefixingLogMixin):
         # we placed (or already had) enough to be happy, so we're done
         if self._status:
             self._status.set_status("Placed all shares")
-        msg = ("server selection successful for %s: %s: pretty_print_merged: %s, "
-               "self.use_trackers: %s, self.preexisting_shares: %s") \
-               % (self, self._get_progress_message(),
-                  pretty_print_shnum_to_servers(merged),
-                  [', '.join([str_shareloc(k,v)
-                              for k,v in st.buckets.items()])
-                   for st in self.use_trackers],
-                  pretty_print_shnum_to_servers(self.preexisting_shares))
+        msg = (
+            "server selection successful for %s: %s: pretty_print_merged: %s, "
+            "self.use_trackers: %s, self.preexisting_shares: %s"
+        ) % (
+            self,
+            self._get_progress_message(),
+            pretty_print_shnum_to_servers(merged),
+            [
+                ", ".join([str_shareloc(k, v) for k, v in st.buckets.items()])
+                for st in self.use_trackers
+            ],
+            pretty_print_shnum_to_servers(self.preexisting_shares),
+        )
         self.log(msg, level=log.OPERATIONAL)
-        defer.returnValue((self.use_trackers, self.peer_selector.get_sharemap_of_preexisting_shares()))
+        defer.returnValue(
+            (self.use_trackers, self.peer_selector.get_sharemap_of_preexisting_shares())
+        )
 
     def _handle_existing_response(self, res, tracker):
         """
@@ -742,16 +884,21 @@ class Tahoe2ServerSelector(log.PrefixingLogMixin):
         """
         serverid = tracker.get_serverid()
         if isinstance(res, failure.Failure):
-            self.log("%s got error during existing shares check: %s"
-                    % (tracker.get_name(), res), level=log.UNUSUAL)
+            self.log(
+                "%s got error during existing shares check: %s"
+                % (tracker.get_name(), res),
+                level=log.UNUSUAL,
+            )
             self.peer_selector.mark_bad_peer(serverid)
         else:
             buckets = res
             if buckets:
                 self.serverids_with_shares.add(serverid)
-            self.log("response to get_buckets() from server %r: alreadygot=%s"
-                    % (tracker.get_name(), tuple(sorted(buckets))),
-                    level=log.NOISY)
+            self.log(
+                "response to get_buckets() from server %r: alreadygot=%s"
+                % (tracker.get_name(), tuple(sorted(buckets))),
+                level=log.NOISY,
+            )
             for bucket in buckets:
                 self.peer_selector.add_peer_with_share(serverid, bucket)
                 self.preexisting_shares.setdefault(bucket, set()).add(serverid)
@@ -764,10 +911,12 @@ class Tahoe2ServerSelector(log.PrefixingLogMixin):
         """
         if isinstance(res, failure.Failure):
             self.peer_selector.mark_bad_peer(tracker.get_serverid())
-            self.log("%s got error during server selection: %s" % (tracker, res),
-                    level=log.UNUSUAL)
+            self.log(
+                "%s got error during server selection: %s" % (tracker, res),
+                level=log.UNUSUAL,
+            )
             self.homeless_shares |= shares_to_ask
-            msg = ("last failure (from %s) was: %s" % (tracker, res))
+            msg = "last failure (from %s) was: %s" % (tracker, res)
             self.last_failure_msg = msg
         else:
             for share in res.keys():
@@ -777,11 +926,14 @@ class Tahoe2ServerSelector(log.PrefixingLogMixin):
         if not self.homeless_shares:
             msg = "placed all %d shares, " % (self.total_shares)
         else:
-            msg = ("placed %d shares out of %d total (%d homeless), " %
-                   (self.total_shares - len(self.homeless_shares),
-                    self.total_shares,
-                    len(self.homeless_shares)))
-        assert self._query_stats.bad == (self._query_stats.full + self._query_stats.error)
+            msg = "placed %d shares out of %d total (%d homeless), " % (
+                self.total_shares - len(self.homeless_shares),
+                self.total_shares,
+                len(self.homeless_shares),
+            )
+        assert self._query_stats.bad == (
+            self._query_stats.full + self._query_stats.error
+        )
         return (
             msg + "want to place shares on at least {happy} servers such that "
             "any {needed} of them have enough shares to recover the file, "
@@ -796,7 +948,7 @@ class Tahoe2ServerSelector(log.PrefixingLogMixin):
                 good=self._query_stats.good,
                 bad=self._query_stats.bad,
                 full=self._query_stats.full,
-                error=self._query_stats.error
+                error=self._query_stats.error,
             )
         )
 
@@ -818,10 +970,10 @@ class Tahoe2ServerSelector(log.PrefixingLogMixin):
                     self.homeless_shares.remove(shnum)
 
         if self._status:
-            self._status.set_status("Contacting Servers [%r] (first query),"
-                                    " %d shares left.."
-                                    % (tracker.get_name(),
-                                       len(self.homeless_shares)))
+            self._status.set_status(
+                "Contacting Servers [%r] (first query),"
+                " %d shares left.." % (tracker.get_name(), len(self.homeless_shares))
+            )
         return shares_to_ask
 
     def _buckets_allocated(self, res, tracker, shares_to_ask):
@@ -832,8 +984,10 @@ class Tahoe2ServerSelector(log.PrefixingLogMixin):
         if isinstance(res, failure.Failure):
             # This is unusual, and probably indicates a bug or a network
             # problem.
-            self.log("%s got error during server selection: %s" % (tracker, res),
-                    level=log.UNUSUAL)
+            self.log(
+                "%s got error during server selection: %s" % (tracker, res),
+                level=log.UNUSUAL,
+            )
             self._query_stats.error += 1
             self._query_stats.bad += 1
             self.homeless_shares |= shares_to_ask
@@ -845,10 +999,15 @@ class Tahoe2ServerSelector(log.PrefixingLogMixin):
 
         else:
             (alreadygot, allocated) = res
-            self.log("response to allocate_buckets() from server %r: alreadygot=%s, allocated=%s"
-                    % (tracker.get_name(),
-                       tuple(sorted(alreadygot)), tuple(sorted(allocated))),
-                    level=log.NOISY)
+            self.log(
+                "response to allocate_buckets() from server %r: alreadygot=%s, allocated=%s"
+                % (
+                    tracker.get_name(),
+                    tuple(sorted(alreadygot)),
+                    tuple(sorted(allocated)),
+                ),
+                level=log.NOISY,
+            )
             progress = False
             for s in alreadygot:
                 self.preexisting_shares.setdefault(s, set()).add(tracker.get_serverid())
@@ -919,12 +1078,14 @@ class _Accum(object):
     :ivar remaining: The number of bytes still expected.
     :ivar ciphertext: The bytes accumulated so far.
     """
-    remaining = attr.ib(validator=attr.validators.instance_of(int)) # type: int
-    ciphertext = attr.ib(default=attr.Factory(list))                # type: List[bytes]
 
-    def extend(self,
-               size,           # type: int
-               ciphertext,     # type: List[bytes]
+    remaining = attr.ib(validator=attr.validators.instance_of(int))  # type: int
+    ciphertext = attr.ib(default=attr.Factory(list))  # type: List[bytes]
+
+    def extend(
+        self,
+        size,  # type: int
+        ciphertext,  # type: List[bytes]
     ):
         """
         Accumulate some more ciphertext.
@@ -943,15 +1104,19 @@ class _Accum(object):
 class EncryptAnUploadable(object):
     """This is a wrapper that takes an IUploadable and provides
     IEncryptedUploadable."""
-    CHUNKSIZE = 50*1024
+
+    CHUNKSIZE = 50 * 1024
 
     def __init__(self, original, log_parent=None, chunk_size=None):
         """
         :param chunk_size: The number of bytes to read from the uploadable at a
             time, or None for some default.
         """
-        precondition(original.default_params_set,
-                     "set_default_encoding_parameters not called on %r before wrapping with EncryptAnUploadable" % (original,))
+        precondition(
+            original.default_params_set,
+            "set_default_encoding_parameters not called on %r before wrapping with EncryptAnUploadable"
+            % (original,),
+        )
         self.original = IUploadable(original)
         self._log_number = log_parent
         self._encryptor = None
@@ -980,11 +1145,13 @@ class EncryptAnUploadable(object):
         if self._file_size is not None:
             return defer.succeed(self._file_size)
         d = self.original.get_size()
+
         def _got_size(size):
             self._file_size = size
             if self._status:
                 self._status.set_size(size)
             return size
+
         d.addCallback(_got_size)
         return d
 
@@ -992,13 +1159,16 @@ class EncryptAnUploadable(object):
         if self._encoding_parameters is not None:
             return defer.succeed(self._encoding_parameters)
         d = self.original.get_all_encoding_parameters()
+
         def _got(encoding_parameters):
             (k, happy, n, segsize) = encoding_parameters
-            self._segment_size = segsize # used by segment hashers
+            self._segment_size = segsize  # used by segment hashers
             self._encoding_parameters = encoding_parameters
-            self.log("my encoding parameters: %s" % (encoding_parameters,),
-                     level=log.NOISY)
+            self.log(
+                "my encoding parameters: %s" % (encoding_parameters,), level=log.NOISY
+            )
             return encoding_parameters
+
         d.addCallback(_got)
         return d
 
@@ -1007,6 +1177,7 @@ class EncryptAnUploadable(object):
             return defer.succeed(self._encryptor)
 
         d = self.original.get_encryption_key()
+
         def _got(key):
             self._encryptor = aes.create_encryptor(key)
 
@@ -1019,6 +1190,7 @@ class EncryptAnUploadable(object):
             if self._status:
                 self._status.set_storage_index(storage_index)
             return self._encryptor
+
         d.addCallback(_got)
         return d
 
@@ -1043,24 +1215,29 @@ class EncryptAnUploadable(object):
             p, segment_left = self._get_segment_hasher()
             chunk_left = len(chunk) - offset
             this_segment = min(chunk_left, segment_left)
-            p.update(chunk[offset:offset+this_segment])
+            p.update(chunk[offset : offset + this_segment])
             self._plaintext_segment_hashed_bytes += this_segment
 
             if self._plaintext_segment_hashed_bytes == self._segment_size:
                 # we've filled this segment
                 self._plaintext_segment_hashes.append(p.digest())
                 self._plaintext_segment_hasher = None
-                self.log("closed hash [%d]: %dB" %
-                         (len(self._plaintext_segment_hashes)-1,
-                          self._plaintext_segment_hashed_bytes),
-                         level=log.NOISY)
-                self.log(format="plaintext leaf hash [%(segnum)d] is %(hash)s",
-                         segnum=len(self._plaintext_segment_hashes)-1,
-                         hash=base32.b2a(p.digest()),
-                         level=log.NOISY)
+                self.log(
+                    "closed hash [%d]: %dB"
+                    % (
+                        len(self._plaintext_segment_hashes) - 1,
+                        self._plaintext_segment_hashed_bytes,
+                    ),
+                    level=log.NOISY,
+                )
+                self.log(
+                    format="plaintext leaf hash [%(segnum)d] is %(hash)s",
+                    segnum=len(self._plaintext_segment_hashes) - 1,
+                    hash=base32.b2a(p.digest()),
+                    level=log.NOISY,
+                )
 
             offset += this_segment
-
 
     def read_encrypted(self, length, hash_only):
         # make sure our parameters have been set up first
@@ -1087,9 +1264,10 @@ class EncryptAnUploadable(object):
         d.addCallback(lambda ignored: accum.ciphertext)
         return d
 
-    def _read_encrypted(self,
-                        ciphertext_accum,  # type: _Accum
-                        hash_only,         # type: bool
+    def _read_encrypted(
+        self,
+        ciphertext_accum,  # type: _Accum
+        hash_only,  # type: bool
     ):
         # type: (...) -> defer.Deferred
         """
@@ -1104,6 +1282,7 @@ class EncryptAnUploadable(object):
 
         # read a chunk of plaintext..
         d = defer.maybeDeferred(self.original.read, size)
+
         def _good(plaintext):
             # and encrypt it..
             # o/' over the fields we go, hashing all the way, sHA! sHA! sHA! o/'
@@ -1113,6 +1292,7 @@ class EncryptAnUploadable(object):
             # to drop otherwise it will never reach 0 and the loop will never
             # end.
             ciphertext_accum.extend(size, ct)
+
         d.addCallback(_good)
         return d
 
@@ -1125,8 +1305,9 @@ class EncryptAnUploadable(object):
         bytes_processed = 0
         while data:
             chunk = data.pop(0)
-            self.log(" read_encrypted handling %dB-sized chunk" % len(chunk),
-                     level=log.NOISY)
+            self.log(
+                " read_encrypted handling %dB-sized chunk" % len(chunk), level=log.NOISY
+            )
             bytes_processed += len(chunk)
             self._plaintext_hasher.update(chunk)
             self._update_segment_hash(chunk)
@@ -1148,22 +1329,25 @@ class EncryptAnUploadable(object):
             self._status.set_progress(1, progress)
         return cryptdata
 
-
     def get_plaintext_hashtree_leaves(self, first, last, num_segments):
         # this is currently unused, but will live again when we fix #453
         if len(self._plaintext_segment_hashes) < num_segments:
             # close out the last one
-            assert len(self._plaintext_segment_hashes) == num_segments-1
+            assert len(self._plaintext_segment_hashes) == num_segments - 1
             p, segment_left = self._get_segment_hasher()
             self._plaintext_segment_hashes.append(p.digest())
             del self._plaintext_segment_hasher
-            self.log("closing plaintext leaf hasher, hashed %d bytes" %
-                     self._plaintext_segment_hashed_bytes,
-                     level=log.NOISY)
-            self.log(format="plaintext leaf hash [%(segnum)d] is %(hash)s",
-                     segnum=len(self._plaintext_segment_hashes)-1,
-                     hash=base32.b2a(p.digest()),
-                     level=log.NOISY)
+            self.log(
+                "closing plaintext leaf hasher, hashed %d bytes"
+                % self._plaintext_segment_hashed_bytes,
+                level=log.NOISY,
+            )
+            self.log(
+                format="plaintext leaf hash [%(segnum)d] is %(hash)s",
+                segnum=len(self._plaintext_segment_hashes) - 1,
+                hash=base32.b2a(p.digest()),
+                level=log.NOISY,
+            )
         assert len(self._plaintext_segment_hashes) == num_segments
         return defer.succeed(tuple(self._plaintext_segment_hashes[first:last]))
 
@@ -1173,6 +1357,7 @@ class EncryptAnUploadable(object):
 
     def close(self):
         return self.original.close()
+
 
 @implementer(IUploadStatus)
 class UploadStatus(object):
@@ -1191,41 +1376,55 @@ class UploadStatus(object):
 
     def get_started(self):
         return self.started
+
     def get_storage_index(self):
         return self.storage_index
+
     def get_size(self):
         return self.size
+
     def using_helper(self):
         return self.helper
+
     def get_status(self):
         return self.status
+
     def get_progress(self):
         return tuple(self.progress)
+
     def get_active(self):
         return self.active
+
     def get_results(self):
         return self.results
+
     def get_counter(self):
         return self.counter
 
     def set_storage_index(self, si):
         self.storage_index = si
+
     def set_size(self, size):
         self.size = size
+
     def set_helper(self, helper):
         self.helper = helper
+
     def set_status(self, status):
         self.status = status
+
     def set_progress(self, which, value):
         # [0]: chk, [1]: ciphertext, [2]: encode+push
         self.progress[which] = value
+
     def set_active(self, value):
         self.active = value
+
     def set_results(self, value):
         self.results = value
 
-class CHKUploader(object):
 
+class CHKUploader(object):
     def __init__(self, storage_broker, secret_holder, reactor=None):
         # server_selector needs storage_broker and secret_holder
         self._storage_broker = storage_broker
@@ -1248,7 +1447,7 @@ class CHKUploader(object):
             kwargs["facility"] = "tahoe.upload"
         return log.msg(*args, **kwargs)
 
-    @log_call_deferred(action_type=u"immutable:upload:chk:start")
+    @log_call_deferred(action_type="immutable:upload:chk:start")
     def start(self, encrypted_uploadable):
         """Start uploading the file.
 
@@ -1261,9 +1460,11 @@ class CHKUploader(object):
 
         eu.set_upload_status(self._upload_status)
         d = self.start_encrypted(eu)
+
         def _done(uploadresults):
             self._upload_status.set_active(False)
             return uploadresults
+
         d.addBoth(_done)
         return d
 
@@ -1276,7 +1477,7 @@ class CHKUploader(object):
             return defer.succeed(None)
         return self._encoder.abort()
 
-    @log_call_deferred(action_type=u"immutable:upload:chk:start-encrypted")
+    @log_call_deferred(action_type="immutable:upload:chk:start-encrypted")
     @inline_callbacks
     def start_encrypted(self, encrypted):
         """
@@ -1294,8 +1495,12 @@ class CHKUploader(object):
         # this just returns itself
         yield self._encoder.set_encrypted_uploadable(eu)
         with LOCATE_ALL_SHAREHOLDERS() as action:
-            (upload_trackers, already_serverids) = yield self.locate_all_shareholders(self._encoder, started)
-            action.add_success_fields(upload_trackers=upload_trackers, already_serverids=already_serverids)
+            (upload_trackers, already_serverids) = yield self.locate_all_shareholders(
+                self._encoder, started
+            )
+            action.add_success_fields(
+                upload_trackers=upload_trackers, already_serverids=already_serverids
+            )
         self.set_shareholders(upload_trackers, already_serverids, self._encoder)
         verifycap = yield self._encoder.start()
         results = self._encrypted_done(verifycap)
@@ -1323,13 +1528,22 @@ class CHKUploader(object):
         k, desired, n = encoder.get_param("share_counts")
 
         self._server_selection_started = time.time()
-        d = server_selector.get_shareholders(storage_broker, secret_holder,
-                                             storage_index,
-                                             share_size, block_size,
-                                             num_segments, n, k, desired)
+        d = server_selector.get_shareholders(
+            storage_broker,
+            secret_holder,
+            storage_index,
+            share_size,
+            block_size,
+            num_segments,
+            n,
+            k,
+            desired,
+        )
+
         def _done(res):
             self._server_selection_elapsed = time.time() - server_selection_started
             return res
+
         d.addCallback(_done)
         return d
 
@@ -1344,14 +1558,18 @@ class CHKUploader(object):
                                   have this share
         """
         msgtempl = "set_shareholders; upload_trackers is %s, already_serverids is %s"
-        values = ([', '.join([str_shareloc(k,v)
-                              for k,v in st.buckets.items()])
-                   for st in upload_trackers], already_serverids)
+        values = (
+            [
+                ", ".join([str_shareloc(k, v) for k, v in st.buckets.items()])
+                for st in upload_trackers
+            ],
+            already_serverids,
+        )
         self.log(msgtempl % values, level=log.OPERATIONAL)
         # record already-present shares in self._results
         self._count_preexisting_shares = len(already_serverids)
 
-        self._server_trackers = {} # k: shnum, v: instance of ServerTracker
+        self._server_trackers = {}  # k: shnum, v: instance of ServerTracker
         for tracker in upload_trackers:
             assert isinstance(tracker, ServerTracker)
         buckets = {}
@@ -1361,14 +1579,14 @@ class CHKUploader(object):
             for shnum in tracker.buckets:
                 self._server_trackers[shnum] = tracker
                 servermap.setdefault(shnum, set()).add(tracker.get_serverid())
-        assert len(buckets) == sum([len(tracker.buckets)
-                                    for tracker in upload_trackers]), \
-            "%s (%s) != %s (%s)" % (
-                len(buckets),
-                buckets,
-                sum([len(tracker.buckets) for tracker in upload_trackers]),
-                [(t.buckets, t.get_serverid()) for t in upload_trackers]
-                )
+        assert len(buckets) == sum(
+            [len(tracker.buckets) for tracker in upload_trackers]
+        ), "%s (%s) != %s (%s)" % (
+            len(buckets),
+            buckets,
+            sum([len(tracker.buckets) for tracker in upload_trackers]),
+            [(t.buckets, t.get_serverid()) for t in upload_trackers],
+        )
         encoder.set_shareholders(buckets, servermap)
 
     def _encrypted_done(self, verifycap):
@@ -1388,26 +1606,30 @@ class CHKUploader(object):
         timings["storage_index"] = self._storage_index_elapsed
         timings["peer_selection"] = self._server_selection_elapsed
         timings.update(e.get_times())
-        ur = UploadResults(file_size=e.file_size,
-                           ciphertext_fetched=0,
-                           preexisting_shares=self._count_preexisting_shares,
-                           pushed_shares=len(e.get_shares_placed()),
-                           sharemap=sharemap,
-                           servermap=servermap,
-                           timings=timings,
-                           uri_extension_data=e.get_uri_extension_data(),
-                           uri_extension_hash=e.get_uri_extension_hash(),
-                           verifycapstr=verifycap.to_string())
+        ur = UploadResults(
+            file_size=e.file_size,
+            ciphertext_fetched=0,
+            preexisting_shares=self._count_preexisting_shares,
+            pushed_shares=len(e.get_shares_placed()),
+            sharemap=sharemap,
+            servermap=servermap,
+            timings=timings,
+            uri_extension_data=e.get_uri_extension_data(),
+            uri_extension_hash=e.get_uri_extension_hash(),
+            verifycapstr=verifycap.to_string(),
+        )
         self._upload_status.set_results(ur)
         return ur
 
     def get_upload_status(self):
         return self._upload_status
 
+
 def read_this_many_bytes(uploadable, size, prepend_data=[]):
     if size == 0:
         return defer.succeed([])
     d = uploadable.read(size)
+
     def _got(data):
         assert isinstance(data, list)
         bytes = sum([len(piece) for piece in data])
@@ -1415,14 +1637,14 @@ def read_this_many_bytes(uploadable, size, prepend_data=[]):
         assert bytes <= size
         remaining = size - bytes
         if remaining:
-            return read_this_many_bytes(uploadable, remaining,
-                                        prepend_data + data)
+            return read_this_many_bytes(uploadable, remaining, prepend_data + data)
         return prepend_data + data
+
     d.addCallback(_got)
     return d
 
-class LiteralUploader(object):
 
+class LiteralUploader(object):
     def __init__(self):
         self._status = s = UploadStatus()
         s.set_storage_index(None)
@@ -1433,10 +1655,12 @@ class LiteralUploader(object):
     def start(self, uploadable):
         uploadable = IUploadable(uploadable)
         d = uploadable.get_size()
+
         def _got_size(size):
             self._size = size
             self._status.set_size(size)
             return read_this_many_bytes(uploadable, size)
+
         d.addCallback(_got_size)
         d.addCallback(lambda data: uri.LiteralFileURI(b"".join(data)))
         d.addCallback(lambda u: u.to_string())
@@ -1444,16 +1668,18 @@ class LiteralUploader(object):
         return d
 
     def _build_results(self, uri):
-        ur = UploadResults(file_size=self._size,
-                           ciphertext_fetched=0,
-                           preexisting_shares=0,
-                           pushed_shares=0,
-                           sharemap={},
-                           servermap={},
-                           timings={},
-                           uri_extension_data=None,
-                           uri_extension_hash=None,
-                           verifycapstr=None)
+        ur = UploadResults(
+            file_size=self._size,
+            ciphertext_fetched=0,
+            preexisting_shares=0,
+            pushed_shares=0,
+            sharemap={},
+            servermap={},
+            timings={},
+            uri_extension_data=None,
+            uri_extension_hash=None,
+            verifycapstr=None,
+        )
         ur.set_uri(uri)
         self._status.set_status("Finished")
         self._status.set_progress(1, 1.0)
@@ -1467,9 +1693,9 @@ class LiteralUploader(object):
     def get_upload_status(self):
         return self._status
 
+
 @implementer(RIEncryptedUploadable)
 class RemoteEncryptedUploadable(Referenceable):  # type: ignore # warner/foolscap#78
-
     def __init__(self, encrypted_uploadable, upload_status):
         self._eu = IEncryptedUploadable(encrypted_uploadable)
         self._offset = 0
@@ -1483,19 +1709,23 @@ class RemoteEncryptedUploadable(Referenceable):  # type: ignore # warner/foolsca
         if self._size is not None:
             return defer.succeed(self._size)
         d = self._eu.get_size()
+
         def _got_size(size):
             self._size = size
             return size
+
         d.addCallback(_got_size)
         return d
 
     def remote_get_size(self):
         return self.get_size()
+
     def remote_get_all_encoding_parameters(self):
         return self._eu.get_all_encoding_parameters()
 
     def _read_encrypted(self, length, hash_only):
         d = self._eu.read_encrypted(length, hash_only)
+
         def _read(strings):
             if hash_only:
                 self._offset += length
@@ -1503,6 +1733,7 @@ class RemoteEncryptedUploadable(Referenceable):  # type: ignore # warner/foolsca
                 size = sum([len(data) for data in strings])
                 self._offset += size
             return strings
+
         d.addCallback(_read)
         return d
 
@@ -1510,14 +1741,19 @@ class RemoteEncryptedUploadable(Referenceable):  # type: ignore # warner/foolsca
         # we don't support seek backwards, but we allow skipping forwards
         precondition(offset >= 0, offset)
         precondition(length >= 0, length)
-        lp = log.msg("remote_read_encrypted(%d-%d)" % (offset, offset+length),
-                     level=log.NOISY)
+        lp = log.msg(
+            "remote_read_encrypted(%d-%d)" % (offset, offset + length), level=log.NOISY
+        )
         precondition(offset >= self._offset, offset, self._offset)
         if offset > self._offset:
             # read the data from disk anyways, to build up the hash tree
             skip = offset - self._offset
-            log.msg("remote_read_encrypted skipping ahead from %d to %d, skip=%d" %
-                    (self._offset, offset, skip), level=log.UNUSUAL, parent=lp)
+            log.msg(
+                "remote_read_encrypted skipping ahead from %d to %d, skip=%d"
+                % (self._offset, offset, skip),
+                level=log.UNUSUAL,
+                parent=lp,
+            )
             d = self._read_encrypted(skip, hash_only=True)
         else:
             d = defer.succeed(None)
@@ -1525,12 +1761,14 @@ class RemoteEncryptedUploadable(Referenceable):  # type: ignore # warner/foolsca
         def _at_correct_offset(res):
             assert offset == self._offset, "%d != %d" % (offset, self._offset)
             return self._read_encrypted(length, hash_only=False)
+
         d.addCallback(_at_correct_offset)
 
         def _read(strings):
             size = sum([len(data) for data in strings])
             self._bytes_sent += size
             return strings
+
         d.addCallback(_read)
         return d
 
@@ -1539,7 +1777,6 @@ class RemoteEncryptedUploadable(Referenceable):  # type: ignore # warner/foolsca
 
 
 class AssistedUploader(object):
-
     def __init__(self, helper, storage_broker):
         self._helper = helper
         self._storage_broker = storage_broker
@@ -1571,9 +1808,11 @@ class AssistedUploader(object):
         d.addCallback(self._got_all_encoding_parameters)
         d.addCallback(self._contact_helper)
         d.addCallback(self._build_verifycap)
+
         def _done(res):
             self._upload_status.set_active(False)
             return res
+
         d.addBoth(_done)
         return d
 
@@ -1591,8 +1830,11 @@ class AssistedUploader(object):
     def _contact_helper(self, res):
         now = self._time_contacting_helper_start = time.time()
         self._storage_index_elapsed = now - self._started
-        self.log(format="contacting helper for SI %(si)s..",
-                 si=si_b2a(self._storage_index), level=log.NOISY)
+        self.log(
+            format="contacting helper for SI %(si)s..",
+            si=si_b2a(self._storage_index),
+            level=log.NOISY,
+        )
         self._upload_status.set_status("Contacting Helper")
         d = self._helper.callRemote("upload_chk", self._storage_index)
         d.addCallback(self._contacted_helper)
@@ -1607,12 +1849,10 @@ class AssistedUploader(object):
             self.log("helper says we need to upload", level=log.NOISY)
             self._upload_status.set_status("Uploading Ciphertext")
             # we need to upload the file
-            reu = RemoteEncryptedUploadable(self._encuploadable,
-                                            self._upload_status)
+            reu = RemoteEncryptedUploadable(self._encuploadable, self._upload_status)
             # let it pre-compute the size for progress purposes
             d = reu.get_size()
-            d.addCallback(lambda ignored:
-                          upload_helper.callRemote("upload", reu))
+            d.addCallback(lambda ignored: upload_helper.callRemote("upload", reu))
             # this Deferred will fire with the upload results
             return d
         self.log("helper says file is already uploaded", level=log.OPERATIONAL)
@@ -1647,15 +1887,17 @@ class AssistedUploader(object):
         assert hur.uri_extension_data["size"] == self._size
 
         # hur.verifycap doesn't exist if already found
-        v = uri.CHKFileVerifierURI(self._storage_index,
-                                   uri_extension_hash=hur.uri_extension_hash,
-                                   needed_shares=self._needed_shares,
-                                   total_shares=self._total_shares,
-                                   size=self._size)
+        v = uri.CHKFileVerifierURI(
+            self._storage_index,
+            uri_extension_hash=hur.uri_extension_hash,
+            needed_shares=self._needed_shares,
+            total_shares=self._total_shares,
+            size=self._size,
+        )
         timings = {}
         timings["storage_index"] = self._storage_index_elapsed
         timings["contacting_helper"] = self._elapsed_time_contacting_helper
-        for key,val in hur.timings.items():
+        for key, val in hur.timings.items():
             if key == "total":
                 key = "helper_total"
             timings[key] = val
@@ -1674,17 +1916,19 @@ class AssistedUploader(object):
         for serverid, shnums in hur.servermap.items():
             servermap[gss(serverid)] = set(shnums)
 
-        ur = UploadResults(file_size=self._size,
-                           # not if already found
-                           ciphertext_fetched=hur.ciphertext_fetched,
-                           preexisting_shares=hur.preexisting_shares,
-                           pushed_shares=hur.pushed_shares,
-                           sharemap=sharemap,
-                           servermap=servermap,
-                           timings=timings,
-                           uri_extension_data=hur.uri_extension_data,
-                           uri_extension_hash=hur.uri_extension_hash,
-                           verifycapstr=v.to_string())
+        ur = UploadResults(
+            file_size=self._size,
+            # not if already found
+            ciphertext_fetched=hur.ciphertext_fetched,
+            preexisting_shares=hur.preexisting_shares,
+            pushed_shares=hur.pushed_shares,
+            sharemap=sharemap,
+            servermap=servermap,
+            timings=timings,
+            uri_extension_data=hur.uri_extension_data,
+            uri_extension_hash=hur.uri_extension_hash,
+            verifycapstr=v.to_string(),
+        )
 
         self._upload_status.set_status("Finished")
         self._upload_status.set_results(ur)
@@ -1692,6 +1936,7 @@ class AssistedUploader(object):
 
     def get_upload_status(self):
         return self._upload_status
+
 
 class BaseUploadable(object):
     # this is overridden by max_segment_size
@@ -1711,7 +1956,7 @@ class BaseUploadable(object):
 
     def set_default_encoding_parameters(self, default_params):
         assert isinstance(default_params, dict)
-        for k,v in default_params.items():
+        for k, v in default_params.items():
             precondition(isinstance(k, (bytes, unicode)), k, v)
             precondition(isinstance(v, int), k, v)
         if "k" in default_params:
@@ -1725,7 +1970,10 @@ class BaseUploadable(object):
         self.default_params_set = True
 
     def get_all_encoding_parameters(self):
-        _assert(self.default_params_set, "set_default_encoding_parameters not called on %r" % (self,))
+        _assert(
+            self.default_params_set,
+            "set_default_encoding_parameters not called on %r" % (self,),
+        )
         if self._all_encoding_parameters:
             return defer.succeed(self._all_encoding_parameters)
 
@@ -1735,6 +1983,7 @@ class BaseUploadable(object):
         n = self.encoding_param_n or self.default_encoding_param_n
 
         d = self.get_size()
+
         def _got_size(file_size):
             # for small files, shrink the segment size to avoid wasting space
             segsize = min(max_segsize, file_size)
@@ -1743,12 +1992,13 @@ class BaseUploadable(object):
             encoding_parameters = (k, happy, n, segsize)
             self._all_encoding_parameters = encoding_parameters
             return encoding_parameters
+
         d.addCallback(_got_size)
         return d
 
+
 @implementer(IUploadable)
 class FileHandle(BaseUploadable):
-
     def __init__(self, filehandle, convergence):
         """
         Upload the data from the filehandle.  If convergence is None then a
@@ -1756,7 +2006,10 @@ class FileHandle(BaseUploadable):
         then the hash will be hashed together with the string in the
         "convergence" argument to form the encryption key.
         """
-        assert convergence is None or isinstance(convergence, bytes), (convergence, type(convergence))
+        assert convergence is None or isinstance(convergence, bytes), (
+            convergence,
+            type(convergence),
+        )
         self._filehandle = filehandle
         self._key = None
         self.convergence = convergence
@@ -1769,12 +2022,13 @@ class FileHandle(BaseUploadable):
         d = self.get_size()
         # that sets self._size as a side-effect
         d.addCallback(lambda size: self.get_all_encoding_parameters())
+
         def _got(params):
             k, happy, n, segsize = params
             f = self._filehandle
             enckey_hasher = convergence_hasher(k, n, segsize, self.convergence)
             f.seek(0)
-            BLOCKSIZE = 64*1024
+            BLOCKSIZE = 64 * 1024
             bytes_read = 0
             while True:
                 data = f.read(BLOCKSIZE)
@@ -1787,13 +2041,14 @@ class FileHandle(BaseUploadable):
                 # make this yield time to other jobs.
                 bytes_read += len(data)
                 if self._status:
-                    self._status.set_progress(0, float(bytes_read)/self._size)
+                    self._status.set_progress(0, float(bytes_read) / self._size)
             f.seek(0)
             self._key = enckey_hasher.digest()
             if self._status:
                 self._status.set_progress(0, 1.0)
             assert len(self._key) == 16
             return self._key
+
         d.addCallback(_got)
         return d
 
@@ -1824,6 +2079,7 @@ class FileHandle(BaseUploadable):
         # the originator of the filehandle reserves the right to close it
         pass
 
+
 class FileName(FileHandle):
     def __init__(self, filename, convergence):
         """
@@ -1832,11 +2088,16 @@ class FileName(FileHandle):
         then the hash will be hashed together with the string in the
         "convergence" argument to form the encryption key.
         """
-        assert convergence is None or isinstance(convergence, bytes), (convergence, type(convergence))
+        assert convergence is None or isinstance(convergence, bytes), (
+            convergence,
+            type(convergence),
+        )
         FileHandle.__init__(self, open(filename, "rb"), convergence=convergence)
+
     def close(self):
         FileHandle.close(self)
         self._filehandle.close()
+
 
 class Data(FileHandle):
     def __init__(self, data, convergence):
@@ -1846,14 +2107,19 @@ class Data(FileHandle):
         then the hash will be hashed together with the string in the
         "convergence" argument to form the encryption key.
         """
-        assert convergence is None or isinstance(convergence, bytes), (convergence, type(convergence))
+        assert convergence is None or isinstance(convergence, bytes), (
+            convergence,
+            type(convergence),
+        )
         FileHandle.__init__(self, BytesIO(data), convergence=convergence)
+
 
 @implementer(IUploader)
 class Uploader(service.MultiService, log.PrefixingLogMixin):
     """I am a service that allows file uploading. I am a service-child of the
     Client.
     """
+
     name = "uploader"
     URI_LIT_SIZE_THRESHOLD = 55
 
@@ -1862,22 +2128,21 @@ class Uploader(service.MultiService, log.PrefixingLogMixin):
         self.stats_provider = stats_provider
         self._history = history
         self._helper = None
-        self._all_uploads = weakref.WeakKeyDictionary() # for debugging
+        self._all_uploads = weakref.WeakKeyDictionary()  # for debugging
         log.PrefixingLogMixin.__init__(self, facility="tahoe.immutable.upload")
         service.MultiService.__init__(self)
 
     def startService(self):
         service.MultiService.startService(self)
         if self._helper_furl:
-            self.parent.tub.connectTo(ensure_str(self._helper_furl),
-                                      self._got_helper)
+            self.parent.tub.connectTo(ensure_str(self._helper_furl), self._got_helper)
 
     def _got_helper(self, helper):
         self.log("got helper connection, getting versions")
-        default = { b"http://allmydata.org/tahoe/protocols/helper/v1" :
-                    { },
-                    b"application-version": b"unknown: no get_version()",
-                    }
+        default = {
+            b"http://allmydata.org/tahoe/protocols/helper/v1": {},
+            b"application-version": b"unknown: no get_version()",
+        }
         d = add_version_to_remote_reference(helper, default)
         d.addCallback(self._got_versioned_helper)
 
@@ -1895,7 +2160,6 @@ class Uploader(service.MultiService, log.PrefixingLogMixin):
         # return a tuple of (helper_furl_or_None, connected_bool)
         return (self._helper_furl, bool(self._helper))
 
-
     def upload(self, uploadable, reactor=None):
         """
         Returns a Deferred that will fire with the UploadResults instance.
@@ -1905,6 +2169,7 @@ class Uploader(service.MultiService, log.PrefixingLogMixin):
 
         uploadable = IUploadable(uploadable)
         d = uploadable.get_size()
+
         def _got_size(size):
             default_params = self.parent.get_encoding_parameters()
             precondition(isinstance(default_params, dict), default_params)
@@ -1912,8 +2177,8 @@ class Uploader(service.MultiService, log.PrefixingLogMixin):
             uploadable.set_default_encoding_parameters(default_params)
 
             if self.stats_provider:
-                self.stats_provider.count('uploader.files_uploaded', 1)
-                self.stats_provider.count('uploader.bytes_uploaded', size)
+                self.stats_provider.count("uploader.files_uploaded", 1)
+                self.stats_provider.count("uploader.bytes_uploaded", size)
 
             if size <= self.URI_LIT_SIZE_THRESHOLD:
                 uploader = LiteralUploader()
@@ -1929,27 +2194,42 @@ class Uploader(service.MultiService, log.PrefixingLogMixin):
                 else:
                     storage_broker = self.parent.get_storage_broker()
                     secret_holder = self.parent._secret_holder
-                    uploader = CHKUploader(storage_broker, secret_holder, reactor=reactor)
+                    uploader = CHKUploader(
+                        storage_broker, secret_holder, reactor=reactor
+                    )
                     d2.addCallback(lambda x: uploader.start(eu))
 
                 self._all_uploads[uploader] = None
                 if self._history:
                     self._history.add_upload(uploader.get_upload_status())
+
                 def turn_verifycap_into_read_cap(uploadresults):
                     # Generate the uri from the verifycap plus the key.
                     d3 = uploadable.get_encryption_key()
+
                     def put_readcap_into_results(key):
                         v = uri.from_string(uploadresults.get_verifycapstr())
-                        r = uri.CHKFileURI(key, v.uri_extension_hash, v.needed_shares, v.total_shares, v.size)
+                        r = uri.CHKFileURI(
+                            key,
+                            v.uri_extension_hash,
+                            v.needed_shares,
+                            v.total_shares,
+                            v.size,
+                        )
                         uploadresults.set_uri(r.to_string())
                         return uploadresults
+
                     d3.addCallback(put_readcap_into_results)
                     return d3
+
                 d2.addCallback(turn_verifycap_into_read_cap)
                 return d2
+
         d.addCallback(_got_size)
+
         def _done(res):
             uploadable.close()
             return res
+
         d.addBoth(_done)
         return d

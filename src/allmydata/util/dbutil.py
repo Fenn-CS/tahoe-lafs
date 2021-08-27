@@ -12,8 +12,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import os, sys
 
@@ -24,9 +47,14 @@ class DBError(Exception):
     pass
 
 
-def get_db(dbfile, stderr=sys.stderr,
-           create_version=(None, None), updaters={}, just_create=False, dbname="db",
-           ):
+def get_db(
+    dbfile,
+    stderr=sys.stderr,
+    create_version=(None, None),
+    updaters={},
+    just_create=False,
+    dbname="db",
+):
     """Open or create the given db file. The parent directory must exist.
     create_version=(SCHEMA, VERNUM), and SCHEMA must have a 'version' table.
     Updaters is a {newver: commands} mapping, where e.g. updaters[2] is used
@@ -59,16 +87,14 @@ def get_db(dbfile, stderr=sys.stderr,
         # Perhaps it was created with an old version, or it might be junk.
         raise DBError("%s file is unusable: %s" % (dbname, e))
 
-    if just_create: # for tests
+    if just_create:  # for tests
         return (sqlite3, db)
 
-    while version < target_version and version+1 in updaters:
-        c.executescript(updaters[version+1])
+    while version < target_version and version + 1 in updaters:
+        c.executescript(updaters[version + 1])
         db.commit()
-        version = version+1
+        version = version + 1
     if version != target_version:
         raise DBError("Unable to handle %s version %s" % (dbname, version))
 
     return (sqlite3, db)
-
-

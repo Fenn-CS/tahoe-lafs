@@ -9,8 +9,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 from zope.interface import Interface, implementer
 from allmydata.util import observer
@@ -96,7 +119,6 @@ class OperationCancelledError(Exception):
 
 @implementer(IMonitor)
 class Monitor(object):
-
     def __init__(self):
         self.cancelled = False
         self.finished = False
@@ -127,5 +149,6 @@ class Monitor(object):
 
     def get_status(self):
         return self.status
+
     def set_status(self, status):
         self.status = status

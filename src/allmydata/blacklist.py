@@ -7,8 +7,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-        from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import os
 
@@ -23,8 +46,13 @@ from allmydata.util.encodingutil import quote_output
 
 class FileProhibited(Exception):
     """This client has been configured to prohibit access to this object."""
+
     def __init__(self, reason):
-        Exception.__init__(self, "Access Prohibited: %s" % quote_output(reason, encoding='utf-8', quotemarks=False))
+        Exception.__init__(
+            self,
+            "Access Prohibited: %s"
+            % quote_output(reason, encoding="utf-8", quotemarks=False),
+        )
         self.reason = reason
 
 
@@ -33,7 +61,7 @@ class Blacklist(object):
         self.blacklist_fn = blacklist_fn
         self.last_mtime = None
         self.entries = {}
-        self.read_blacklist() # sets .last_mtime and .entries
+        self.read_blacklist()  # sets .last_mtime and .entries
 
     def read_blacklist(self):
         try:
@@ -51,7 +79,7 @@ class Blacklist(object):
                         if not line or line.startswith(b"#"):
                             continue
                         si_s, reason = line.split(None, 1)
-                        si = base32.a2b(si_s) # must be valid base32
+                        si = base32.a2b(si_s)  # must be valid base32
                         self.entries[si] = reason
                 self.last_mtime = current_mtime
         except Exception as e:
@@ -63,14 +91,14 @@ class Blacklist(object):
         reason = self.entries.get(si, None)
         if reason is not None:
             # log this to logs/twistd.log, since web logs go there too
-            twisted_log.msg("blacklist prohibited access to SI %r: %r" %
-                            (base32.b2a(si), reason))
+            twisted_log.msg(
+                "blacklist prohibited access to SI %r: %r" % (base32.b2a(si), reason)
+            )
         return reason
 
 
 @implementer(IFileNode)
 class ProhibitedNode(object):
-
     def __init__(self, wrapped_node, reason):
         assert IFilesystemNode.providedBy(wrapped_node), wrapped_node
         self.wrapped_node = wrapped_node

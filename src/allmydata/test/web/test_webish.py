@@ -9,8 +9,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 from uuid import (
     uuid4,
@@ -66,6 +89,7 @@ class TahoeLAFSRequestTests(SyncTestCase):
     """
     Tests for ``TahoeLAFSRequest``.
     """
+
     def _fields_test(self, method, request_headers, request_body, match_fields):
         channel = DummyChannel()
         request = TahoeLAFSRequest(
@@ -95,29 +119,34 @@ class TahoeLAFSRequestTests(SyncTestCase):
         When a ``POST`` request is received, form fields are parsed into
         ``TahoeLAFSRequest.fields``.
         """
-        form_data, boundary = multipart_formdata([
-            [param(u"name", u"foo"),
-             body(u"bar"),
-            ],
-            [param(u"name", u"baz"),
-             param(u"filename", u"quux"),
-             body(u"some file contents"),
-            ],
-        ])
+        form_data, boundary = multipart_formdata(
+            [
+                [
+                    param("name", "foo"),
+                    body("bar"),
+                ],
+                [
+                    param("name", "baz"),
+                    param("filename", "quux"),
+                    body("some file contents"),
+                ],
+            ]
+        )
         self._fields_test(
             b"POST",
-            {b"content-type": b"multipart/form-data; boundary=" + bytes(boundary, 'ascii')},
+            {
+                b"content-type": b"multipart/form-data; boundary="
+                + bytes(boundary, "ascii")
+            },
             form_data.encode("ascii"),
             AfterPreprocessing(
-                lambda fs: {
-                    k: fs.getvalue(k)
-                    for k
-                    in fs.keys()
-                },
-                Equals({
-                    "foo": "bar",
-                    "baz": b"some file contents",
-                }),
+                lambda fs: {k: fs.getvalue(k) for k in fs.keys()},
+                Equals(
+                    {
+                        "foo": "bar",
+                        "baz": b"some file contents",
+                    }
+                ),
             ),
         )
 
@@ -126,6 +155,7 @@ class TahoeLAFSSiteTests(SyncTestCase):
     """
     Tests for ``TahoeLAFSSite``.
     """
+
     def _test_censoring(self, path, censored):
         """
         Verify that the event logged for a request for ``path`` does not include
@@ -299,22 +329,22 @@ class TahoeLAFSSiteTests(SyncTestCase):
 
 
 def param(name, value):
-    return u"; {}={}".format(name, value)
+    return "; {}={}".format(name, value)
 
 
 def body(value):
-    return u"\r\n\r\n{}".format(value)
+    return "\r\n\r\n{}".format(value)
 
 
 def _field(field):
-    yield u"Content-Disposition: form-data"
+    yield "Content-Disposition: form-data"
     for param in field:
         yield param
 
 
 def _multipart_formdata(fields):
     for field in fields:
-        yield u"".join(_field(field)) + u"\r\n"
+        yield "".join(_field(field)) + "\r\n"
 
 
 def multipart_formdata(fields):
@@ -329,8 +359,8 @@ def multipart_formdata(fields):
     """
     boundary = str(uuid4())
     parts = list(_multipart_formdata(fields))
-    parts.insert(0, u"")
+    parts.insert(0, "")
     return (
-        (u"--" + boundary + u"\r\n").join(parts),
+        ("--" + boundary + "\r\n").join(parts),
         boundary,
     )

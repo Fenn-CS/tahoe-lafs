@@ -7,8 +7,31 @@ from __future__ import division
 from __future__ import print_function
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 
 import os.path, re, fnmatch
@@ -19,86 +42,113 @@ except ImportError:
     pass
 
 from twisted.python import usage
-from allmydata.scripts.common import get_aliases, get_default_nodedir, \
-     DEFAULT_ALIAS, BaseOptions
-from allmydata.util.encodingutil import argv_to_unicode, argv_to_abspath, quote_local_unicode_path
+from allmydata.scripts.common import (
+    get_aliases,
+    get_default_nodedir,
+    DEFAULT_ALIAS,
+    BaseOptions,
+)
+from allmydata.util.encodingutil import (
+    argv_to_unicode,
+    argv_to_abspath,
+    quote_local_unicode_path,
+)
 from .tahoe_status import TahoeStatusCommand
 
-NODEURL_RE=re.compile("http(s?)://([^:]*)(:([1-9][0-9]*))?")
+NODEURL_RE = re.compile("http(s?)://([^:]*)(:([1-9][0-9]*))?")
 
 _default_nodedir = get_default_nodedir()
 
+
 class FileStoreOptions(BaseOptions):
     optParameters = [
-        ["node-url", "u", None,
-         "Specify the URL of the Tahoe gateway node, such as "
-         "'http://127.0.0.1:3456'. "
-         "This overrides the URL found in the --node-directory ."],
-        ["dir-cap", None, None,
-         "Specify which dirnode URI should be used as the 'tahoe' alias."]
-        ]  # type: Parameters
+        [
+            "node-url",
+            "u",
+            None,
+            "Specify the URL of the Tahoe gateway node, such as "
+            "'http://127.0.0.1:3456'. "
+            "This overrides the URL found in the --node-directory .",
+        ],
+        [
+            "dir-cap",
+            None,
+            None,
+            "Specify which dirnode URI should be used as the 'tahoe' alias.",
+        ],
+    ]  # type: Parameters
 
     def postOptions(self):
         self["quiet"] = self.parent["quiet"]
-        if self.parent['node-directory']:
-            self['node-directory'] = argv_to_abspath(self.parent['node-directory'])
+        if self.parent["node-directory"]:
+            self["node-directory"] = argv_to_abspath(self.parent["node-directory"])
         else:
-            self['node-directory'] = _default_nodedir
+            self["node-directory"] = _default_nodedir
 
         # compute a node-url from the existing options, put in self['node-url']
-        if self['node-url']:
-            if (not isinstance(self['node-url'], (bytes, str))
-                or not NODEURL_RE.match(self['node-url'])):
-                msg = ("--node-url is required to be a string and look like "
-                       "\"http://HOSTNAMEORADDR:PORT\", not: %r" %
-                       (self['node-url'],))
+        if self["node-url"]:
+            if not isinstance(self["node-url"], (bytes, str)) or not NODEURL_RE.match(
+                self["node-url"]
+            ):
+                msg = (
+                    "--node-url is required to be a string and look like "
+                    '"http://HOSTNAMEORADDR:PORT", not: %r' % (self["node-url"],)
+                )
                 raise usage.UsageError(msg)
         else:
-            node_url_file = os.path.join(self['node-directory'], "node.url")
+            node_url_file = os.path.join(self["node-directory"], "node.url")
             with open(node_url_file, "r") as f:
-                self['node-url'] = f.read().strip()
-        if self['node-url'][-1] != "/":
-            self['node-url'] += "/"
+                self["node-url"] = f.read().strip()
+        if self["node-url"][-1] != "/":
+            self["node-url"] += "/"
 
-        aliases = get_aliases(self['node-directory'])
-        if self['dir-cap']:
-            aliases[DEFAULT_ALIAS] = self['dir-cap']
-        self.aliases = aliases # maps alias name to dircap
+        aliases = get_aliases(self["node-directory"])
+        if self["dir-cap"]:
+            aliases[DEFAULT_ALIAS] = self["dir-cap"]
+        self.aliases = aliases  # maps alias name to dircap
 
 
 class MakeDirectoryOptions(FileStoreOptions):
     optParameters = [
-        ("format", None, None, "Create a directory with the given format: SDMF or MDMF (case-insensitive)"),
-        ]
+        (
+            "format",
+            None,
+            None,
+            "Create a directory with the given format: SDMF or MDMF (case-insensitive)",
+        ),
+    ]
 
     def parseArgs(self, where=""):
         self.where = argv_to_unicode(where)
 
-        if self['format']:
-            if self['format'].upper() not in ("SDMF", "MDMF"):
-                raise usage.UsageError("%s is an invalid format" % self['format'])
+        if self["format"]:
+            if self["format"].upper() not in ("SDMF", "MDMF"):
+                raise usage.UsageError("%s is an invalid format" % self["format"])
 
     synopsis = "[options] [REMOTE_DIR]"
     description = """Create a new directory, either unlinked or as a subdirectory."""
 
+
 class AddAliasOptions(FileStoreOptions):
     def parseArgs(self, alias, cap):
         self.alias = argv_to_unicode(alias)
-        if self.alias.endswith(u':'):
+        if self.alias.endswith(":"):
             self.alias = self.alias[:-1]
         self.cap = cap
 
     synopsis = "[options] ALIAS[:] DIRCAP"
     description = """Add a new alias for an existing directory."""
 
+
 class CreateAliasOptions(FileStoreOptions):
     def parseArgs(self, alias):
         self.alias = argv_to_unicode(alias)
-        if self.alias.endswith(u':'):
+        if self.alias.endswith(":"):
             self.alias = self.alias[:-1]
 
     synopsis = "[options] ALIAS[:]"
     description = """Create a new directory and add an alias for it."""
+
 
 class ListAliasesOptions(FileStoreOptions):
     synopsis = "[options]"
@@ -108,6 +158,7 @@ class ListAliasesOptions(FileStoreOptions):
         ("json", None, "Show JSON output"),
     ]
 
+
 class ListOptions(FileStoreOptions):
     optFlags = [
         ("long", "l", "Use long format: show file sizes, and timestamps."),
@@ -115,7 +166,8 @@ class ListOptions(FileStoreOptions):
         ("readonly-uri", None, "Show read-only file/directory URIs."),
         ("classify", "F", "Append '/' to directory names, and '*' to mutable."),
         ("json", None, "Show the raw JSON output."),
-        ]
+    ]
+
     def parseArgs(self, where=""):
         self.where = argv_to_unicode(where)
 
@@ -149,6 +201,7 @@ class ListOptions(FileStoreOptions):
     modified.
     """
 
+
 class GetOptions(FileStoreOptions):
     def parseArgs(self, arg1, arg2=None):
         # tahoe get FOO |less            # write to stdout
@@ -160,7 +213,7 @@ class GetOptions(FileStoreOptions):
             arg2 = None
 
         self.from_file = argv_to_unicode(arg1)
-        self.to_file   = None if arg2 is None else argv_to_abspath(arg2)
+        self.to_file = None if arg2 is None else argv_to_abspath(arg2)
 
     synopsis = "[options] REMOTE_FILE LOCAL_FILE"
 
@@ -177,13 +230,23 @@ class GetOptions(FileStoreOptions):
      % tahoe get tahoe:FOO bar        # same
     """
 
+
 class PutOptions(FileStoreOptions):
     optFlags = [
-        ("mutable", "m", "Create a mutable file instead of an immutable one (like --format=SDMF)"),
-        ]
+        (
+            "mutable",
+            "m",
+            "Create a mutable file instead of an immutable one (like --format=SDMF)",
+        ),
+    ]
     optParameters = [
-        ("format", None, None, "Create a file with the given format: SDMF and MDMF for mutable, CHK (default) for immutable. (case-insensitive)"),
-        ]
+        (
+            "format",
+            None,
+            None,
+            "Create a file with the given format: SDMF and MDMF for mutable, CHK (default) for immutable. (case-insensitive)",
+        ),
+    ]
 
     def parseArgs(self, arg1=None, arg2=None):
         # see Examples below
@@ -192,11 +255,11 @@ class PutOptions(FileStoreOptions):
             arg1 = None
 
         self.from_file = None if arg1 is None else argv_to_abspath(arg1)
-        self.to_file   = None if arg2 is None else argv_to_unicode(arg2)
+        self.to_file = None if arg2 is None else argv_to_unicode(arg2)
 
-        if self['format']:
-            if self['format'].upper() not in ("SDMF", "MDMF", "CHK"):
-                raise usage.UsageError("%s is an invalid format" % self['format'])
+        if self["format"]:
+            if self["format"].upper() not in ("SDMF", "MDMF", "CHK"):
+                raise usage.UsageError("%s is an invalid format" % self["format"])
 
     synopsis = "[options] LOCAL_FILE REMOTE_FILE"
 
@@ -223,14 +286,18 @@ class PutOptions(FileStoreOptions):
      % tahoe put bar MUTABLE-FILE-WRITECAP # modify the mutable file in-place
     """
 
+
 class CpOptions(FileStoreOptions):
     optFlags = [
         ("recursive", "r", "Copy source directory recursively."),
         ("verbose", "v", "Be noisy about what is happening."),
-        ("caps-only", None,
-         "When copying to local files, write out filecaps instead of actual "
-         "data (only useful for debugging and tree-comparison purposes)."),
-        ]
+        (
+            "caps-only",
+            None,
+            "When copying to local files, write out filecaps instead of actual "
+            "data (only useful for debugging and tree-comparison purposes).",
+        ),
+    ]
 
     def parseArgs(self, *args):
         if len(args) < 2:
@@ -270,12 +337,14 @@ class CpOptions(FileStoreOptions):
     contents.
     """
 
+
 class UnlinkOptions(FileStoreOptions):
     def parseArgs(self, where):
         self.where = argv_to_unicode(where)
 
     synopsis = "[options] REMOTE_FILE"
     description = "Remove a named file from its parent directory."
+
 
 class MvOptions(FileStoreOptions):
     def parseArgs(self, frompath, topath):
@@ -295,6 +364,7 @@ class MvOptions(FileStoreOptions):
     Note that it is not possible to use this command to move local files to
     the grid -- use 'tahoe cp' for that.
     """
+
 
 class LnOptions(FileStoreOptions):
     def parseArgs(self, frompath, topath):
@@ -325,23 +395,45 @@ class LnOptions(FileStoreOptions):
     local and remote files.
     """
 
+
 class BackupConfigurationError(Exception):
     pass
+
 
 class BackupOptions(FileStoreOptions):
     optFlags = [
         ("verbose", "v", "Be noisy about what is happening."),
-        ("ignore-timestamps", None, "Do not use backupdb timestamps to decide whether a local file is unchanged."),
-        ]
+        (
+            "ignore-timestamps",
+            None,
+            "Do not use backupdb timestamps to decide whether a local file is unchanged.",
+        ),
+    ]
 
-    vcs_patterns = ('CVS', 'RCS', 'SCCS', '.git', '.gitignore', '.cvsignore',
-                    '.svn', '.arch-ids','{arch}', '=RELEASE-ID',
-                    '=meta-update', '=update', '.bzr', '.bzrignore',
-                    '.bzrtags', '.hg', '.hgignore', '_darcs')
+    vcs_patterns = (
+        "CVS",
+        "RCS",
+        "SCCS",
+        ".git",
+        ".gitignore",
+        ".cvsignore",
+        ".svn",
+        ".arch-ids",
+        "{arch}",
+        "=RELEASE-ID",
+        "=meta-update",
+        "=update",
+        ".bzr",
+        ".bzrignore",
+        ".bzrtags",
+        ".hg",
+        ".hgignore",
+        "_darcs",
+    )
 
     def __init__(self):
         super(BackupOptions, self).__init__()
-        self['exclude'] = set()
+        self["exclude"] = set()
 
     def parseArgs(self, localdir, topath):
         self.from_dir = argv_to_abspath(localdir)
@@ -354,7 +446,7 @@ class BackupOptions(FileStoreOptions):
         '--exclude' options."""
         g = argv_to_unicode(pattern).strip()
         if g:
-            exclude = self['exclude']
+            exclude = self["exclude"]
             exclude.add(g)
 
     def opt_exclude_from_utf_8(self, filepath):
@@ -364,8 +456,10 @@ class BackupOptions(FileStoreOptions):
         try:
             exclude_file = open(abs_filepath, "r", encoding="utf-8")
         except Exception as e:
-            raise BackupConfigurationError('Error opening exclude file %s. (Error: %s)' % (
-                quote_local_unicode_path(abs_filepath), e))
+            raise BackupConfigurationError(
+                "Error opening exclude file %s. (Error: %s)"
+                % (quote_local_unicode_path(abs_filepath), e)
+            )
         try:
             for line in exclude_file:
                 self.opt_exclude(line)
@@ -381,7 +475,7 @@ class BackupOptions(FileStoreOptions):
 
     def filter_listdir(self, listdir):
         """Yields non-excluded childpaths in path."""
-        exclude = self['exclude']
+        exclude = self["exclude"]
         exclude_regexps = [re.compile(fnmatch.translate(pat)) for pat in exclude]
         for filename in listdir:
             for regexp in exclude_regexps:
@@ -398,11 +492,13 @@ class BackupOptions(FileStoreOptions):
     --link-dest=TO/Archives/(previous) FROM TO/Archives/(new); ln -sf
     TO/Archives/(new) TO/Latest'."""
 
+
 class WebopenOptions(FileStoreOptions):
     optFlags = [
         ("info", "i", "Open the t=info page for the file"),
-        ]
-    def parseArgs(self, where=''):
+    ]
+
+    def parseArgs(self, where=""):
         self.where = argv_to_unicode(where)
 
     synopsis = "[options] [ALIAS:PATH]"
@@ -412,14 +508,16 @@ class WebopenOptions(FileStoreOptions):
     directory on the grid. When run without arguments, open the Welcome
     page."""
 
+
 class ManifestOptions(FileStoreOptions):
     optFlags = [
         ("storage-index", "s", "Only print storage index strings, not pathname+cap."),
         ("verify-cap", None, "Only print verifycap, not pathname+cap."),
         ("repair-cap", None, "Only print repaircap, not pathname+cap."),
         ("raw", "r", "Display raw JSON data instead of parsed."),
-        ]
-    def parseArgs(self, where=''):
+    ]
+
+    def parseArgs(self, where=""):
         self.where = argv_to_unicode(where)
 
     synopsis = "[options] [ALIAS:PATH]"
@@ -427,11 +525,13 @@ class ManifestOptions(FileStoreOptions):
     Print a list of all files and directories reachable from the given
     starting point."""
 
+
 class StatsOptions(FileStoreOptions):
     optFlags = [
         ("raw", "r", "Display raw JSON data instead of parsed"),
-        ]
-    def parseArgs(self, where=''):
+    ]
+
+    def parseArgs(self, where=""):
         self.where = argv_to_unicode(where)
 
     synopsis = "[options] [ALIAS:PATH]"
@@ -439,13 +539,19 @@ class StatsOptions(FileStoreOptions):
     Print statistics about of all files and directories reachable from the
     given starting point."""
 
+
 class CheckOptions(FileStoreOptions):
     optFlags = [
         ("raw", None, "Display raw JSON data instead of parsed."),
-        ("verify", None, "Verify all hashes, instead of merely querying share presence."),
+        (
+            "verify",
+            None,
+            "Verify all hashes, instead of merely querying share presence.",
+        ),
         ("repair", None, "Automatically repair any problems found."),
         ("add-lease", None, "Add/renew lease on all shares."),
-        ]
+    ]
+
     def parseArgs(self, *locations):
         self.locations = list(map(argv_to_unicode, locations))
 
@@ -455,14 +561,20 @@ class CheckOptions(FileStoreOptions):
     verify their hashes. Optionally repair the file if any problems were
     found."""
 
+
 class DeepCheckOptions(FileStoreOptions):
     optFlags = [
         ("raw", None, "Display raw JSON data instead of parsed."),
-        ("verify", None, "Verify all hashes, instead of merely querying share presence."),
+        (
+            "verify",
+            None,
+            "Verify all hashes, instead of merely querying share presence.",
+        ),
         ("repair", None, "Automatically repair any problems found."),
         ("add-lease", None, "Add/renew lease on all shares."),
         ("verbose", "v", "Be noisy about what is happening."),
-        ]
+    ]
+
     def parseArgs(self, *locations):
         self.locations = list(map(argv_to_unicode, locations))
 
@@ -471,6 +583,7 @@ class DeepCheckOptions(FileStoreOptions):
     Check all files and directories reachable from the given starting point
     (which must be a directory), like 'tahoe check' but for multiple files.
     Optionally repair any problems found."""
+
 
 subCommands = [
     ("mkdir", None, MakeDirectoryOptions, "Create a new directory."),
@@ -483,43 +596,75 @@ subCommands = [
     ("cp", None, CpOptions, "Copy one or more files or directories."),
     ("unlink", None, UnlinkOptions, "Unlink a file or directory on the grid."),
     ("mv", None, MvOptions, "Move a file within the grid."),
-    ("ln", None, LnOptions, "Make an additional link to an existing file or directory."),
+    (
+        "ln",
+        None,
+        LnOptions,
+        "Make an additional link to an existing file or directory.",
+    ),
     ("backup", None, BackupOptions, "Make target dir look like local dir."),
-    ("webopen", None, WebopenOptions, "Open a web browser to a grid file or directory."),
+    (
+        "webopen",
+        None,
+        WebopenOptions,
+        "Open a web browser to a grid file or directory.",
+    ),
     ("manifest", None, ManifestOptions, "List all files/directories in a subtree."),
-    ("stats", None, StatsOptions, "Print statistics about all files/directories in a subtree."),
+    (
+        "stats",
+        None,
+        StatsOptions,
+        "Print statistics about all files/directories in a subtree.",
+    ),
     ("check", None, CheckOptions, "Check a single file or directory."),
-    ("deep-check", None, DeepCheckOptions, "Check all files/directories reachable from a starting point."),
+    (
+        "deep-check",
+        None,
+        DeepCheckOptions,
+        "Check all files/directories reachable from a starting point.",
+    ),
     ("status", None, TahoeStatusCommand, "Various status information."),
-    ]  # type: SubCommands
+]  # type: SubCommands
+
 
 def mkdir(options):
     from allmydata.scripts import tahoe_mkdir
+
     rc = tahoe_mkdir.mkdir(options)
     return rc
 
+
 def add_alias(options):
     from allmydata.scripts import tahoe_add_alias
+
     rc = tahoe_add_alias.add_alias(options)
     return rc
 
+
 def create_alias(options):
     from allmydata.scripts import tahoe_add_alias
+
     rc = tahoe_add_alias.create_alias(options)
     return rc
 
+
 def list_aliases(options):
     from allmydata.scripts import tahoe_add_alias
+
     rc = tahoe_add_alias.list_aliases(options)
     return rc
 
+
 def list_(options):
     from allmydata.scripts import tahoe_ls
+
     rc = tahoe_ls.ls(options)
     return rc
 
+
 def get(options):
     from allmydata.scripts import tahoe_get
+
     rc = tahoe_get.get(options)
     if rc == 0:
         if options.to_file is None:
@@ -528,71 +673,99 @@ def get(options):
             # enough to have picked an empty file
             pass
         else:
-            print("%s retrieved and written to %s" % \
-                  (options.from_file, options.to_file), file=options.stderr)
+            print(
+                "%s retrieved and written to %s" % (options.from_file, options.to_file),
+                file=options.stderr,
+            )
     return rc
+
 
 def put(options):
     from allmydata.scripts import tahoe_put
+
     rc = tahoe_put.put(options)
     return rc
 
+
 def cp(options):
     from allmydata.scripts import tahoe_cp
+
     rc = tahoe_cp.copy(options)
     return rc
 
+
 def unlink(options, command="unlink"):
     from allmydata.scripts import tahoe_unlink
+
     rc = tahoe_unlink.unlink(options, command=command)
     return rc
+
 
 def rm(options):
     return unlink(options, command="rm")
 
+
 def mv(options):
     from allmydata.scripts import tahoe_mv
+
     rc = tahoe_mv.mv(options, mode="move")
     return rc
 
+
 def ln(options):
     from allmydata.scripts import tahoe_mv
+
     rc = tahoe_mv.mv(options, mode="link")
     return rc
 
+
 def backup(options):
     from allmydata.scripts import tahoe_backup
+
     rc = tahoe_backup.backup(options)
     return rc
 
+
 def webopen(options, opener=None):
     from allmydata.scripts import tahoe_webopen
+
     rc = tahoe_webopen.webopen(options, opener=opener)
     return rc
 
+
 def manifest(options):
     from allmydata.scripts import tahoe_manifest
+
     rc = tahoe_manifest.manifest(options)
     return rc
 
+
 def stats(options):
     from allmydata.scripts import tahoe_manifest
+
     rc = tahoe_manifest.stats(options)
     return rc
 
+
 def check(options):
     from allmydata.scripts import tahoe_check
+
     rc = tahoe_check.check(options)
     return rc
 
+
 def deepcheck(options):
     from allmydata.scripts import tahoe_check
+
     rc = tahoe_check.deepcheck(options)
     return rc
 
+
 def status(options):
     from allmydata.scripts import tahoe_status
+
     return tahoe_status.do_status(options)
+
 
 dispatch = {
     "mkdir": mkdir,
@@ -614,4 +787,4 @@ dispatch = {
     "check": check,
     "deep-check": deepcheck,
     "status": status,
-    }
+}

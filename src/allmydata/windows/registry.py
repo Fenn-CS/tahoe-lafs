@@ -2,12 +2,15 @@ import sys
 import winreg
 
 _AMD_KEY = r"Software\Allmydata"
-_BDIR_KEY = 'Base Dir Path'
+_BDIR_KEY = "Base Dir Path"
 
-if sys.platform not in ('win32'):
-    class WindowsError(Exception): # stupid voodoo to appease pyflakes
+if sys.platform not in ("win32"):
+
+    class WindowsError(Exception):  # stupid voodoo to appease pyflakes
         pass
+
     raise ImportError("registry cannot be used on non-windows systems")
+
 
 def get_registry_setting(key, name, _topkey=None):
     """
@@ -42,8 +45,15 @@ def get_registry_setting(key, name, _topkey=None):
     # We didn't find the key:
     raise KeyError(key, name, "registry setting not found")
 
-def set_registry_setting(key, name, data, reg_type=winreg.REG_SZ,
-                         _topkey=winreg.HKEY_LOCAL_MACHINE, create_key_if_missing=True):
+
+def set_registry_setting(
+    key,
+    name,
+    data,
+    reg_type=winreg.REG_SZ,
+    _topkey=winreg.HKEY_LOCAL_MACHINE,
+    create_key_if_missing=True,
+):
     """
     Sets a registry setting.
 
@@ -64,6 +74,7 @@ def set_registry_setting(key, name, data, reg_type=winreg.REG_SZ,
 
     winreg.SetValueEx(regkey, name, 0, reg_type, data)
 
+
 def get_registry_value(keyname):
     """
     retrieves a registry key value from within the Software/Allmydata Inc key
@@ -72,6 +83,7 @@ def get_registry_value(keyname):
         return get_registry_setting(_AMD_KEY, keyname)
     except KeyError:
         return None
+
 
 def get_base_dir_path():
     return get_registry_value(_BDIR_KEY)

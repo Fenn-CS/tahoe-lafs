@@ -9,9 +9,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2, PY3
+
 if PY2:
     # Don't import future str() so we don't break Foolscap serialization on Python 2.
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        max,
+        min,
+    )  # noqa: F401
     from past.builtins import unicode as str
 
 __all__ = [
@@ -50,16 +72,18 @@ __appname__ = "tahoe-lafs"
 # __full_version__ is the one that you ought to use when identifying yourself
 # in the "application" part of the Tahoe versioning scheme:
 # https://tahoe-lafs.org/trac/tahoe-lafs/wiki/Versioning
-__full_version__ = __appname__ + '/' + str(__version__)
+__full_version__ = __appname__ + "/" + str(__version__)
 
 
 # Install Python 3 module locations in Python 2:
 from future import standard_library
+
 standard_library.install_aliases()
 
 
 # Monkey-patch 3rd party libraries:
 from ._monkeypatch import patch
+
 patch()
 del patch
 
@@ -74,6 +98,7 @@ del patch
 # in practice this should only affect tests.
 if PY3:
     import warnings
+
     # Error on BytesWarnings, to catch things like str(b""), but only for
     # allmydata code.
     warnings.filterwarnings("error", category=BytesWarning, module=".*allmydata.*")

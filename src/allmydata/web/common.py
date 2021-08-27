@@ -7,9 +7,33 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, max, min  # noqa: F401
-    from past.builtins import unicode as str  # prevent leaking newbytes/newstr into code that can't handle it
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        max,
+        min,
+    )  # noqa: F401
+    from past.builtins import (
+        unicode as str,
+    )  # prevent leaking newbytes/newstr into code that can't handle it
 
 from six import ensure_str
 
@@ -103,8 +127,8 @@ class WebError(Exception):
 
 
 def get_filenode_metadata(filenode):
-    metadata = {'mutable': filenode.is_mutable()}
-    if metadata['mutable']:
+    metadata = {"mutable": filenode.is_mutable()}
+    if metadata["mutable"]:
         mutable_type = filenode.get_version()
         assert mutable_type in (SDMF_VERSION, MDMF_VERSION)
         if mutable_type == MDMF_VERSION:
@@ -113,11 +137,12 @@ def get_filenode_metadata(filenode):
             file_format = "SDMF"
     else:
         file_format = "CHK"
-    metadata['format'] = file_format
+    metadata["format"] = file_format
     size = filenode.get_size()
     if size is not None:
-        metadata['size'] = size
+        metadata["size"] = size
     return metadata
+
 
 def boolean_of_arg(arg):  # type: (bytes) -> bool
     assert isinstance(arg, bytes)
@@ -133,7 +158,9 @@ def parse_replace_arg(replace):  # type: (bytes) -> Union[bool,_OnlyFiles]
     try:
         return boolean_of_arg(replace)
     except WebError:
-        raise WebError("invalid replace= argument: %r" % (ensure_str(replace),), http.BAD_REQUEST)
+        raise WebError(
+            "invalid replace= argument: %r" % (ensure_str(replace),), http.BAD_REQUEST
+        )
 
 
 def get_format(req, default="CHK"):
@@ -149,10 +176,13 @@ def get_format(req, default="CHK"):
     elif arg.upper() == b"MDMF":
         return "MDMF"
     else:
-        raise WebError("Unknown format: %s, I know CHK, SDMF, MDMF" % str(arg, "ascii"),
-                       http.BAD_REQUEST)
+        raise WebError(
+            "Unknown format: %s, I know CHK, SDMF, MDMF" % str(arg, "ascii"),
+            http.BAD_REQUEST,
+        )
 
-def get_mutable_type(file_format): # accepts result of get_format()
+
+def get_mutable_type(file_format):  # accepts result of get_format()
     if file_format == "SDMF":
         return SDMF_VERSION
     elif file_format == "MDMF":
@@ -220,10 +250,10 @@ def convert_children_json(nodemaker, children_json):
 
 def compute_rate(bytes, seconds):
     if bytes is None:
-      return None
+        return None
 
     if seconds is None or seconds == 0:
-      return None
+        return None
 
     # negative values don't make sense here
     assert bytes > -1
@@ -243,13 +273,13 @@ def abbreviate_rate(data):
     :return: Unicode string.
     """
     if data is None:
-        return u""
+        return ""
     r = float(data)
     if r > 1000000:
-        return u"%1.2fMBps" % (r/1000000)
+        return "%1.2fMBps" % (r / 1000000)
     if r > 1000:
-        return u"%.1fkBps" % (r/1000)
-    return u"%.0fBps" % r
+        return "%.1fkBps" % (r / 1000)
+    return "%.0fBps" % r
 
 
 def abbreviate_size(data):
@@ -263,15 +293,16 @@ def abbreviate_size(data):
     :return: Unicode string.
     """
     if data is None:
-        return u""
+        return ""
     r = float(data)
     if r > 1000000000:
-        return u"%1.2fGB" % (r/1000000000)
+        return "%1.2fGB" % (r / 1000000000)
     if r > 1000000:
-        return u"%1.2fMB" % (r/1000000)
+        return "%1.2fMB" % (r / 1000000)
     if r > 1000:
-        return u"%.1fkB" % (r/1000)
-    return u"%.0fB" % r
+        return "%.1fkB" % (r / 1000)
+    return "%.0fB" % r
+
 
 def plural(sequence_or_length):
     if isinstance(sequence_or_length, int):
@@ -282,19 +313,24 @@ def plural(sequence_or_length):
         return ""
     return "s"
 
+
 def text_plain(text, req):
     req.setHeader("content-type", "text/plain")
     req.setHeader("content-length", b"%d" % len(text))
     return text
 
+
 def spaces_to_nbsp(text):
-    return str(text).replace(u' ', u'\u00A0')
+    return str(text).replace(" ", "\u00A0")
+
 
 def render_time_delta(time_1, time_2):
     return spaces_to_nbsp(format_delta(time_1, time_2))
 
+
 def render_time(t):
     return spaces_to_nbsp(format_time(time.localtime(t)))
+
 
 def render_time_attr(t):
     return format_time(time.localtime(t))
@@ -305,10 +341,14 @@ def render_time_attr(t):
 # or make sure that childFactory returns a WebErrorResource (and never an
 # actual exception). The latter is growing increasingly annoying.
 
+
 def should_create_intermediate_directories(req):
     t = str(get_arg(req, "t", "").strip(), "ascii")
-    return bool(req.method in (b"PUT", b"POST") and
-                t not in ("delete", "rename", "rename-form", "check"))
+    return bool(
+        req.method in (b"PUT", b"POST")
+        and t not in ("delete", "rename", "rename-form", "check")
+    )
+
 
 def humanize_exception(exc):
     """
@@ -319,78 +359,100 @@ def humanize_exception(exc):
     :return: See ``humanize_failure``.
     """
     if isinstance(exc, EmptyPathnameComponentError):
-        return ("The webapi does not allow empty pathname components, "
-                "i.e. a double slash", http.BAD_REQUEST)
+        return (
+            "The webapi does not allow empty pathname components, "
+            "i.e. a double slash",
+            http.BAD_REQUEST,
+        )
     if isinstance(exc, ExistingChildError):
-        return ("There was already a child by that name, and you asked me "
-                "to not replace it.", http.CONFLICT)
+        return (
+            "There was already a child by that name, and you asked me "
+            "to not replace it.",
+            http.CONFLICT,
+        )
     if isinstance(exc, NoSuchChildError):
         quoted_name = quote_output_u(exc.args[0], quotemarks=False)
         return ("No such child: %s" % quoted_name, http.NOT_FOUND)
     if isinstance(exc, NotEnoughSharesError):
-        t = ("NotEnoughSharesError: This indicates that some "
-             "servers were unavailable, or that shares have been "
-             "lost to server departure, hard drive failure, or disk "
-             "corruption. You should perform a filecheck on "
-             "this object to learn more.\n\nThe full error message is:\n"
-             "%s") % str(exc)
+        t = (
+            "NotEnoughSharesError: This indicates that some "
+            "servers were unavailable, or that shares have been "
+            "lost to server departure, hard drive failure, or disk "
+            "corruption. You should perform a filecheck on "
+            "this object to learn more.\n\nThe full error message is:\n"
+            "%s"
+        ) % str(exc)
         return (t, http.GONE)
     if isinstance(exc, NoSharesError):
-        t = ("NoSharesError: no shares could be found. "
-             "Zero shares usually indicates a corrupt URI, or that "
-             "no servers were connected, but it might also indicate "
-             "severe corruption. You should perform a filecheck on "
-             "this object to learn more.\n\nThe full error message is:\n"
-             "%s") % str(exc)
+        t = (
+            "NoSharesError: no shares could be found. "
+            "Zero shares usually indicates a corrupt URI, or that "
+            "no servers were connected, but it might also indicate "
+            "severe corruption. You should perform a filecheck on "
+            "this object to learn more.\n\nThe full error message is:\n"
+            "%s"
+        ) % str(exc)
         return (t, http.GONE)
     if isinstance(exc, UnrecoverableFileError):
-        t = ("UnrecoverableFileError: the directory (or mutable file) could "
-             "not be retrieved, because there were insufficient good shares. "
-             "This might indicate that no servers were connected, "
-             "insufficient servers were connected, the URI was corrupt, or "
-             "that shares have been lost due to server departure, hard drive "
-             "failure, or disk corruption. You should perform a filecheck on "
-             "this object to learn more.")
+        t = (
+            "UnrecoverableFileError: the directory (or mutable file) could "
+            "not be retrieved, because there were insufficient good shares. "
+            "This might indicate that no servers were connected, "
+            "insufficient servers were connected, the URI was corrupt, or "
+            "that shares have been lost due to server departure, hard drive "
+            "failure, or disk corruption. You should perform a filecheck on "
+            "this object to learn more."
+        )
         return (t, http.GONE)
     if isinstance(exc, MustNotBeUnknownRWError):
         quoted_name = quote_output(exc.args[1], encoding="utf-8")
         immutable = exc.args[2]
         if immutable:
-            t = ("MustNotBeUnknownRWError: an operation to add a child named "
-                 "%s to a directory was given an unknown cap in a write slot.\n"
-                 "If the cap is actually an immutable readcap, then using a "
-                 "webapi server that supports a later version of Tahoe may help.\n\n"
-                 "If you are using the webapi directly, then specifying an immutable "
-                 "readcap in the read slot (ro_uri) of the JSON PROPDICT, and "
-                 "omitting the write slot (rw_uri), would also work in this "
-                 "case.") % quoted_name
+            t = (
+                "MustNotBeUnknownRWError: an operation to add a child named "
+                "%s to a directory was given an unknown cap in a write slot.\n"
+                "If the cap is actually an immutable readcap, then using a "
+                "webapi server that supports a later version of Tahoe may help.\n\n"
+                "If you are using the webapi directly, then specifying an immutable "
+                "readcap in the read slot (ro_uri) of the JSON PROPDICT, and "
+                "omitting the write slot (rw_uri), would also work in this "
+                "case."
+            ) % quoted_name
         else:
-            t = ("MustNotBeUnknownRWError: an operation to add a child named "
-                 "%s to a directory was given an unknown cap in a write slot.\n"
-                 "Using a webapi server that supports a later version of Tahoe "
-                 "may help.\n\n"
-                 "If you are using the webapi directly, specifying a readcap in "
-                 "the read slot (ro_uri) of the JSON PROPDICT, as well as a "
-                 "writecap in the write slot if desired, would also work in this "
-                 "case.") % quoted_name
+            t = (
+                "MustNotBeUnknownRWError: an operation to add a child named "
+                "%s to a directory was given an unknown cap in a write slot.\n"
+                "Using a webapi server that supports a later version of Tahoe "
+                "may help.\n\n"
+                "If you are using the webapi directly, specifying a readcap in "
+                "the read slot (ro_uri) of the JSON PROPDICT, as well as a "
+                "writecap in the write slot if desired, would also work in this "
+                "case."
+            ) % quoted_name
         return (t, http.BAD_REQUEST)
     if isinstance(exc, MustBeDeepImmutableError):
         quoted_name = quote_output(exc.args[1], encoding="utf-8")
-        t = ("MustBeDeepImmutableError: a cap passed to this operation for "
-             "the child named %s, needed to be immutable but was not. Either "
-             "the cap is being added to an immutable directory, or it was "
-             "originally retrieved from an immutable directory as an unknown "
-             "cap.") % quoted_name
+        t = (
+            "MustBeDeepImmutableError: a cap passed to this operation for "
+            "the child named %s, needed to be immutable but was not. Either "
+            "the cap is being added to an immutable directory, or it was "
+            "originally retrieved from an immutable directory as an unknown "
+            "cap."
+        ) % quoted_name
         return (t, http.BAD_REQUEST)
     if isinstance(exc, MustBeReadonlyError):
         quoted_name = quote_output(exc.args[1], encoding="utf-8")
-        t = ("MustBeReadonlyError: a cap passed to this operation for "
-             "the child named '%s', needed to be read-only but was not. "
-             "The cap is being passed in a read slot (ro_uri), or was retrieved "
-             "from a read slot as an unknown cap.") % quoted_name
+        t = (
+            "MustBeReadonlyError: a cap passed to this operation for "
+            "the child named '%s', needed to be read-only but was not. "
+            "The cap is being passed in a read slot (ro_uri), or was retrieved "
+            "from a read slot as an unknown cap."
+        ) % quoted_name
         return (t, http.BAD_REQUEST)
     if isinstance(exc, blacklist.FileProhibited):
-        t = "Access Prohibited: %s" % quote_output(exc.reason, encoding="utf-8", quotemarks=False)
+        t = "Access Prohibited: %s" % quote_output(
+            exc.reason, encoding="utf-8", quotemarks=False
+        )
         return (t, http.FORBIDDEN)
     if isinstance(exc, WebError):
         return (exc.text, exc.code)
@@ -456,7 +518,7 @@ class SlotsSequenceElement(template.Element):
         items.
         """
         if len(self.seq) > 0:
-            return u''
+            return ""
         else:
             return tag
 
@@ -466,6 +528,7 @@ def exception_to_child(getChild):
     Decorate ``getChild`` method with exception handling behavior to render an
     error page reflecting the exception.
     """
+
     @wraps(getChild)
     def g(self, name, req):
         # Bind the method to the instance so it has a better
@@ -473,7 +536,7 @@ def exception_to_child(getChild):
         bound_getChild = getChild.__get__(self, type(self))
 
         action = start_action(
-            action_type=u"allmydata:web:common-getChild",
+            action_type="allmydata:web:common-getChild",
             uri=req.uri,
             method=req.method,
             name=name,
@@ -488,12 +551,13 @@ def exception_to_child(getChild):
             )
             result = result.addActionFinish()
         return DeferredResource(result)
+
     return g
 
 
 def _getChild_done(child, parent):
     Message.log(
-        message_type=u"allmydata:web:common-getChild:result",
+        message_type="allmydata:web:common-getChild:result",
         result=fullyQualifiedName(type(child)),
     )
     if child is None:
@@ -511,6 +575,7 @@ def render_exception(render):
     Decorate a ``render_*`` method with exception handling behavior to render
     an error page reflecting the exception.
     """
+
     @wraps(render)
     def g(self, request):
         # Bind the method to the instance so it has a better
@@ -518,7 +583,7 @@ def render_exception(render):
         bound_render = render.__get__(self, type(self))
 
         action = start_action(
-            action_type=u"allmydata:web:common-render",
+            action_type="allmydata:web:common-render",
             uri=request.uri,
             method=request.method,
             handler=fullyQualifiedName(bound_render),
@@ -570,7 +635,7 @@ def _finish(result, render, request):
         if result.check(CancelledError):
             return
         Message.log(
-            message_type=u"allmydata:web:common-render:failure",
+            message_type="allmydata:web:common-render:failure",
             message=result.getErrorMessage(),
         )
         _finish(
@@ -584,46 +649,48 @@ def _finish(result, render, request):
         # the request.  If it isn't using @render_exception then you should
         # fix it so it is.
         Message.log(
-            message_type=u"allmydata:web:common-render:resource",
+            message_type="allmydata:web:common-render:resource",
             resource=fullyQualifiedName(type(result)),
         )
         result.render(request)
     elif isinstance(result, str):
         Message.log(
-            message_type=u"allmydata:web:common-render:unicode",
+            message_type="allmydata:web:common-render:unicode",
         )
         request.write(result.encode("utf-8"))
         request.finish()
     elif isinstance(result, bytes):
         Message.log(
-            message_type=u"allmydata:web:common-render:bytes",
+            message_type="allmydata:web:common-render:bytes",
         )
         request.write(result)
         request.finish()
     elif isinstance(result, DecodedURL):
         Message.log(
-            message_type=u"allmydata:web:common-render:DecodedURL",
+            message_type="allmydata:web:common-render:DecodedURL",
         )
         _finish(redirectTo(result.to_text().encode("utf-8"), request), render, request)
     elif result is None:
         Message.log(
-            message_type=u"allmydata:web:common-render:None",
+            message_type="allmydata:web:common-render:None",
         )
         request.finish()
     elif result == NOT_DONE_YET:
         Message.log(
-            message_type=u"allmydata:web:common-render:NOT_DONE_YET",
+            message_type="allmydata:web:common-render:NOT_DONE_YET",
         )
         pass
     else:
         Message.log(
-            message_type=u"allmydata:web:common-render:unknown",
+            message_type="allmydata:web:common-render:unknown",
         )
-        log.err("Request for {!r} handled by {!r} returned unusable {!r}".format(
-            request.uri,
-            fullyQualifiedName(render),
-            result,
-        ))
+        log.err(
+            "Request for {!r} handled by {!r} returned unusable {!r}".format(
+                request.uri,
+                fullyQualifiedName(render),
+                result,
+            )
+        )
         request.setResponseCode(http.INTERNAL_SERVER_ERROR)
         _finish(b"Internal Server Error", render, request)
 
@@ -650,7 +717,7 @@ def _renderHTTP_exception(request, failure):
             request,
             tags.html(
                 tags.head(
-                    tags.title(u"Exception"),
+                    tags.title("Exception"),
                 ),
                 tags.body(
                     FailureElement(failure),
@@ -714,7 +781,9 @@ def url_for_string(req, url_string):
     return url
 
 
-def get_arg(req, argname, default=None, multiple=False):  # type: (IRequest, Union[bytes,str], Any, bool) -> Union[bytes,Tuple[bytes],Any]
+def get_arg(
+    req, argname, default=None, multiple=False
+):  # type: (IRequest, Union[bytes,str], Any, bool) -> Union[bytes,Tuple[bytes],Any]
     """Extract an argument from either the query args (req.args) or the form
     body fields (req.fields). If multiple=False, this returns a single value
     (or the default, which defaults to None), and the query args take
@@ -755,6 +824,7 @@ class MultiFormatResource(resource.Resource, object):
     formats but ``json`` is a pretty common one.  ``html`` is the default
     format if nothing else is given as the ``formatDefault``.
     """
+
     formatArgument = "t"
     formatDefault = None  # type: Optional[str]
 
@@ -822,14 +892,14 @@ def abbreviate_time(data):
     """
     # 1.23s, 790ms, 132us
     if data is None:
-        return u""
+        return ""
     s = float(data)
     if s >= 10:
         return abbreviate.abbreviate_time(data)
     if s >= 1.0:
-        return u"%.2fs" % s
+        return "%.2fs" % s
     if s >= 0.01:
-        return u"%.0fms" % (1000*s)
+        return "%.0fms" % (1000 * s)
     if s >= 0.001:
-        return u"%.1fms" % (1000*s)
-    return u"%.0fus" % (1000000*s)
+        return "%.1fms" % (1000 * s)
+    return "%.0fus" % (1000000 * s)

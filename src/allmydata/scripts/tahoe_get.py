@@ -7,16 +7,44 @@ from __future__ import division
 from __future__ import print_function
 
 from future.utils import PY2, PY3
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 from urllib.parse import quote as url_quote
-from allmydata.scripts.common import get_alias, DEFAULT_ALIAS, escape_path, \
-                                     UnknownAliasError
+from allmydata.scripts.common import (
+    get_alias,
+    DEFAULT_ALIAS,
+    escape_path,
+    UnknownAliasError,
+)
 from allmydata.scripts.common_http import do_http, format_http_error
 
+
 def get(options):
-    nodeurl = options['node-url']
+    nodeurl = options["node-url"]
     aliases = options.aliases
     from_file = options.from_file
     to_file = options.to_file
@@ -35,7 +63,10 @@ def get(options):
         url += "/" + escape_path(path)
 
     resp = do_http("GET", url)
-    if resp.status in (200, 201,):
+    if resp.status in (
+        200,
+        201,
+    ):
         if to_file:
             outf = open(to_file, "wb")
         else:

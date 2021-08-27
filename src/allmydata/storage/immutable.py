@@ -8,8 +8,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2, bytes_to_native_str
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import os, stat, struct, time
 
@@ -21,8 +44,10 @@ from allmydata.util import base32, fileutil, log
 from allmydata.util.assertutil import precondition
 from allmydata.util.hashutil import timing_safe_compare
 from allmydata.storage.lease import LeaseInfo
-from allmydata.storage.common import UnknownImmutableContainerVersionError, \
-     DataTooLargeError
+from allmydata.storage.common import (
+    UnknownImmutableContainerVersionError,
+    DataTooLargeError,
+)
 
 # each share file (in storage/shares/$SI/$SHNUM) contains lease information
 # and share data. The share data is accessed by RIBucketWriter.write and
@@ -49,12 +74,13 @@ from allmydata.storage.common import UnknownImmutableContainerVersionError, \
 # then the value stored in this field will be the actual share data length
 # modulo 2**32.
 
+
 class ShareFile(object):
     LEASE_SIZE = struct.calcsize(">L32s32sL")
     sharetype = "immutable"
 
     def __init__(self, filename, max_size=None, create=False):
-        """ If max_size is not None then I won't allow more than max_size to be written to me. If create=True and max_size must not be None. """
+        """If max_size is not None then I won't allow more than max_size to be written to me. If create=True and max_size must not be None."""
         precondition((max_size is not None) or (not create), max_size, create)
         self.home = filename
         self._max_size = max_size
@@ -72,21 +98,23 @@ class ShareFile(object):
             # the largest length that can fit into the field. That way, even
             # if this does happen, the old < v1.3.0 server will still allow
             # clients to read the first part of the share.
-            with open(self.home, 'wb') as f:
-                f.write(struct.pack(">LLL", 1, min(2**32-1, max_size), 0))
-            self._lease_offset = max_size + 0x0c
+            with open(self.home, "wb") as f:
+                f.write(struct.pack(">LLL", 1, min(2 ** 32 - 1, max_size), 0))
+            self._lease_offset = max_size + 0x0C
             self._num_leases = 0
         else:
-            with open(self.home, 'rb') as f:
+            with open(self.home, "rb") as f:
                 filesize = os.path.getsize(self.home)
-                (version, unused, num_leases) = struct.unpack(">LLL", f.read(0xc))
+                (version, unused, num_leases) = struct.unpack(">LLL", f.read(0xC))
             if version != 1:
-                msg = "sharefile %s had version %d but we wanted 1" % \
-                      (filename, version)
+                msg = "sharefile %s had version %d but we wanted 1" % (
+                    filename,
+                    version,
+                )
                 raise UnknownImmutableContainerVersionError(msg)
             self._num_leases = num_leases
             self._lease_offset = filesize - (num_leases * self.LEASE_SIZE)
-        self._data_offset = 0xc
+        self._data_offset = 0xC
 
     def unlink(self):
         os.unlink(self.home)
@@ -95,21 +123,21 @@ class ShareFile(object):
         precondition(offset >= 0)
         # reads beyond the end of the data are truncated. Reads that start
         # beyond the end of the data return an empty string.
-        seekpos = self._data_offset+offset
-        actuallength = max(0, min(length, self._lease_offset-seekpos))
+        seekpos = self._data_offset + offset
+        actuallength = max(0, min(length, self._lease_offset - seekpos))
         if actuallength == 0:
             return b""
-        with open(self.home, 'rb') as f:
+        with open(self.home, "rb") as f:
             f.seek(seekpos)
             return f.read(actuallength)
 
     def write_share_data(self, offset, data):
         length = len(data)
         precondition(offset >= 0, offset)
-        if self._max_size is not None and offset+length > self._max_size:
+        if self._max_size is not None and offset + length > self._max_size:
             raise DataTooLargeError(self._max_size, offset, length)
-        with open(self.home, 'rb+') as f:
-            real_offset = self._data_offset+offset
+        with open(self.home, "rb+") as f:
+            real_offset = self._data_offset + offset
             f.seek(real_offset)
             assert f.tell() == real_offset
             f.write(data)
@@ -134,8 +162,8 @@ class ShareFile(object):
 
     def get_leases(self):
         """Yields a LeaseInfo instance for all leases."""
-        with open(self.home, 'rb') as f:
-            (version, unused, num_leases) = struct.unpack(">LLL", f.read(0xc))
+        with open(self.home, "rb") as f:
+            (version, unused, num_leases) = struct.unpack(">LLL", f.read(0xC))
             f.seek(self._lease_offset)
             for i in range(num_leases):
                 data = f.read(self.LEASE_SIZE)
@@ -143,30 +171,28 @@ class ShareFile(object):
                     yield LeaseInfo().from_immutable_data(data)
 
     def add_lease(self, lease_info):
-        with open(self.home, 'rb+') as f:
+        with open(self.home, "rb+") as f:
             num_leases = self._read_num_leases(f)
             self._write_lease_record(f, num_leases, lease_info)
-            self._write_num_leases(f, num_leases+1)
+            self._write_num_leases(f, num_leases + 1)
 
     def renew_lease(self, renew_secret, new_expire_time):
-        for i,lease in enumerate(self.get_leases()):
+        for i, lease in enumerate(self.get_leases()):
             if timing_safe_compare(lease.renew_secret, renew_secret):
                 # yup. See if we need to update the owner time.
                 if new_expire_time > lease.expiration_time:
                     # yes
                     lease.expiration_time = new_expire_time
-                    with open(self.home, 'rb+') as f:
+                    with open(self.home, "rb+") as f:
                         self._write_lease_record(f, i, lease)
                 return
         raise IndexError("unable to renew non-existent lease")
 
     def add_or_renew_lease(self, lease_info):
         try:
-            self.renew_lease(lease_info.renew_secret,
-                             lease_info.expiration_time)
+            self.renew_lease(lease_info.renew_secret, lease_info.expiration_time)
         except IndexError:
             self.add_lease(lease_info)
-
 
     def cancel_lease(self, cancel_secret):
         """Remove a lease with the given cancel_secret. If the last lease is
@@ -178,7 +204,7 @@ class ShareFile(object):
 
         leases = list(self.get_leases())
         num_leases_removed = 0
-        for i,lease in enumerate(leases):
+        for i, lease in enumerate(leases):
             if timing_safe_compare(lease.cancel_secret, cancel_secret):
                 leases[i] = None
                 num_leases_removed += 1
@@ -188,8 +214,8 @@ class ShareFile(object):
             # pack and write out the remaining leases. We write these out in
             # the same order as they were added, so that if we crash while
             # doing this, we won't lose any non-cancelled leases.
-            leases = [l for l in leases if l] # remove the cancelled leases
-            with open(self.home, 'rb+') as f:
+            leases = [l for l in leases if l]  # remove the cancelled leases
+            with open(self.home, "rb+") as f:
                 for i, lease in enumerate(leases):
                     self._write_lease_record(f, i, lease)
                 self._write_num_leases(f, len(leases))
@@ -203,12 +229,11 @@ class ShareFile(object):
 
 @implementer(RIBucketWriter)
 class BucketWriter(Referenceable):  # type: ignore # warner/foolscap#78
-
     def __init__(self, ss, incominghome, finalhome, max_size, lease_info, canary):
         self.ss = ss
         self.incominghome = incominghome
         self.finalhome = finalhome
-        self._max_size = max_size # don't allow the client to write more than this
+        self._max_size = max_size  # don't allow the client to write more than this
         self._canary = canary
         self._disconnect_marker = canary.notifyOnDisconnect(self._disconnected)
         self.closed = False
@@ -274,8 +299,11 @@ class BucketWriter(Referenceable):  # type: ignore # warner/foolscap#78
             self._abort()
 
     def remote_abort(self):
-        log.msg("storage: aborting sharefile %s" % self.incominghome,
-                facility="tahoe.storage", level=log.UNUSUAL)
+        log.msg(
+            "storage: aborting sharefile %s" % self.incominghome,
+            facility="tahoe.storage",
+            level=log.UNUSUAL,
+        )
         if not self.closed:
             self._canary.dontNotifyOnDisconnect(self._disconnect_marker)
         self._abort()
@@ -302,7 +330,6 @@ class BucketWriter(Referenceable):  # type: ignore # warner/foolscap#78
 
 @implementer(RIBucketReader)
 class BucketReader(Referenceable):  # type: ignore # warner/foolscap#78
-
     def __init__(self, ss, sharefname, storage_index=None, shnum=None):
         self.ss = ss
         self._share_file = ShareFile(sharefname)
@@ -310,11 +337,11 @@ class BucketReader(Referenceable):  # type: ignore # warner/foolscap#78
         self.shnum = shnum
 
     def __repr__(self):
-        return "<%s %s %s>" % (self.__class__.__name__,
-                               bytes_to_native_str(
-                                   base32.b2a(self.storage_index[:8])[:12]
-                               ),
-                               self.shnum)
+        return "<%s %s %s>" % (
+            self.__class__.__name__,
+            bytes_to_native_str(base32.b2a(self.storage_index[:8])[:12]),
+            self.shnum,
+        )
 
     def remote_read(self, offset, length):
         start = time.time()
@@ -324,7 +351,6 @@ class BucketReader(Referenceable):  # type: ignore # warner/foolscap#78
         return data
 
     def remote_advise_corrupt_share(self, reason):
-        return self.ss.remote_advise_corrupt_share(b"immutable",
-                                                   self.storage_index,
-                                                   self.shnum,
-                                                   reason)
+        return self.ss.remote_advise_corrupt_share(
+            b"immutable", self.storage_index, self.shnum, reason
+        )

@@ -7,8 +7,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
     from time import clock as process_time
 else:
     from time import process_time
@@ -22,6 +45,7 @@ from foolscap.api import eventually
 from allmydata.util import log, dictutil
 from allmydata.interfaces import IStatsProducer
 
+
 @implementer(IStatsProducer)
 class CPUUsageMonitor(service.MultiService):
     HISTORY_LENGTH = 15
@@ -34,7 +58,7 @@ class CPUUsageMonitor(service.MultiService):
         # rest of the program will be run by the child process, after twistd
         # forks. Instead, set self.initial_cpu as soon as the reactor starts
         # up.
-        self.initial_cpu = 0.0 # just in case
+        self.initial_cpu = 0.0  # just in case
         eventually(self._set_initial_cpu)
         self.samples = []
         # we provide 1min, 5min, and 15min moving averages
@@ -46,14 +70,14 @@ class CPUUsageMonitor(service.MultiService):
     def check(self):
         now_wall = time.time()
         now_cpu = process_time()
-        self.samples.append( (now_wall, now_cpu) )
-        while len(self.samples) > self.HISTORY_LENGTH+1:
+        self.samples.append((now_wall, now_cpu))
+        while len(self.samples) > self.HISTORY_LENGTH + 1:
             self.samples.pop(0)
 
     def _average_N_minutes(self, size):
-        if len(self.samples) < size+1:
+        if len(self.samples) < size + 1:
             return None
-        first = -size-1
+        first = -size - 1
         elapsed_wall = self.samples[-1][0] - self.samples[first][0]
         elapsed_cpu = self.samples[-1][1] - self.samples[first][1]
         fraction = elapsed_cpu / elapsed_wall
@@ -76,7 +100,6 @@ class CPUUsageMonitor(service.MultiService):
 
 
 class StatsProvider(service.MultiService):
-
     def __init__(self, node):
         service.MultiService.__init__(self)
         self.node = node
@@ -98,6 +121,6 @@ class StatsProvider(service.MultiService):
         stats = {}
         for sp in self.stats_producers:
             stats.update(sp.get_stats())
-        ret = { 'counters': self.counters, 'stats': stats }
-        log.msg(format='get_stats() -> %(stats)s', stats=ret, level=log.NOISY)
+        ret = {"counters": self.counters, "stats": stats}
+        log.msg(format="get_stats() -> %(stats)s", stats=ret, level=log.NOISY)
         return ret

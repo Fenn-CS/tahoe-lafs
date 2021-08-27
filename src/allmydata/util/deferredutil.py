@@ -10,8 +10,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import time
 
@@ -62,28 +85,31 @@ def timeout_call(reactor, d, timeout):
     return timer_d
 
 
-
 # utility wrapper for DeferredList
 def _check_deferred_list(results):
     # if any of the component Deferreds failed, return the first failure such
     # that an addErrback() would fire. If all were ok, return a list of the
     # results (without the success/failure booleans)
-    for success,f in results:
+    for success, f in results:
         if not success:
             return f
     return [r[1] for r in results]
+
 
 def DeferredListShouldSucceed(dl):
     d = defer.DeferredList(dl)
     d.addCallback(_check_deferred_list)
     return d
 
+
 def _parseDListResult(l):
     return [x[1] for x in l]
+
 
 def _unwrapFirstError(f):
     f.trap(defer.FirstError)
     raise f.value.subFailure
+
 
 def gatherResults(deferredList):
     """Returns list with result of given Deferreds.
@@ -111,17 +137,22 @@ def _with_log(op, res):
     except defer.AlreadyCalledError as e:
         log.err(e, op=repr(op), level=log.WEIRD)
 
+
 def eventually_callback(d):
     def _callback(res):
         eventually(_with_log, d.callback, res)
         return res
+
     return _callback
+
 
 def eventually_errback(d):
     def _errback(res):
         eventually(_with_log, d.errback, res)
         return res
+
     return _errback
+
 
 def eventual_chain(source, target):
     source.addCallbacks(eventually_callback(target), eventually_errback(target))
@@ -138,6 +169,7 @@ class HookMixin(object):
     I assume a '_hooks' attribute that should set by the class constructor to
     a dict mapping each valid hook name to None.
     """
+
     def set_hook(self, name, d=None, ignore_count=0):
         """
         Called by the hook observer (e.g. by a test).
@@ -213,10 +245,11 @@ class WaitForDelayedCallsMixin(PollMixin):
         d.addBoth(lambda ign: res)
         return d
 
+
 @inline_callbacks
 def until(
-        action,     # type: Callable[[], defer.Deferred[Any]]
-        condition,  # type: Callable[[], bool]
+    action,  # type: Callable[[], defer.Deferred[Any]]
+    condition,  # type: Callable[[], bool]
 ):
     # type: (...) -> defer.Deferred[None]
     """

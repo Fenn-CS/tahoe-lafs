@@ -9,8 +9,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import gc
 
@@ -25,14 +48,14 @@ from allmydata.util import pipeline
 class Pipeline(unittest.TestCase):
     def pause(self, *args, **kwargs):
         d = defer.Deferred()
-        self.calls.append( (d, args, kwargs) )
+        self.calls.append((d, args, kwargs))
         return d
 
     def failUnlessCallsAre(self, expected):
-        #print(self.calls)
-        #print(expected)
+        # print(self.calls)
+        # print(expected)
         self.failUnlessEqual(len(self.calls), len(expected), self.calls)
-        for i,c in enumerate(self.calls):
+        for i, c in enumerate(self.calls):
             self.failUnlessEqual(c[1:], expected[i], str(i))
 
     def test_basic(self):
@@ -40,7 +63,7 @@ class Pipeline(unittest.TestCase):
         finished = []
         p = pipeline.Pipeline(100)
 
-        d = p.flush() # fires immediately
+        d = p.flush()  # fires immediately
         d.addCallbacks(finished.append, log.err)
         self.failUnlessEqual(len(finished), 1)
         finished = []
@@ -51,7 +74,7 @@ class Pipeline(unittest.TestCase):
         d.addCallbacks(finished.append, log.err)
         self.failUnlessEqual(len(finished), 1)
         self.failUnlessEqual(finished[0], None)
-        self.failUnlessCallsAre([ ( ("one",) , {} ) ])
+        self.failUnlessCallsAre([(("one",), {})])
         self.failUnlessEqual(p.gauge, 10)
 
         # pipeline: [one]
@@ -64,9 +87,12 @@ class Pipeline(unittest.TestCase):
         d.addCallbacks(finished.append, log.err)
         self.failUnlessEqual(len(finished), 1)
         self.failUnlessEqual(finished[0], None)
-        self.failUnlessCallsAre([ ( ("one",) , {} ),
-                                  ( ("two",) , {"kw": 2} ),
-                                  ])
+        self.failUnlessCallsAre(
+            [
+                (("one",), {}),
+                (("two",), {"kw": 2}),
+            ]
+        )
         self.failUnlessEqual(p.gauge, 30)
 
         self.calls[0][0].callback("one-result")
@@ -85,10 +111,13 @@ class Pipeline(unittest.TestCase):
         # because the pipeline is now full.
         d.addCallbacks(finished.append, log.err)
         self.failUnlessEqual(len(finished), 0)
-        self.failUnlessCallsAre([ ( ("one",) , {} ),
-                                  ( ("two",) , {"kw": 2} ),
-                                  ( ("three", "posarg1"), {} ),
-                                  ])
+        self.failUnlessCallsAre(
+            [
+                (("one",), {}),
+                (("two",), {"kw": 2}),
+                (("three", "posarg1"), {}),
+            ]
+        )
         self.failUnlessEqual(p.gauge, 110)
 
         self.failUnlessRaises(pipeline.SingleFileError, p.add, 10, self.pause)
@@ -194,5 +223,5 @@ class Pipeline(unittest.TestCase):
         self.calls[1][0].callback("two-result")
         self.calls[2][0].errback(ValueError("three-error"))
 
-        del d1,d2,d3,d4
+        del d1, d2, d3, d4
         gc.collect()  # for PyPy

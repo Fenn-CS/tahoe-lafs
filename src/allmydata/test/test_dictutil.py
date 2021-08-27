@@ -9,9 +9,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2, PY3
+
 if PY2:
     # dict omitted to match dictutil.py.
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 from unittest import skipIf
 
@@ -29,7 +51,7 @@ class DictUtil(unittest.TestCase):
         ds.add(2, "c")
         self.failUnlessEqual(ds[1], set(["a"]))
         self.failUnlessEqual(ds[2], set(["b", "c"]))
-        ds.discard(3, "d") # should not raise an exception
+        ds.discard(3, "d")  # should not raise an exception
         ds.discard(2, "b")
         self.failUnlessEqual(ds[2], set(["c"]))
         ds.discard(2, "c")
@@ -53,8 +75,10 @@ class DictUtil(unittest.TestCase):
         self.failUnlessEqual(list(d.keys()), ["key"])
         self.failUnlessEqual(d["key"], ("filecap", "metadata"))
         self.failUnlessEqual(d.get_aux("key"), "serialized")
+
         def _get_missing(key):
             return d[key]
+
         self.failUnlessRaises(KeyError, _get_missing, "nonkey")
         self.failUnlessEqual(d.get("nonkey"), None)
         self.failUnlessEqual(d.get("nonkey", "nonvalue"), "nonvalue")
@@ -77,18 +101,18 @@ class DictUtil(unittest.TestCase):
         self.failUnlessEqual(d.get("key2"), "newvalue2")
         self.failUnlessEqual(d.get_aux("key2"), None)
 
-        d = dictutil.AuxValueDict({1:2,3:4})
-        self.failUnlessEqual(sorted(d.keys()), [1,3])
+        d = dictutil.AuxValueDict({1: 2, 3: 4})
+        self.failUnlessEqual(sorted(d.keys()), [1, 3])
         self.failUnlessEqual(d[1], 2)
         self.failUnlessEqual(d.get_aux(1), None)
 
-        d = dictutil.AuxValueDict([ (1,2), (3,4) ])
-        self.failUnlessEqual(sorted(d.keys()), [1,3])
+        d = dictutil.AuxValueDict([(1, 2), (3, 4)])
+        self.failUnlessEqual(sorted(d.keys()), [1, 3])
         self.failUnlessEqual(d[1], 2)
         self.failUnlessEqual(d.get_aux(1), None)
 
         d = dictutil.AuxValueDict(one=1, two=2)
-        self.failUnlessEqual(sorted(d.keys()), ["one","two"])
+        self.failUnlessEqual(sorted(d.keys()), ["one", "two"])
         self.failUnlessEqual(d["one"], 1)
         self.failUnlessEqual(d.get_aux("one"), None)
 
@@ -102,18 +126,18 @@ class TypedKeyDict(unittest.TestCase):
 
     def test_bytes(self):
         """BytesKeyDict is limited to just byte keys."""
-        self.assertRaises(TypeError, dictutil.BytesKeyDict, {u"hello": 123})
+        self.assertRaises(TypeError, dictutil.BytesKeyDict, {"hello": 123})
         d = dictutil.BytesKeyDict({b"123": 200})
         with self.assertRaises(TypeError):
-            d[u"hello"] = "blah"
+            d["hello"] = "blah"
         with self.assertRaises(TypeError):
-            d[u"hello"]
+            d["hello"]
         with self.assertRaises(TypeError):
-            del d[u"hello"]
+            del d["hello"]
         with self.assertRaises(TypeError):
-            d.setdefault(u"hello", "123")
+            d.setdefault("hello", "123")
         with self.assertRaises(TypeError):
-            d.get(u"xcd")
+            d.get("xcd")
 
         # Byte keys are fine:
         self.assertEqual(d, {b"123": 200})
@@ -127,7 +151,7 @@ class TypedKeyDict(unittest.TestCase):
     def test_unicode(self):
         """UnicodeKeyDict is limited to just unicode keys."""
         self.assertRaises(TypeError, dictutil.UnicodeKeyDict, {b"hello": 123})
-        d = dictutil.UnicodeKeyDict({u"123": 200})
+        d = dictutil.UnicodeKeyDict({"123": 200})
         with self.assertRaises(TypeError):
             d[b"hello"] = "blah"
         with self.assertRaises(TypeError):
@@ -140,13 +164,13 @@ class TypedKeyDict(unittest.TestCase):
             d.get(b"xcd")
 
         # Byte keys are fine:
-        self.assertEqual(d, {u"123": 200})
-        d[u"456"] = 400
-        self.assertEqual(d[u"456"], 400)
-        del d[u"456"]
-        self.assertEqual(d.get(u"456", 50), 50)
-        self.assertEqual(d.setdefault(u"456", 300), 300)
-        self.assertEqual(d[u"456"], 300)
+        self.assertEqual(d, {"123": 200})
+        d["456"] = 400
+        self.assertEqual(d["456"], 400)
+        del d["456"]
+        self.assertEqual(d.get("456", 50), 50)
+        self.assertEqual(d.setdefault("456", 300), 300)
+        self.assertEqual(d["456"], 300)
 
 
 class TypedKeyDictPython2(unittest.TestCase):
@@ -166,5 +190,5 @@ class TypedKeyDictPython2(unittest.TestCase):
         self.assertIs(dictutil.UnicodeKeyDict, dict)
         self.assertIs(dictutil.BytesKeyDict, dict)
         # Demonstration of how bytes and unicode can be mixed:
-        d = {u"abc": 1}
+        d = {"abc": 1}
         self.assertEqual(d[b"abc"], 1)

@@ -16,8 +16,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 __all__ = [
     "fileDescriptorResource",
@@ -26,6 +49,7 @@ __all__ = [
 import gc
 
 import attr
+
 
 @attr.s
 class _ResourceTracker(object):
@@ -39,6 +63,7 @@ class _ResourceTracker(object):
     :ivar int _threshold: The number of excess allocations at which point a
         full collection will be triggered.
     """
+
     _counter = attr.ib(default=0)
     _threshold = attr.ib(default=25)
 
@@ -56,7 +81,6 @@ class _ResourceTracker(object):
             # happens when we again exceed the threshold.
             self._counter = 0
 
-
     def release(self):
         """
         Register the release of an instance of this resource.
@@ -69,5 +93,6 @@ class _ResourceTracker(object):
             # that case, we would be operating as if we had set a higher
             # threshold and that is not desired.
             self._counter -= 1
+
 
 fileDescriptorResource = _ResourceTracker()

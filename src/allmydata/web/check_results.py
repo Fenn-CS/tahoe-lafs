@@ -7,8 +7,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import time
 
@@ -46,33 +69,38 @@ from allmydata.util import (
 
 
 def json_check_counts(r):
-    d = {"count-happiness": r.get_happiness(),
-         "count-shares-good": r.get_share_counter_good(),
-         "count-shares-needed": r.get_encoding_needed(),
-         "count-shares-expected": r.get_encoding_expected(),
-         "count-good-share-hosts": r.get_host_counter_good_shares(),
-         "count-corrupt-shares": len(r.get_corrupt_shares()),
-         "list-corrupt-shares": [ (s.get_longname(), base32.b2a(si), shnum)
-                                  for (s, si, shnum)
-                                  in r.get_corrupt_shares() ],
-         "servers-responding": [s.get_longname()
-                                for s in r.get_servers_responding()],
-         "sharemap": dict([(shareid,
-                            sorted([s.get_longname() for s in servers]))
-                           for (shareid, servers)
-                           in r.get_sharemap().items()]),
-         "count-wrong-shares": r.get_share_counter_wrong(),
-         "count-recoverable-versions": r.get_version_counter_recoverable(),
-         "count-unrecoverable-versions": r.get_version_counter_unrecoverable(),
-         }
+    d = {
+        "count-happiness": r.get_happiness(),
+        "count-shares-good": r.get_share_counter_good(),
+        "count-shares-needed": r.get_encoding_needed(),
+        "count-shares-expected": r.get_encoding_expected(),
+        "count-good-share-hosts": r.get_host_counter_good_shares(),
+        "count-corrupt-shares": len(r.get_corrupt_shares()),
+        "list-corrupt-shares": [
+            (s.get_longname(), base32.b2a(si), shnum)
+            for (s, si, shnum) in r.get_corrupt_shares()
+        ],
+        "servers-responding": [s.get_longname() for s in r.get_servers_responding()],
+        "sharemap": dict(
+            [
+                (shareid, sorted([s.get_longname() for s in servers]))
+                for (shareid, servers) in r.get_sharemap().items()
+            ]
+        ),
+        "count-wrong-shares": r.get_share_counter_wrong(),
+        "count-recoverable-versions": r.get_version_counter_recoverable(),
+        "count-unrecoverable-versions": r.get_version_counter_unrecoverable(),
+    }
     return d
+
 
 def json_check_results(r):
     if r is None:
         # LIT file
-        data = {"storage-index": "",
-                "results": {"healthy": True},
-                }
+        data = {
+            "storage-index": "",
+            "results": {"healthy": True},
+        }
         return data
     data = {}
     data["storage-index"] = r.get_storage_index_string()
@@ -82,12 +110,14 @@ def json_check_results(r):
     data["results"]["recoverable"] = r.is_recoverable()
     return data
 
+
 def json_check_and_repair_results(r):
     if r is None:
         # LIT file
-        data = {"storage-index": "",
-                "repair-attempted": False,
-                }
+        data = {
+            "storage-index": "",
+            "repair-attempted": False,
+        }
         return data
     data = {}
     data["storage-index"] = r.get_storage_index_string()
@@ -98,6 +128,7 @@ def json_check_and_repair_results(r):
     post = r.get_post_repair_results()
     data["post-repair-results"] = json_check_results(post)
     return data
+
 
 class ResultsBase(object):
     # self._client must point to the Client, so we can get nicknames and
@@ -122,30 +153,51 @@ class ResultsBase(object):
         c = self._client
         sb = c.get_storage_broker()
         r = []
+
         def add(name, value):
             r.append(tags.li(name + ": ", value))
 
         add("Report", tags.pre("\n".join(self._html(cr.get_report()))))
 
-        add("Share Counts",
-            "need %d-of-%d, have %d" % (cr.get_encoding_needed(),
-                                        cr.get_encoding_expected(),
-                                        cr.get_share_counter_good()))
+        add(
+            "Share Counts",
+            "need %d-of-%d, have %d"
+            % (
+                cr.get_encoding_needed(),
+                cr.get_encoding_expected(),
+                cr.get_share_counter_good(),
+            ),
+        )
         add("Happiness Level", str(cr.get_happiness()))
         add("Hosts with good shares", str(cr.get_host_counter_good_shares()))
 
         if cr.get_corrupt_shares():
             badsharemap = []
             for (s, si, shnum) in cr.get_corrupt_shares():
-                d = tags.tr(tags.td("sh#%d" % shnum),
-                            tags.td(tags.div(s.get_nickname(), class_="nickname"),
-                                    tags.div(tags.tt(s.get_name()), class_="nodeid")),)
+                d = tags.tr(
+                    tags.td("sh#%d" % shnum),
+                    tags.td(
+                        tags.div(s.get_nickname(), class_="nickname"),
+                        tags.div(tags.tt(s.get_name()), class_="nodeid"),
+                    ),
+                )
                 badsharemap.append(d)
-            add("Corrupt shares",
+            add(
+                "Corrupt shares",
                 tags.table(
-                    tags.tr(tags.th("Share ID"),
-                            tags.th((tags.div("Nickname"), tags.div("Node ID", class_="nodeid")), class_="nickname-and-peerid")),
-                    badsharemap))
+                    tags.tr(
+                        tags.th("Share ID"),
+                        tags.th(
+                            (
+                                tags.div("Nickname"),
+                                tags.div("Node ID", class_="nodeid"),
+                            ),
+                            class_="nickname-and-peerid",
+                        ),
+                    ),
+                    badsharemap,
+                ),
+            )
         else:
             add("Corrupt shares", "none")
 
@@ -160,9 +212,8 @@ class ResultsBase(object):
         # (and any other presentations of nickname-and-nodeid) should be combined.
 
         for shareid in sorted(cr.get_sharemap().keys()):
-            servers = sorted(cr.get_sharemap()[shareid],
-                             key=lambda s: s.get_longname())
-            for i,s in enumerate(servers):
+            servers = sorted(cr.get_sharemap()[shareid], key=lambda s: s.get_longname())
+            for i, s in enumerate(servers):
                 shares_on_server.add(s, shareid)
                 shareid_s = ""
                 if i == 0:
@@ -170,46 +221,69 @@ class ResultsBase(object):
                         shareid_s = str(shareid, "utf-8")
                     else:
                         shareid_s = str(shareid)
-                d = tags.tr(tags.td(shareid_s),
-                            tags.td(tags.div(s.get_nickname(), class_="nickname"),
-                                    tags.div(tags.tt(s.get_name()), class_="nodeid")))
+                d = tags.tr(
+                    tags.td(shareid_s),
+                    tags.td(
+                        tags.div(s.get_nickname(), class_="nickname"),
+                        tags.div(tags.tt(s.get_name()), class_="nodeid"),
+                    ),
+                )
                 sharemap_data.append(d)
 
-        add("Good Shares (sorted in share order)",
-            tags.table(tags.tr(tags.th("Share ID"),
-                               tags.th(tags.div("Nickname"),
-                                       tags.div("Node ID", class_="nodeid"), class_="nickname-and-peerid")),
-                       sharemap_data))
+        add(
+            "Good Shares (sorted in share order)",
+            tags.table(
+                tags.tr(
+                    tags.th("Share ID"),
+                    tags.th(
+                        tags.div("Nickname"),
+                        tags.div("Node ID", class_="nodeid"),
+                        class_="nickname-and-peerid",
+                    ),
+                ),
+                sharemap_data,
+            ),
+        )
 
         add("Recoverable Versions", str(cr.get_version_counter_recoverable()))
         add("Unrecoverable Versions", str(cr.get_version_counter_unrecoverable()))
 
         # this table is sorted by permuted order
-        permuted_servers = [s
-                            for s
-                            in sb.get_servers_for_psi(cr.get_storage_index())]
+        permuted_servers = [s for s in sb.get_servers_for_psi(cr.get_storage_index())]
 
-        num_shares_left = sum([len(shareids)
-                               for shareids in shares_on_server.values()])
+        num_shares_left = sum([len(shareids) for shareids in shares_on_server.values()])
         servermap = []
         for s in permuted_servers:
             shareids = list(shares_on_server.get(s, []))
             shareids.reverse()
             shareids_s = [tags.tt(str(shareid), " ") for shareid in sorted(shareids)]
 
-            d = tags.tr(tags.td(tags.div(s.get_nickname(), class_="nickname"),
-                             tags.div(tags.tt(s.get_name()), class_="nodeid")),
-                        tags.td(shareids_s), )
+            d = tags.tr(
+                tags.td(
+                    tags.div(s.get_nickname(), class_="nickname"),
+                    tags.div(tags.tt(s.get_name()), class_="nodeid"),
+                ),
+                tags.td(shareids_s),
+            )
             servermap.append(d)
             num_shares_left -= len(shareids)
             if not num_shares_left:
                 break
 
-        add("Share Balancing (servers in permuted order)",
-            tags.table(tags.tr(tags.th(tags.div("Nickname"),
-                                    tags.div("Node ID", class_="nodeid"), class_="nickname-and-peerid"),
-                            tags.th("Share IDs")),
-                       servermap))
+        add(
+            "Share Balancing (servers in permuted order)",
+            tags.table(
+                tags.tr(
+                    tags.th(
+                        tags.div("Nickname"),
+                        tags.div("Node ID", class_="nodeid"),
+                        class_="nickname-and-peerid",
+                    ),
+                    tags.th("Share IDs"),
+                ),
+                servermap,
+            ),
+        )
 
         return tags.ul(r)
 
@@ -267,7 +341,6 @@ class LiteralCheckResultsRendererElement(Element):
 
 
 class CheckerBase(object):
-
     @renderer
     def storage_index(self, req, tag):
         return self._results.get_storage_index_string()
@@ -295,7 +368,9 @@ class CheckResultsRenderer(MultiFormatResource):
 
     @render_exception
     def render_HTML(self, req):
-        return renderElement(req, CheckResultsRendererElement(self._client, self._results))
+        return renderElement(
+            req, CheckResultsRendererElement(self._client, self._results)
+        )
 
     @render_exception
     def render_JSON(self, req):
@@ -331,22 +406,23 @@ class CheckResultsRendererElement(Element, CheckerBase, ResultsBase):
         if self._results.is_healthy():
             return ""
 
-        #repair = T.form(action=".", method="post",
+        # repair = T.form(action=".", method="post",
         #                enctype="multipart/form-data")[
         #    T.fieldset[
         #    T.input(type="hidden", name="t", value="check"),
         #    T.input(type="hidden", name="repair", value="true"),
         #    T.input(type="submit", value="Repair"),
         #    ]]
-        #return ctx.tag[repair]
+        # return ctx.tag[repair]
 
-        return "" # repair button disabled until we make it work correctly,
-                  # see #622 for details
+        return ""  # repair button disabled until we make it work correctly,
+        # see #622 for details
 
     @renderer
     def results(self, req, tag):
         cr = self._render_results(req, self._results)
         return tag(cr)
+
 
 class CheckAndRepairResultsRenderer(MultiFormatResource):
 
@@ -442,11 +518,14 @@ class DeepCheckResultsRenderer(MultiFormatResource):
         si = base32.a2b(name)
         r = self.monitor.get_status()
         try:
-            return CheckResultsRenderer(self._client,
-                                        r.get_results_for_storage_index(si))
+            return CheckResultsRenderer(
+                self._client, r.get_results_for_storage_index(si)
+            )
         except KeyError:
-            raise WebError("No detailed results for SI %s" % html.escape(str(name, "utf-8")),
-                           http.NOT_FOUND)
+            raise WebError(
+                "No detailed results for SI %s" % html.escape(str(name, "utf-8")),
+                http.NOT_FOUND,
+            )
 
     @render_exception
     def render_HTML(self, req):
@@ -465,15 +544,15 @@ class DeepCheckResultsRenderer(MultiFormatResource):
         data["count-objects-healthy"] = c["count-objects-healthy"]
         data["count-objects-unhealthy"] = c["count-objects-unhealthy"]
         data["count-corrupt-shares"] = c["count-corrupt-shares"]
-        data["list-corrupt-shares"] = [ (s.get_longname(),
-                                         base32.b2a(storage_index),
-                                         shnum)
-                                        for (s, storage_index, shnum)
-                                        in res.get_corrupt_shares() ]
-        data["list-unhealthy-files"] = [ (path_t, json_check_results(r))
-                                         for (path_t, r)
-                                         in res.get_all_results().items()
-                                         if not r.is_healthy() ]
+        data["list-corrupt-shares"] = [
+            (s.get_longname(), base32.b2a(storage_index), shnum)
+            for (s, storage_index, shnum) in res.get_corrupt_shares()
+        ]
+        data["list-unhealthy-files"] = [
+            (path_t, json_check_results(r))
+            for (path_t, r) in res.get_all_results().items()
+            if not r.is_healthy()
+        ]
         data["stats"] = res.get_stats()
         return json.dumps(data, indent=1) + "\n"
 
@@ -536,12 +615,17 @@ class DeepCheckResultsRendererElement(Element, ResultsBase, ReloadMixin):
                 summary = cr.get_summary()
                 if summary:
                     summary_text = ": " + summary
-                summary_text += " [SI: %s]" % cr.get_storage_index_string().decode("ascii")
-                problems.append({
-                    # Not sure self._join_pathstring(path) is the
-                    # right thing to use here.
-                    "problem": self._join_pathstring(path) + self._html(summary_text),
-                })
+                summary_text += " [SI: %s]" % cr.get_storage_index_string().decode(
+                    "ascii"
+                )
+                problems.append(
+                    {
+                        # Not sure self._join_pathstring(path) is the
+                        # right thing to use here.
+                        "problem": self._join_pathstring(path)
+                        + self._html(summary_text),
+                    }
+                )
 
         return SlotsSequenceElement(tag, problems)
 
@@ -553,9 +637,14 @@ class DeepCheckResultsRendererElement(Element, ResultsBase, ReloadMixin):
 
     @renderer
     def servers_with_corrupt_shares(self, req, tag):
-        servers = [s
-                   for (s, storage_index, sharenum)
-                   in self.monitor.get_status().get_corrupt_shares()]
+        servers = [
+            s
+            for (
+                s,
+                storage_index,
+                sharenum,
+            ) in self.monitor.get_status().get_corrupt_shares()
+        ]
         servers.sort(key=lambda s: s.get_longname())
 
         problems = []
@@ -621,8 +710,8 @@ class DeepCheckResultsRendererElement(Element, ResultsBase, ReloadMixin):
 
     @renderer
     def runtime(self, req, tag):
-        runtime = 'unknown'
-        if hasattr(req, 'processing_started_timestamp'):
+        runtime = "unknown"
+        if hasattr(req, "processing_started_timestamp"):
             runtime = time.time() - req.processing_started_timestamp
         return tag("runtime: %s seconds" % runtime)
 
@@ -652,8 +741,9 @@ class DeepCheckAndRepairResultsRenderer(MultiFormatResource):
             results = s.get_results_for_storage_index(si)
             return CheckAndRepairResultsRenderer(self._client, results)
         except KeyError:
-            raise WebError("No detailed results for SI %s" % html.escape(name),
-                           http.NOT_FOUND)
+            raise WebError(
+                "No detailed results for SI %s" % html.escape(name), http.NOT_FOUND
+            )
 
     @render_exception
     def render_HTML(self, req):
@@ -671,9 +761,15 @@ class DeepCheckAndRepairResultsRenderer(MultiFormatResource):
         data["count-objects-checked"] = c["count-objects-checked"]
 
         data["count-objects-healthy-pre-repair"] = c["count-objects-healthy-pre-repair"]
-        data["count-objects-unhealthy-pre-repair"] = c["count-objects-unhealthy-pre-repair"]
-        data["count-objects-healthy-post-repair"] = c["count-objects-healthy-post-repair"]
-        data["count-objects-unhealthy-post-repair"] = c["count-objects-unhealthy-post-repair"]
+        data["count-objects-unhealthy-pre-repair"] = c[
+            "count-objects-unhealthy-pre-repair"
+        ]
+        data["count-objects-healthy-post-repair"] = c[
+            "count-objects-healthy-post-repair"
+        ]
+        data["count-objects-unhealthy-post-repair"] = c[
+            "count-objects-unhealthy-post-repair"
+        ]
 
         data["count-repairs-attempted"] = c["count-repairs-attempted"]
         data["count-repairs-successful"] = c["count-repairs-successful"]
@@ -682,23 +778,22 @@ class DeepCheckAndRepairResultsRenderer(MultiFormatResource):
         data["count-corrupt-shares-pre-repair"] = c["count-corrupt-shares-pre-repair"]
         data["count-corrupt-shares-post-repair"] = c["count-corrupt-shares-pre-repair"]
 
-        data["list-corrupt-shares"] = [ (s.get_longname(),
-                                         base32.b2a(storage_index),
-                                         shnum)
-                                        for (s, storage_index, shnum)
-                                        in res.get_corrupt_shares() ]
+        data["list-corrupt-shares"] = [
+            (s.get_longname(), base32.b2a(storage_index), shnum)
+            for (s, storage_index, shnum) in res.get_corrupt_shares()
+        ]
 
-        remaining_corrupt = [ (s.get_longname(), base32.b2a(storage_index),
-                               shnum)
-                              for (s, storage_index, shnum)
-                              in res.get_remaining_corrupt_shares() ]
+        remaining_corrupt = [
+            (s.get_longname(), base32.b2a(storage_index), shnum)
+            for (s, storage_index, shnum) in res.get_remaining_corrupt_shares()
+        ]
         data["list-remaining-corrupt-shares"] = remaining_corrupt
 
-        unhealthy = [ (path_t,
-                       json_check_results(crr.get_pre_repair_results()))
-                      for (path_t, crr)
-                      in res.get_all_results().items()
-                      if not crr.get_pre_repair_results().is_healthy() ]
+        unhealthy = [
+            (path_t, json_check_results(crr.get_pre_repair_results()))
+            for (path_t, crr) in res.get_all_results().items()
+            if not crr.get_pre_repair_results().is_healthy()
+        ]
         data["list-unhealthy-files"] = unhealthy
         data["stats"] = res.get_stats()
         return json.dumps(data, indent=1) + "\n"
@@ -768,15 +863,20 @@ class DeepCheckAndRepairResultsRendererElement(DeepCheckResultsRendererElement):
             assert ICheckAndRepairResults.providedBy(r)
             cr = r.get_pre_repair_results()
             if not cr.is_healthy():
-                problem = self._join_pathstring(path), ": ", self._html(cr.get_summary())
+                problem = (
+                    self._join_pathstring(path),
+                    ": ",
+                    self._html(cr.get_summary()),
+                )
                 problems.append({"problem": problem})
 
         return SlotsSequenceElement(tag, problems)
 
     @renderer
     def post_repair_problems_p(self, req, tag):
-        if (self._get_monitor_counter("count-objects-unhealthy-post-repair")
-            or self._get_monitor_counter("count-corrupt-shares-post-repair")):
+        if self._get_monitor_counter(
+            "count-objects-unhealthy-post-repair"
+        ) or self._get_monitor_counter("count-corrupt-shares-post-repair"):
             return tag
         return ""
 
@@ -790,7 +890,11 @@ class DeepCheckAndRepairResultsRendererElement(DeepCheckResultsRendererElement):
             assert ICheckAndRepairResults.providedBy(r)
             cr = r.get_post_repair_results()
             if not cr.is_healthy():
-                problem = self._join_pathstring(path), ": ", self._html(cr.get_summary())
+                problem = (
+                    self._join_pathstring(path),
+                    ": ",
+                    self._html(cr.get_summary()),
+                )
                 problems.append({"problem": problem})
 
         return SlotsSequenceElement(tag, problems)
@@ -807,7 +911,7 @@ class DeepCheckAndRepairResultsRendererElement(DeepCheckResultsRendererElement):
         # twisted.web.template; leaving it as such.
         #
         # https://tahoe-lafs.org/trac/tahoe-lafs/ticket/3371
-        corrupt = [{"share":"unimplemented"}]
+        corrupt = [{"share": "unimplemented"}]
         return SlotsSequenceElement(tag, corrupt)
 
     @renderer
@@ -823,12 +927,15 @@ class DeepCheckAndRepairResultsRendererElement(DeepCheckResultsRendererElement):
             obj = {
                 "path": self._join_pathstring(path),
                 "healthy_pre_repair": str(result.get_pre_repair_results().is_healthy()),
-                "recoverable_pre_repair": str(result.get_pre_repair_results().is_recoverable()),
-                "healthy_post_repair": str(result.get_post_repair_results().is_healthy()),
+                "recoverable_pre_repair": str(
+                    result.get_pre_repair_results().is_recoverable()
+                ),
+                "healthy_post_repair": str(
+                    result.get_post_repair_results().is_healthy()
+                ),
                 "storage_index": self._render_si_link(req, storage_index),
                 "summary": self._html(result.get_pre_repair_results().get_summary()),
             }
             objects.append(obj)
 
         return SlotsSequenceElement(tag, objects)
-

@@ -8,8 +8,31 @@ from __future__ import division
 from __future__ import print_function
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 from unittest import skipUnless
 from inspect import isclass
@@ -38,6 +61,7 @@ def is_new_style(cls):
     # All new-style classes are instances of type.  By definition.
     return isinstance(cls, type)
 
+
 def defined_here(cls, where):
     """
     :return bool: ``True`` if and only if the given class was defined in a
@@ -52,6 +76,7 @@ class PythonTwoRegressions(TestCase):
     """
     Regression tests for Python 2 behaviors related to Python 3 porting.
     """
+
     @skipUnless(PY2, "No point in running on Python 3.")
     def test_new_style_classes(self):
         """

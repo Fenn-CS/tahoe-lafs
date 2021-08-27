@@ -10,8 +10,31 @@ from __future__ import division
 from __future__ import print_function
 
 from future.utils import PY2
+
 if PY2:
-    from builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 from twisted.trial import unittest
 from twisted.internet import defer, reactor
@@ -26,10 +49,13 @@ class DeferredUtilTests(unittest.TestCase, deferredutil.WaitForDelayedCallsMixin
         d2 = defer.Deferred()
         res = deferredutil.gatherResults([d1, d2])
         d1.errback(ValueError("BAD"))
+
         def _callb(res):
             self.fail("Should have errbacked, not resulted in %s" % (res,))
+
         def _errb(thef):
             thef.trap(ValueError)
+
         res.addCallbacks(_callb, _errb)
         return res
 
@@ -37,18 +63,18 @@ class DeferredUtilTests(unittest.TestCase, deferredutil.WaitForDelayedCallsMixin
         d1, d2 = defer.Deferred(), defer.Deferred()
         good = []
         bad = []
-        dlss = deferredutil.DeferredListShouldSucceed([d1,d2])
+        dlss = deferredutil.DeferredListShouldSucceed([d1, d2])
         dlss.addCallbacks(good.append, bad.append)
         d1.callback(1)
         d2.callback(2)
-        self.failUnlessEqual(good, [[1,2]])
+        self.failUnlessEqual(good, [[1, 2]])
         self.failUnlessEqual(bad, [])
 
     def test_failure(self):
         d1, d2 = defer.Deferred(), defer.Deferred()
         good = []
         bad = []
-        dlss = deferredutil.DeferredListShouldSucceed([d1,d2])
+        dlss = deferredutil.DeferredListShouldSucceed([d1, d2])
         dlss.addCallbacks(good.append, bad.append)
         d1.addErrback(lambda _ignore: None)
         d2.addErrback(lambda _ignore: None)
@@ -66,9 +92,11 @@ class DeferredUtilTests(unittest.TestCase, deferredutil.WaitForDelayedCallsMixin
         delayed call that is active when the test returns. If it didn't,
         Trial would report an unclean reactor error for this test.
         """
+
         def _trigger():
-            #print("trigger")
+            # print("trigger")
             pass
+
         reactor.callLater(0.1, _trigger)
 
         d = defer.succeed(None)
@@ -80,13 +108,14 @@ class UntilTests(unittest.TestCase):
     """
     Tests for ``deferredutil.until``.
     """
+
     def test_exception(self):
         """
         If the action raises an exception, the ``Deferred`` returned by ``until``
         fires with a ``Failure``.
         """
         self.assertFailure(
-            deferredutil.until(lambda: 1/0, lambda: True),
+            deferredutil.until(lambda: 1 / 0, lambda: True),
             ZeroDivisionError,
         )
 
@@ -95,6 +124,7 @@ class UntilTests(unittest.TestCase):
         The action is called repeatedly until ``condition`` returns ``True``.
         """
         calls = []
+
         def action():
             calls.append(None)
 
@@ -118,6 +148,7 @@ class UntilTests(unittest.TestCase):
         r1 = defer.Deferred()
         r2 = defer.Deferred()
         results = [r1, r2]
+
         def action():
             counter[0] += 1
             return results.pop(0)

@@ -19,8 +19,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 from twisted.internet.defer import (
     inlineCallbacks,
@@ -105,6 +128,7 @@ class FakeWebTest(TestCase):
 
             round_trip_content = yield resp.content()
             self.assertEqual(content, round_trip_content)
+
         self.assertThat(
             do_test(),
             succeeded(Always()),
@@ -127,15 +151,12 @@ class FakeWebTest(TestCase):
 
             cap_raw = yield resp.content()
             self.assertThat(
-                cap_raw,
-                AfterPreprocessing(
-                    from_string,
-                    IsInstance(CHKFileURI)
-                )
+                cap_raw, AfterPreprocessing(from_string, IsInstance(CHKFileURI))
             )
 
             resp = yield http_client.put("http://example.com/uri", content)
             self.assertThat(resp.code, Equals(200))
+
         self.assertThat(
             do_test(),
             succeeded(Always()),
@@ -148,18 +169,11 @@ class FakeWebTest(TestCase):
 
         http_client = create_tahoe_treq_client()
         cap_gen = capability_generator(b"URI:CHK:")
-        cap = next(cap_gen).decode('ascii')
-        uri = DecodedURL.from_text(u"http://example.com/uri?uri={}".format(cap))
+        cap = next(cap_gen).decode("ascii")
+        uri = DecodedURL.from_text("http://example.com/uri?uri={}".format(cap))
         resp = http_client.get(uri.to_uri().to_text())
 
-        self.assertThat(
-            resp,
-            succeeded(
-                MatchesStructure(
-                    code=Equals(500)
-                )
-            )
-        )
+        self.assertThat(resp, succeeded(MatchesStructure(code=Equals(500))))
 
     def test_download_no_arg(self):
         """
@@ -168,14 +182,7 @@ class FakeWebTest(TestCase):
 
         http_client = create_tahoe_treq_client()
 
-        uri = DecodedURL.from_text(u"http://example.com/uri/")
+        uri = DecodedURL.from_text("http://example.com/uri/")
         resp = http_client.get(uri.to_uri().to_text())
 
-        self.assertThat(
-            resp,
-            succeeded(
-                MatchesStructure(
-                    code=Equals(400)
-                )
-            )
-        )
+        self.assertThat(resp, succeeded(MatchesStructure(code=Equals(400))))

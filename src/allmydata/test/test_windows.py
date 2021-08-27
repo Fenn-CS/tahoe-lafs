@@ -17,8 +17,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 from sys import (
     executable,
@@ -69,7 +92,6 @@ from .common import (
 slow_settings = settings(
     suppress_health_check=[HealthCheck.too_slow],
     deadline=None,
-
     # Reduce the number of examples required to consider the test a success.
     # The default is 100.  Launching a process is expensive so we'll try to do
     # it as few times as we can get away with.  To maintain good coverage,
@@ -78,12 +100,14 @@ slow_settings = settings(
     max_examples=10,
 )
 
+
 @skipUnless(platform.isWindows(), "get_argv is Windows-only")
 @skipUnless(PY2, "Not used on Python 3.")
 class GetArgvTests(SyncTestCase):
     """
     Tests for ``get_argv``.
     """
+
     def test_get_argv_return_type(self):
         """
         ``get_argv`` returns a list of unicode strings
@@ -93,6 +117,7 @@ class GetArgvTests(SyncTestCase):
         from ..windows.fixups import (
             get_argv,
         )
+
         argv = get_argv()
 
         # We don't know what this process's command line was so we just make
@@ -112,11 +137,11 @@ class GetArgvTests(SyncTestCase):
         lists(
             text(
                 alphabet=characters(
-                    blacklist_categories=('Cs',),
+                    blacklist_categories=("Cs",),
                     # Windows CommandLine is a null-terminated string,
                     # analogous to POSIX exec* arguments.  So exclude nul from
                     # our generated arguments.
-                    blacklist_characters=('\x00',),
+                    blacklist_characters=("\x00",),
                 ),
                 min_size=10,
                 max_size=20,
@@ -139,15 +164,19 @@ class GetArgvTests(SyncTestCase):
             # us having to figure out how to reliably get non-ASCII back over
             # stdio which may pose an independent set of challenges.  At least
             # file I/O is relatively simple and well-understood.
-            f.write(dedent(
-                """
+            f.write(
+                dedent(
+                    """
                 from allmydata.windows.fixups import (
                     get_argv,
                 )
                 import json
                 with open({!r}, "wt") as f:
                     f.write(json.dumps(get_argv()))
-                """.format(saved_argv_path.path)),
+                """.format(
+                        saved_argv_path.path
+                    )
+                ),
             )
         argv = [executable.decode("utf-8"), save_argv_path.path] + argv
         p = Popen(argv, stdin=PIPE, stdout=PIPE, stderr=PIPE)
@@ -178,6 +207,7 @@ class UnicodeOutputTests(SyncTestCase):
     """
     Tests for writing unicode to stdout and stderr.
     """
+
     @slow_settings
     @given(characters(), characters())
     def test_write_non_ascii(self, stdout_char, stderr_char):
@@ -188,8 +218,9 @@ class UnicodeOutputTests(SyncTestCase):
         working_path = FilePath(self.mktemp())
         working_path.makedirs()
         script = working_path.child("script.py")
-        script.setContent(dedent(
-            """
+        script.setContent(
+            dedent(
+                """
             from future.utils import PY2
             if PY2:
                 from future.builtins import chr
@@ -206,22 +237,29 @@ class UnicodeOutputTests(SyncTestCase):
             stderr.write(chr(int(argv[2])))
             stderr.close()
             """
-        ))
-        p = Popen([
-            executable,
-            script.path,
-            str(ord(stdout_char)),
-            str(ord(stderr_char)),
-        ], stdout=PIPE, stderr=PIPE)
+            )
+        )
+        p = Popen(
+            [
+                executable,
+                script.path,
+                str(ord(stdout_char)),
+                str(ord(stderr_char)),
+            ],
+            stdout=PIPE,
+            stderr=PIPE,
+        )
         stdout = p.stdout.read().decode("utf-8").replace("\r\n", "\n")
         stderr = p.stderr.read().decode("utf-8").replace("\r\n", "\n")
         returncode = p.wait()
 
         self.assertThat(
             (stdout, stderr, returncode),
-            Equals((
-                stdout_char,
-                stderr_char,
-                0,
-            )),
+            Equals(
+                (
+                    stdout_char,
+                    stderr_char,
+                    0,
+                )
+            ),
         )

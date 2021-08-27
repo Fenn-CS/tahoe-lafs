@@ -12,17 +12,42 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
     # We omit dict, just in case newdict breaks things.
-    from builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, list, object, range, str, max, min  # noqa: F401
+    from builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 from twisted.trial import unittest
 from hypothesis import given
 from hypothesis.strategies import text, sets
 
 from allmydata.immutable import happiness_upload
-from allmydata.util.happinessutil import servers_of_happiness, \
-    shares_by_server, merge_servers
+from allmydata.util.happinessutil import (
+    servers_of_happiness,
+    shares_by_server,
+    merge_servers,
+)
 from allmydata.test.common import ShouldFailMixin
 
 
@@ -34,11 +59,11 @@ class HappinessUploadUtils(unittest.TestCase):
 
     def test_residual_0(self):
         graph = happiness_upload._servermap_flow_graph(
-            ['peer0'],
-            ['share0'],
+            ["peer0"],
+            ["share0"],
             servermap={
-                'peer0': ['share0'],
-            }
+                "peer0": ["share0"],
+            },
         )
         flow = [[0 for _ in graph] for _ in graph]
 
@@ -46,74 +71,88 @@ class HappinessUploadUtils(unittest.TestCase):
 
         # XXX no idea if these are right; hand-verify
         self.assertEqual(residual, [[1], [2], [3], []])
-        self.assertEqual(capacity, [[0, 1, 0, 0], [-1, 0, 1, 0], [0, -1, 0, 1], [0, 0, -1, 0]])
+        self.assertEqual(
+            capacity, [[0, 1, 0, 0], [-1, 0, 1, 0], [0, -1, 0, 1], [0, 0, -1, 0]]
+        )
 
     def test_trivial_maximum_graph(self):
-        self.assertEqual(
-            {},
-            happiness_upload._compute_maximum_graph([], {})
-        )
+        self.assertEqual({}, happiness_upload._compute_maximum_graph([], {}))
 
     def test_trivial_flow_graph(self):
-        self.assertEqual(
-            [],
-            happiness_upload._servermap_flow_graph(set(), set(), {})
-        )
+        self.assertEqual([], happiness_upload._servermap_flow_graph(set(), set(), {}))
 
 
 class Happiness(unittest.TestCase):
-
     def test_placement_simple(self):
 
-        shares = {'share0', 'share1', 'share2'}
-        peers = {'peer0', 'peer1'}
-        readonly_peers = {'peer0'}
+        shares = {"share0", "share1", "share2"}
+        peers = {"peer0", "peer1"}
+        readonly_peers = {"peer0"}
         peers_to_shares = {
-            'peer0': {'share2'},
-            'peer1': [],
+            "peer0": {"share2"},
+            "peer1": [],
         }
 
-        places = happiness_upload.share_placement(peers, readonly_peers, shares, peers_to_shares)
+        places = happiness_upload.share_placement(
+            peers, readonly_peers, shares, peers_to_shares
+        )
 
         self.assertEqual(
             places,
             {
-                'share0': 'peer1',
-                'share1': 'peer1',
-                'share2': 'peer0',
-            }
+                "share0": "peer1",
+                "share1": "peer1",
+                "share2": "peer0",
+            },
         )
 
     def test_placement_1(self):
 
         shares = {
-            'share0', 'share1', 'share2',
-            'share3', 'share4', 'share5',
-            'share6', 'share7', 'share8',
-            'share9',
+            "share0",
+            "share1",
+            "share2",
+            "share3",
+            "share4",
+            "share5",
+            "share6",
+            "share7",
+            "share8",
+            "share9",
         }
         peers = {
-            'peer0', 'peer1', 'peer2', 'peer3',
-            'peer4', 'peer5', 'peer6', 'peer7',
-            'peer8', 'peer9', 'peerA', 'peerB',
+            "peer0",
+            "peer1",
+            "peer2",
+            "peer3",
+            "peer4",
+            "peer5",
+            "peer6",
+            "peer7",
+            "peer8",
+            "peer9",
+            "peerA",
+            "peerB",
         }
-        readonly_peers = {'peer0', 'peer1', 'peer2', 'peer3'}
+        readonly_peers = {"peer0", "peer1", "peer2", "peer3"}
         peers_to_shares = {
-            'peer0': {'share0'},
-            'peer1': {'share1'},
-            'peer2': {'share2'},
-            'peer3': {'share3'},
-            'peer4': {'share4'},
-            'peer5': {'share5'},
-            'peer6': {'share6'},
-            'peer7': {'share7'},
-            'peer8': {'share8'},
-            'peer9': {'share9'},
-            'peerA': set(),
-            'peerB': set(),
+            "peer0": {"share0"},
+            "peer1": {"share1"},
+            "peer2": {"share2"},
+            "peer3": {"share3"},
+            "peer4": {"share4"},
+            "peer5": {"share5"},
+            "peer6": {"share6"},
+            "peer7": {"share7"},
+            "peer8": {"share8"},
+            "peer9": {"share9"},
+            "peerA": set(),
+            "peerB": set(),
         }
 
-        places = happiness_upload.share_placement(peers, readonly_peers, shares, peers_to_shares)
+        places = happiness_upload.share_placement(
+            peers, readonly_peers, shares, peers_to_shares
+        )
 
         # actually many valid answers for this, so long as peer's 0,
         # 1, 2, 3 all have share 0, 1, 2 3.
@@ -121,47 +160,57 @@ class Happiness(unittest.TestCase):
         # share N maps to peer N
         # i.e. this says that share0 should be on peer0, share1 should
         # be on peer1, etc.
-        expected = {
-            'share{}'.format(i): 'peer{}'.format(i)
-            for i in range(10)
-        }
+        expected = {"share{}".format(i): "peer{}".format(i) for i in range(10)}
         self.assertEqual(expected, places)
 
     def test_unhappy(self):
         shares = {
-            'share1', 'share2', 'share3', 'share4', 'share5',
+            "share1",
+            "share2",
+            "share3",
+            "share4",
+            "share5",
         }
         peers = {
-            'peer1', 'peer2', 'peer3', 'peer4',
+            "peer1",
+            "peer2",
+            "peer3",
+            "peer4",
         }
         readonly_peers = set()
         peers_to_shares = {}
-        places = happiness_upload.share_placement(peers, readonly_peers, shares, peers_to_shares)
+        places = happiness_upload.share_placement(
+            peers, readonly_peers, shares, peers_to_shares
+        )
         happiness = happiness_upload.calculate_happiness(places)
         self.assertEqual(4, happiness)
 
     def test_hypothesis0(self):
-        peers={u'0', u'00'}
-        shares={u'0', u'1'}
+        peers = {"0", "00"}
+        shares = {"0", "1"}
         readonly_peers = set()
         peers_to_shares = dict()
 
-        #h = happiness_upload.HappinessUpload(peers, readonly_peers, shares, peers_to_shares)
-        #places = h.generate_mappings()
-        #happiness = h.happiness()
+        # h = happiness_upload.HappinessUpload(peers, readonly_peers, shares, peers_to_shares)
+        # places = h.generate_mappings()
+        # happiness = h.happiness()
 
-        places = happiness_upload.share_placement(peers, readonly_peers, shares, peers_to_shares)
+        places = happiness_upload.share_placement(
+            peers, readonly_peers, shares, peers_to_shares
+        )
         happiness = happiness_upload.calculate_happiness(places)
 
         self.assertEqual(2, happiness)
 
     def test_100(self):
-        peers = set(['peer{}'.format(x) for x in range(100)])
-        shares = set(['share{}'.format(x) for x in range(100)])
+        peers = set(["peer{}".format(x) for x in range(100)])
+        shares = set(["share{}".format(x) for x in range(100)])
         readonly_peers = set()
         peers_to_shares = dict()
 
-        places = happiness_upload.share_placement(peers, readonly_peers, shares, peers_to_shares)
+        places = happiness_upload.share_placement(
+            peers, readonly_peers, shares, peers_to_shares
+        )
         happiness = happiness_upload.calculate_happiness(places)
 
         self.assertEqual(100, happiness)
@@ -171,20 +220,22 @@ class Happiness(unittest.TestCase):
         with existing shares 0, 3 on a single servers we can achieve
         higher happiness by moving one of those shares to a new server
         """
-        peers = {'a', 'b', 'c', 'd'}
-        shares = {'0', '1', '2', '3'}
+        peers = {"a", "b", "c", "d"}
+        shares = {"0", "1", "2", "3"}
         readonly_peers = set()
         peers_to_shares = {
-            'a': set(['0']),
-            'b': set(['1']),
-            'c': set(['2', '3']),
+            "a": set(["0"]),
+            "b": set(["1"]),
+            "c": set(["2", "3"]),
         }
         # we can achieve more happiness by moving "2" or "3" to server "d"
 
-        places = happiness_upload.share_placement(peers, readonly_peers, shares, peers_to_shares)
-        #print("places %s" % places)
-        #places = happiness_upload.slow_share_placement(peers, readonly_peers, shares, peers_to_shares)
-        #print("places %s" % places)
+        places = happiness_upload.share_placement(
+            peers, readonly_peers, shares, peers_to_shares
+        )
+        # print("places %s" % places)
+        # places = happiness_upload.slow_share_placement(peers, readonly_peers, shares, peers_to_shares)
+        # print("places %s" % places)
 
         happiness = happiness_upload.calculate_happiness(places)
         self.assertEqual(4, happiness)
@@ -193,15 +244,15 @@ class Happiness(unittest.TestCase):
         # share -> server
         share_placements = {
             0: "\x0e\xd6\xb3>\xd6\x85\x9d\x94')'\xf03:R\x88\xf1\x04\x1b\xa4",
-            1: '\xb9\xa3N\x80u\x9c_\xf7\x97FSS\xa7\xbd\x02\xf9f$:\t',
-            2: '\xb9\xa3N\x80u\x9c_\xf7\x97FSS\xa7\xbd\x02\xf9f$:\t',
-            3: '\xb9\xa3N\x80u\x9c_\xf7\x97FSS\xa7\xbd\x02\xf9f$:\t',
-            4: '\xb9\xa3N\x80u\x9c_\xf7\x97FSS\xa7\xbd\x02\xf9f$:\t',
-            5: '\xb9\xa3N\x80u\x9c_\xf7\x97FSS\xa7\xbd\x02\xf9f$:\t',
-            6: '\xb9\xa3N\x80u\x9c_\xf7\x97FSS\xa7\xbd\x02\xf9f$:\t',
-            7: '\xb9\xa3N\x80u\x9c_\xf7\x97FSS\xa7\xbd\x02\xf9f$:\t',
-            8: '\xb9\xa3N\x80u\x9c_\xf7\x97FSS\xa7\xbd\x02\xf9f$:\t',
-            9: '\xb9\xa3N\x80u\x9c_\xf7\x97FSS\xa7\xbd\x02\xf9f$:\t',
+            1: "\xb9\xa3N\x80u\x9c_\xf7\x97FSS\xa7\xbd\x02\xf9f$:\t",
+            2: "\xb9\xa3N\x80u\x9c_\xf7\x97FSS\xa7\xbd\x02\xf9f$:\t",
+            3: "\xb9\xa3N\x80u\x9c_\xf7\x97FSS\xa7\xbd\x02\xf9f$:\t",
+            4: "\xb9\xa3N\x80u\x9c_\xf7\x97FSS\xa7\xbd\x02\xf9f$:\t",
+            5: "\xb9\xa3N\x80u\x9c_\xf7\x97FSS\xa7\xbd\x02\xf9f$:\t",
+            6: "\xb9\xa3N\x80u\x9c_\xf7\x97FSS\xa7\xbd\x02\xf9f$:\t",
+            7: "\xb9\xa3N\x80u\x9c_\xf7\x97FSS\xa7\xbd\x02\xf9f$:\t",
+            8: "\xb9\xa3N\x80u\x9c_\xf7\x97FSS\xa7\xbd\x02\xf9f$:\t",
+            9: "\xb9\xa3N\x80u\x9c_\xf7\x97FSS\xa7\xbd\x02\xf9f$:\t",
         }
         happy = happiness_upload.calculate_happiness(share_placements)
         self.assertEqual(2, happy)
@@ -210,8 +261,8 @@ class Happiness(unittest.TestCase):
         """
         an error-case Hypothesis found
         """
-        peers={u'0'}
-        shares={u'0', u'1'}
+        peers = {"0"}
+        shares = {"0", "1"}
 
         places = happiness_upload.share_placement(peers, set(), shares, {})
         happiness = happiness_upload.calculate_happiness(places)
@@ -223,8 +274,8 @@ class Happiness(unittest.TestCase):
         """
         an error-case Hypothesis found
         """
-        peers = {u'0', u'1', u'2', u'3'}
-        shares = {u'0', u'1', u'2', u'3', u'4', u'5', u'6', u'7', u'8'}
+        peers = {"0", "1", "2", "3"}
+        shares = {"0", "1", "2", "3", "4", "5", "6", "7", "8"}
 
         places = happiness_upload.share_placement(peers, set(), shares, {})
         happiness = happiness_upload.calculate_happiness(places)
@@ -234,14 +285,13 @@ class Happiness(unittest.TestCase):
 
     def test_everything_broken(self):
         peers = set()
-        shares = {u'0', u'1', u'2', u'3'}
+        shares = {"0", "1", "2", "3"}
 
         places = happiness_upload.share_placement(peers, set(), shares, {})
         self.assertEqual(places, dict())
 
 
 class PlacementTests(unittest.TestCase):
-
     @given(
         sets(elements=text(min_size=1, max_size=30), min_size=4, max_size=4),
         sets(elements=text(min_size=1, max_size=30), min_size=4),
@@ -255,7 +305,9 @@ class PlacementTests(unittest.TestCase):
         # hypothesis.strategies.sets(elements=None, min_size=None, average_size=None, max_size=None)[source]
         readonly_peers = set()
         peers_to_shares = {}
-        places = happiness_upload.share_placement(peers, readonly_peers, shares, peers_to_shares)
+        places = happiness_upload.share_placement(
+            peers, readonly_peers, shares, peers_to_shares
+        )
         happiness = happiness_upload.calculate_happiness(places)
         assert set(places.keys()) == shares
         assert happiness == 4
@@ -277,7 +329,9 @@ class PlacementTests(unittest.TestCase):
         readonly_peers = set()
         peers_to_shares = {}
 
-        places = happiness_upload.share_placement(peers, readonly_peers, set(list(shares)), peers_to_shares)
+        places = happiness_upload.share_placement(
+            peers, readonly_peers, set(list(shares)), peers_to_shares
+        )
         happiness = happiness_upload.calculate_happiness(places)
 
         # every share should get placed
@@ -296,6 +350,7 @@ class FakeServerTracker(object):
     def __init__(self, serverid, buckets):
         self._serverid = serverid
         self.buckets = buckets
+
     def get_serverid(self):
         return self._serverid
 
@@ -307,12 +362,12 @@ class HappinessUtilTests(unittest.TestCase, ShouldFailMixin):
         # merge_servers merges a list of upload_servers and a dict of
         # shareid -> serverid mappings.
         shares = {
-                    1 : set(["server1"]),
-                    2 : set(["server2"]),
-                    3 : set(["server3"]),
-                    4 : set(["server4", "server5"]),
-                    5 : set(["server1", "server2"]),
-                 }
+            1: set(["server1"]),
+            2: set(["server2"]),
+            3: set(["server3"]),
+            4: set(["server4", "server5"]),
+            5: set(["server1", "server2"]),
+        }
         # if not provided with a upload_servers argument, it should just
         # return the first argument unchanged.
         self.failUnlessEqual(shares, merge_servers(shares, set([])))
@@ -321,23 +376,23 @@ class HappinessUtilTests(unittest.TestCase, ShouldFailMixin):
             t = FakeServerTracker(server, [i])
             trackers.append(t)
         expected = {
-                    1 : set(["server1"]),
-                    2 : set(["server2"]),
-                    3 : set(["server3"]),
-                    4 : set(["server4", "server5"]),
-                    5 : set(["server1", "server2", "server5"]),
-                    6 : set(["server6"]),
-                    7 : set(["server7"]),
-                    8 : set(["server8"]),
-                   }
+            1: set(["server1"]),
+            2: set(["server2"]),
+            3: set(["server3"]),
+            4: set(["server4", "server5"]),
+            5: set(["server1", "server2", "server5"]),
+            6: set(["server6"]),
+            7: set(["server7"]),
+            8: set(["server8"]),
+        }
         self.failUnlessEqual(expected, merge_servers(shares, set(trackers)))
         shares2 = {}
         expected = {
-                    5 : set(["server5"]),
-                    6 : set(["server6"]),
-                    7 : set(["server7"]),
-                    8 : set(["server8"]),
-                   }
+            5: set(["server5"]),
+            6: set(["server6"]),
+            7: set(["server7"]),
+            8: set(["server8"]),
+        }
         self.failUnlessEqual(expected, merge_servers(shares2, set(trackers)))
         shares3 = {}
         trackers = []
@@ -348,7 +403,6 @@ class HappinessUtilTests(unittest.TestCase, ShouldFailMixin):
             trackers.append(t)
             expected[i] = set([server])
         self.failUnlessEqual(expected, merge_servers(shares3, set(trackers)))
-
 
     def test_servers_of_happiness_utility_function(self):
         # These tests are concerned with the servers_of_happiness()
@@ -361,11 +415,11 @@ class HappinessUtilTests(unittest.TestCase, ShouldFailMixin):
         # servers_of_happiness expects a dict of
         # shnum => set(serverids) as a preexisting shares argument.
         test1 = {
-                 1 : set(["server1"]),
-                 2 : set(["server2"]),
-                 3 : set(["server3"]),
-                 4 : set(["server4"])
-                }
+            1: set(["server1"]),
+            2: set(["server2"]),
+            3: set(["server3"]),
+            4: set(["server4"]),
+        }
         happy = servers_of_happiness(test1)
         self.failUnlessEqual(4, happy)
         test1[4] = set(["server1"])
@@ -403,15 +457,15 @@ class HappinessUtilTests(unittest.TestCase, ShouldFailMixin):
         # Test a more substantial overlap between the trackers and the
         # existing assignments.
         test = {
-            1 : set(['server1']),
-            2 : set(['server2']),
-            3 : set(['server3']),
-            4 : set(['server4']),
+            1: set(["server1"]),
+            2: set(["server2"]),
+            3: set(["server3"]),
+            4: set(["server4"]),
         }
         trackers = []
-        t = FakeServerTracker('server5', [4])
+        t = FakeServerTracker("server5", [4])
         trackers.append(t)
-        t = FakeServerTracker('server6', [3, 5])
+        t = FakeServerTracker("server6", [3, 5])
         trackers.append(t)
         # The value returned by servers_of_happiness is the size
         # of a maximum matching in the bipartite graph that
@@ -437,9 +491,9 @@ class HappinessUtilTests(unittest.TestCase, ShouldFailMixin):
         #
         # This should yield happiness of 3.
         test = {
-            0 : set(['server1']),
-            1 : set(['server1', 'server2']),
-            2 : set(['server2', 'server3']),
+            0: set(["server1"]),
+            1: set(["server1", "server2"]),
+            2: set(["server2", "server3"]),
         }
         self.failUnlessEqual(3, servers_of_happiness(test))
         # Zooko's second puzzle:
@@ -450,11 +504,10 @@ class HappinessUtilTests(unittest.TestCase, ShouldFailMixin):
         #
         # This should yield happiness of 2.
         test = {
-            0 : set(['server1']),
-            1 : set(['server1', 'server2']),
+            0: set(["server1"]),
+            1: set(["server1", "server2"]),
         }
         self.failUnlessEqual(2, servers_of_happiness(test))
-
 
     def test_shares_by_server(self):
         test = dict([(i, set(["server%d" % i])) for i in range(1, 5)])
@@ -464,18 +517,17 @@ class HappinessUtilTests(unittest.TestCase, ShouldFailMixin):
         self.failUnlessEqual(set([3]), sbs["server3"])
         self.failUnlessEqual(set([4]), sbs["server4"])
         test1 = {
-                    1 : set(["server1"]),
-                    2 : set(["server1"]),
-                    3 : set(["server1"]),
-                    4 : set(["server2"]),
-                    5 : set(["server2"])
-                }
+            1: set(["server1"]),
+            2: set(["server1"]),
+            3: set(["server1"]),
+            4: set(["server2"]),
+            5: set(["server2"]),
+        }
         sbs = shares_by_server(test1)
         self.failUnlessEqual(set([1, 2, 3]), sbs["server1"])
         self.failUnlessEqual(set([4, 5]), sbs["server2"])
         # This should fail unless the serverid part of the mapping is a set
         test2 = {1: "server1"}
-        self.shouldFail(AssertionError,
-                       "test_shares_by_server",
-                       "",
-                       shares_by_server, test2)
+        self.shouldFail(
+            AssertionError, "test_shares_by_server", "", shares_by_server, test2
+        )

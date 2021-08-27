@@ -7,14 +7,37 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import os, stat, time, weakref
 from zope.interface import implementer
 from twisted.internet import defer
 from foolscap.api import Referenceable, DeadReferenceError, eventually
-import allmydata # for __full_version__
+import allmydata  # for __full_version__
 from allmydata import interfaces, uri
 from allmydata.storage.server import si_b2a
 from allmydata.immutable import upload
@@ -51,10 +74,10 @@ class CHKCheckerAndUEBFetcher(object):
         self._logparent = logparent
 
     def log(self, *args, **kwargs):
-        if 'facility' not in kwargs:
-            kwargs['facility'] = "tahoe.helper.chk.checkandUEBfetch"
-        if 'parent' not in kwargs:
-            kwargs['parent'] = self._logparent
+        if "facility" not in kwargs:
+            kwargs["facility"] = "tahoe.helper.chk.checkandUEBfetch"
+        if "parent" not in kwargs:
+            kwargs["parent"] = self._logparent
         return log.msg(*args, **kwargs)
 
     def check(self):
@@ -73,22 +96,22 @@ class CHKCheckerAndUEBFetcher(object):
         dl = []
         for s in self._peer_getter(storage_index):
             d = s.get_storage_server().get_buckets(storage_index)
-            d.addCallbacks(self._got_response, self._got_error,
-                           callbackArgs=(s,))
+            d.addCallbacks(self._got_response, self._got_error, callbackArgs=(s,))
             dl.append(d)
         return defer.DeferredList(dl)
 
     def _got_response(self, buckets, server):
         # buckets is a dict: maps shum to an rref of the server who holds it
         shnums_s = ",".join([str(shnum) for shnum in buckets])
-        self.log("got_response: [%r] has %d shares (%s)" %
-                 (server.get_name(), len(buckets), shnums_s),
-                 level=log.NOISY)
+        self.log(
+            "got_response: [%r] has %d shares (%s)"
+            % (server.get_name(), len(buckets), shnums_s),
+            level=log.NOISY,
+        )
         self._found_shares.update(buckets.keys())
         for k in buckets:
             self._sharemap.add(k, server.get_serverid())
-        self._readers.update( [ (bucket, server)
-                                for bucket in buckets.values() ] )
+        self._readers.update([(bucket, server) for bucket in buckets.values()])
 
     def _got_error(self, f):
         if f.check(DeadReferenceError):
@@ -101,7 +124,7 @@ class CHKCheckerAndUEBFetcher(object):
         if not self._readers:
             self.log("no readers, so no UEB", level=log.NOISY)
             return
-        b,server = self._readers.pop()
+        b, server = self._readers.pop()
         rbp = ReadBucketProxy(b, server, si_b2a(self._storage_index))
         d = rbp.get_uri_extension()
         d.addCallback(self._got_uri_extension)
@@ -122,21 +145,24 @@ class CHKCheckerAndUEBFetcher(object):
     def _done(self, res):
         if self._ueb_data:
             found = len(self._found_shares)
-            total = self._ueb_data['total_shares']
-            self.log(format="got %(found)d shares of %(total)d",
-                     found=found, total=total, level=log.NOISY)
+            total = self._ueb_data["total_shares"]
+            self.log(
+                format="got %(found)d shares of %(total)d",
+                found=found,
+                total=total,
+                level=log.NOISY,
+            )
             if found < total:
                 # not all shares are present in the grid
-                self.log("not enough to qualify, file not found in grid",
-                         level=log.NOISY)
+                self.log(
+                    "not enough to qualify, file not found in grid", level=log.NOISY
+                )
                 return False
             # all shares are present
-            self.log("all shares present, file is found in grid",
-                     level=log.NOISY)
+            self.log("all shares present, file is found in grid", level=log.NOISY)
             return (self._sharemap, self._ueb_data, self._ueb_hash)
         # no shares are present
-        self.log("unable to find UEB data, file not found in grid",
-                 level=log.NOISY)
+        self.log("unable to find UEB data, file not found in grid", level=log.NOISY)
         return False
 
 
@@ -146,15 +172,22 @@ class CHKUploadHelper(Referenceable, upload.CHKUploader):  # type: ignore # warn
     peer selection, encoding, and share pushing. I read ciphertext from the
     remote AssistedUploader.
     """
-    VERSION = { b"http://allmydata.org/tahoe/protocols/helper/chk-upload/v1" :
-                 { },
-                b"application-version": allmydata.__full_version__.encode("utf-8"),
-                }
 
-    def __init__(self, storage_index,
-                 helper, storage_broker, secret_holder,
-                 incoming_file, encoding_file,
-                 log_number):
+    VERSION = {
+        b"http://allmydata.org/tahoe/protocols/helper/chk-upload/v1": {},
+        b"application-version": allmydata.__full_version__.encode("utf-8"),
+    }
+
+    def __init__(
+        self,
+        storage_index,
+        helper,
+        storage_broker,
+        secret_holder,
+        incoming_file,
+        encoding_file,
+        log_number,
+    ):
         upload.CHKUploader.__init__(self, storage_broker, secret_holder)
         self._storage_index = storage_index
         self._helper = helper
@@ -167,13 +200,15 @@ class CHKUploadHelper(Referenceable, upload.CHKUploader):  # type: ignore # warn
         self._upload_status.set_storage_index(storage_index)
         self._upload_status.set_status("fetching ciphertext")
         self._upload_status.set_progress(0, 1.0)
-        self._helper.log("CHKUploadHelper starting for SI %r" % self._upload_id,
-                         parent=log_number)
+        self._helper.log(
+            "CHKUploadHelper starting for SI %r" % self._upload_id, parent=log_number
+        )
 
         self._storage_broker = storage_broker
         self._secret_holder = secret_holder
-        self._fetcher = CHKCiphertextFetcher(self, incoming_file, encoding_file,
-                                             self._log_number)
+        self._fetcher = CHKCiphertextFetcher(
+            self, incoming_file, encoding_file, self._log_number
+        )
         self._reader = LocalCiphertextReader(self, storage_index, encoding_file)
         self._finished_observers = observer.OneShotObserverList()
 
@@ -185,8 +220,8 @@ class CHKUploadHelper(Referenceable, upload.CHKUploader):  # type: ignore # warn
         d.addErrback(self._failed)
 
     def log(self, *args, **kwargs):
-        if 'facility' not in kwargs:
-            kwargs['facility'] = "tahoe.helper.chk"
+        if "facility" not in kwargs:
+            kwargs["facility"] = "tahoe.helper.chk"
         return upload.CHKUploader.log(self, *args, **kwargs)
 
     def remote_get_version(self):
@@ -226,10 +261,11 @@ class CHKUploadHelper(Referenceable, upload.CHKUploader):  # type: ignore # warn
         f_times = self._fetcher.get_times()
 
         hur = upload.HelperUploadResults()
-        hur.timings = {"cumulative_fetch": f_times["cumulative_fetch"],
-                       "total_fetch": f_times["total"],
-                       }
-        for key,val in ur.get_timings().items():
+        hur.timings = {
+            "cumulative_fetch": f_times["cumulative_fetch"],
+            "total_fetch": f_times["total"],
+        }
+        for key, val in ur.get_timings().items():
             hur.timings[key] = val
         hur.uri_extension_hash = v.uri_extension_hash
         hur.ciphertext_fetched = self._fetcher.get_ciphertext_fetched()
@@ -254,13 +290,16 @@ class CHKUploadHelper(Referenceable, upload.CHKUploader):  # type: ignore # warn
         del self._reader
 
     def _failed(self, f):
-        self.log(format="CHKUploadHelper(%(si)s) failed",
-                 si=si_b2a(self._storage_index)[:5],
-                 failure=f,
-                 level=log.UNUSUAL)
+        self.log(
+            format="CHKUploadHelper(%(si)s) failed",
+            si=si_b2a(self._storage_index)[:5],
+            failure=f,
+            level=log.UNUSUAL,
+        )
         self._finished_observers.fire(f)
         self._helper.upload_finished(self._storage_index, 0)
         del self._reader
+
 
 class AskUntilSuccessMixin(object):
     # create me with a _reader array
@@ -271,19 +310,26 @@ class AskUntilSuccessMixin(object):
 
     def call(self, *args, **kwargs):
         if not self._readers:
-            raise NotEnoughWritersError("ran out of assisted uploaders, last failure was %s" % self._last_failure)
+            raise NotEnoughWritersError(
+                "ran out of assisted uploaders, last failure was %s"
+                % self._last_failure
+            )
         rr = self._readers[0]
         d = rr.callRemote(*args, **kwargs)
+
         def _err(f):
             self._last_failure = f
             if rr in self._readers:
                 self._readers.remove(rr)
-            self._upload_helper.log("call to assisted uploader %s failed" % rr,
-                                    failure=f, level=log.UNUSUAL)
+            self._upload_helper.log(
+                "call to assisted uploader %s failed" % rr, failure=f, level=log.UNUSUAL
+            )
             # we can try again with someone else who's left
             return self.call(*args, **kwargs)
+
         d.addErrback(_err)
         return d
+
 
 class CHKCiphertextFetcher(AskUntilSuccessMixin):
     """I use one or more remote RIEncryptedUploadable instances to gather
@@ -312,7 +358,7 @@ class CHKCiphertextFetcher(AskUntilSuccessMixin):
         self._times = {
             "cumulative_fetch": 0.0,
             "total": 0.0,
-            }
+        }
         self._ciphertext_fetched = 0
 
     def log(self, *args, **kwargs):
@@ -333,8 +379,7 @@ class CHKCiphertextFetcher(AskUntilSuccessMixin):
         started = time.time()
 
         if os.path.exists(self._encoding_file):
-            self.log("ciphertext already present, bypassing fetch",
-                     level=log.UNUSUAL)
+            self.log("ciphertext already present, bypassing fetch", level=log.UNUSUAL)
             d = defer.succeed(None)
         else:
             # first, find out how large the file is going to be
@@ -379,7 +424,7 @@ class CHKCiphertextFetcher(AskUntilSuccessMixin):
     # slower, maybe 10kBps, which suggests 100kB, and that's a bit more
     # memory than I want to hang on to, so I'm going to go with 50kB and see
     # how that works.
-    CHUNK_SIZE = 50*1024
+    CHUNK_SIZE = 50 * 1024
 
     def _loop(self, fire_when_done):
         # this slightly weird structure is needed because Deferreds don't do
@@ -390,6 +435,7 @@ class CHKCiphertextFetcher(AskUntilSuccessMixin):
         # the inner _fetch() call do not.
         start = time.time()
         d = defer.maybeDeferred(self._fetch)
+
         def _done(finished):
             elapsed = time.time() - start
             self._times["cumulative_fetch"] += elapsed
@@ -398,10 +444,16 @@ class CHKCiphertextFetcher(AskUntilSuccessMixin):
                 fire_when_done.callback(None)
             else:
                 self._loop(fire_when_done)
+
         def _err(f):
-            self.log(format="[%(si)s] ciphertext read failed",
-                     si=self._upload_id, failure=f, level=log.UNUSUAL)
+            self.log(
+                format="[%(si)s] ciphertext read failed",
+                si=self._upload_id,
+                failure=f,
+                level=log.UNUSUAL,
+            )
             fire_when_done.errback(f)
+
         d.addCallbacks(_done, _err)
         return None
 
@@ -410,35 +462,43 @@ class CHKCiphertextFetcher(AskUntilSuccessMixin):
         fetch_size = min(needed, self.CHUNK_SIZE)
         if fetch_size == 0:
             self._upload_helper._upload_status.set_progress(1, 1.0)
-            return True # all done
+            return True  # all done
         percent = 0.0
         if self._expected_size:
-            percent = 1.0 * (self._have+fetch_size) / self._expected_size
-        self.log(format="fetching [%(si)s] %(start)d-%(end)d of %(total)d (%(percent)d%%)",
-                 si=self._upload_id,
-                 start=self._have,
-                 end=self._have+fetch_size,
-                 total=self._expected_size,
-                 percent=int(100.0*percent),
-                 level=log.NOISY)
+            percent = 1.0 * (self._have + fetch_size) / self._expected_size
+        self.log(
+            format="fetching [%(si)s] %(start)d-%(end)d of %(total)d (%(percent)d%%)",
+            si=self._upload_id,
+            start=self._have,
+            end=self._have + fetch_size,
+            total=self._expected_size,
+            percent=int(100.0 * percent),
+            level=log.NOISY,
+        )
         d = self.call("read_encrypted", self._have, fetch_size)
+
         def _got_data(ciphertext_v):
             for data in ciphertext_v:
                 self._f.write(data)
                 self._have += len(data)
                 self._ciphertext_fetched += len(data)
-                self._upload_helper._helper.count("chk_upload_helper.fetched_bytes", len(data))
+                self._upload_helper._helper.count(
+                    "chk_upload_helper.fetched_bytes", len(data)
+                )
                 self._upload_helper._upload_status.set_progress(1, percent)
-            return False # not done
+            return False  # not done
+
         d.addCallback(_got_data)
         return d
 
     def _done(self, res):
         self._f.close()
         self._f = None
-        self.log(format="done fetching ciphertext, size=%(size)d",
-                 size=os.stat(self._incoming_file)[stat.ST_SIZE],
-                 level=log.NOISY)
+        self.log(
+            format="done fetching ciphertext, size=%(size)d",
+            size=os.stat(self._incoming_file)[stat.ST_SIZE],
+            level=log.NOISY,
+        )
         os.rename(self._incoming_file, self._encoding_file)
 
     def _done2(self, _ignored, started):
@@ -466,7 +526,6 @@ class CHKCiphertextFetcher(AskUntilSuccessMixin):
 
 @implementer(interfaces.IEncryptedUploadable)
 class LocalCiphertextReader(AskUntilSuccessMixin):
-
     def __init__(self, upload_helper, storage_index, encoding_file):
         self._readers = []
         self._upload_helper = upload_helper
@@ -519,6 +578,7 @@ class Helper(Referenceable):  # type: ignore # warner/foolscap#78
         CHKUploadHelper instance which can upload CHK shares.  Primarily for
         the convenience of tests to override.
     """
+
     # this is the non-distributed version. When we need to have multiple
     # helpers, this object will become the HelperCoordinator, and will query
     # the farm of Helpers to see if anyone has the storage_index of interest,
@@ -526,17 +586,16 @@ class Helper(Referenceable):  # type: ignore # warner/foolscap#78
     # helper at random.
 
     name = "helper"
-    VERSION = { b"http://allmydata.org/tahoe/protocols/helper/v1" :
-                 { },
-                b"application-version": allmydata.__full_version__.encode("utf-8"),
-                }
+    VERSION = {
+        b"http://allmydata.org/tahoe/protocols/helper/v1": {},
+        b"application-version": allmydata.__full_version__.encode("utf-8"),
+    }
     MAX_UPLOAD_STATUSES = 10
 
     chk_checker = CHKCheckerAndUEBFetcher
     chk_upload = CHKUploadHelper
 
-    def __init__(self, basedir, storage_broker, secret_holder,
-                 stats_provider, history):
+    def __init__(self, basedir, storage_broker, secret_holder, stats_provider, history):
         self._basedir = basedir
         self._storage_broker = storage_broker
         self._secret_holder = secret_holder
@@ -545,22 +604,23 @@ class Helper(Referenceable):  # type: ignore # warner/foolscap#78
         fileutil.make_dirs(self._chk_incoming)
         fileutil.make_dirs(self._chk_encoding)
         self._active_uploads = {}
-        self._all_uploads = weakref.WeakKeyDictionary() # for debugging
+        self._all_uploads = weakref.WeakKeyDictionary()  # for debugging
         self.stats_provider = stats_provider
         if stats_provider:
             stats_provider.register_producer(self)
-        self._counters = {"chk_upload_helper.upload_requests": 0,
-                          "chk_upload_helper.upload_already_present": 0,
-                          "chk_upload_helper.upload_need_upload": 0,
-                          "chk_upload_helper.resumes": 0,
-                          "chk_upload_helper.fetched_bytes": 0,
-                          "chk_upload_helper.encoded_bytes": 0,
-                          }
+        self._counters = {
+            "chk_upload_helper.upload_requests": 0,
+            "chk_upload_helper.upload_already_present": 0,
+            "chk_upload_helper.upload_need_upload": 0,
+            "chk_upload_helper.resumes": 0,
+            "chk_upload_helper.fetched_bytes": 0,
+            "chk_upload_helper.encoded_bytes": 0,
+        }
         self._history = history
 
     def log(self, *args, **kwargs):
-        if 'facility' not in kwargs:
-            kwargs['facility'] = "tahoe.helper"
+        if "facility" not in kwargs:
+            kwargs["facility"] = "tahoe.helper"
         return log.msg(*args, **kwargs)
 
     def count(self, key, value=1):
@@ -569,7 +629,7 @@ class Helper(Referenceable):  # type: ignore # warner/foolscap#78
         self._counters[key] += value
 
     def get_stats(self):
-        OLD = 86400*2 # 48hours
+        OLD = 86400 * 2  # 48hours
         now = time.time()
         inc_count = inc_size = inc_size_old = 0
         enc_count = enc_size = enc_size_old = 0
@@ -591,14 +651,15 @@ class Helper(Referenceable):  # type: ignore # warner/foolscap#78
             enc_size += size
             if now - mtime > OLD:
                 enc_size_old += size
-        stats = { 'chk_upload_helper.active_uploads': len(self._active_uploads),
-                  'chk_upload_helper.incoming_count': inc_count,
-                  'chk_upload_helper.incoming_size': inc_size,
-                  'chk_upload_helper.incoming_size_old': inc_size_old,
-                  'chk_upload_helper.encoding_count': enc_count,
-                  'chk_upload_helper.encoding_size': enc_size,
-                  'chk_upload_helper.encoding_size_old': enc_size_old,
-                  }
+        stats = {
+            "chk_upload_helper.active_uploads": len(self._active_uploads),
+            "chk_upload_helper.incoming_count": inc_count,
+            "chk_upload_helper.incoming_size": inc_size,
+            "chk_upload_helper.incoming_size_old": inc_size_old,
+            "chk_upload_helper.encoding_count": enc_count,
+            "chk_upload_helper.encoding_size": enc_size,
+            "chk_upload_helper.encoding_size_old": enc_size_old,
+        }
         stats.update(self._counters)
         return stats
 
@@ -610,8 +671,9 @@ class Helper(Referenceable):  # type: ignore # warner/foolscap#78
         See ``RIHelper.upload_chk``
         """
         self.count("chk_upload_helper.upload_requests")
-        lp = self.log(format="helper: upload_chk query for SI %(si)s",
-                      si=si_b2a(storage_index))
+        lp = self.log(
+            format="helper: upload_chk query for SI %(si)s", si=si_b2a(storage_index)
+        )
         if storage_index in self._active_uploads:
             self.log("upload is currently active", parent=lp)
             uh = self._active_uploads[storage_index]
@@ -619,20 +681,27 @@ class Helper(Referenceable):  # type: ignore # warner/foolscap#78
 
         d = self._check_chk(storage_index, lp)
         d.addCallback(self._did_chk_check, storage_index, lp)
+
         def _err(f):
-            self.log("error while checking for chk-already-in-grid",
-                     failure=f, level=log.WEIRD, parent=lp, umid="jDtxZg")
+            self.log(
+                "error while checking for chk-already-in-grid",
+                failure=f,
+                level=log.WEIRD,
+                parent=lp,
+                umid="jDtxZg",
+            )
             return f
+
         d.addErrback(_err)
         return d
 
     def _check_chk(self, storage_index, lp):
         # see if this file is already in the grid
-        lp2 = self.log("doing a quick check+UEBfetch",
-                       parent=lp, level=log.NOISY)
+        lp2 = self.log("doing a quick check+UEBfetch", parent=lp, level=log.NOISY)
         sb = self._storage_broker
         c = self.chk_checker(sb.get_servers_for_psi, storage_index, lp2)
         d = c.check()
+
         def _checked(res):
             if res:
                 (sharemap, ueb_data, ueb_hash) = res
@@ -645,6 +714,7 @@ class Helper(Referenceable):  # type: ignore # warner/foolscap#78
                 hur.pushed_shares = 0
                 return hur
             return None
+
         d.addCallback(_checked)
         return d
 
@@ -658,8 +728,7 @@ class Helper(Referenceable):  # type: ignore # warner/foolscap#78
         self.count("chk_upload_helper.upload_need_upload")
         # the file is not present in the grid, by which we mean there are
         # less than 'N' shares available.
-        self.log("unable to find file in the grid", parent=lp,
-                 level=log.NOISY)
+        self.log("unable to find file in the grid", parent=lp, level=log.NOISY)
         # We need an upload helper. Check our active uploads again in
         # case there was a race.
         if storage_index in self._active_uploads:
@@ -673,7 +742,7 @@ class Helper(Referenceable):  # type: ignore # warner/foolscap#78
         return (None, uh)
 
     def _make_chk_upload_helper(self, storage_index, lp):
-        si_s = si_b2a(storage_index).decode('ascii')
+        si_s = si_b2a(storage_index).decode("ascii")
         incoming_file = os.path.join(self._chk_incoming, si_s)
         encoding_file = os.path.join(self._chk_encoding, si_s)
         uh = self.chk_upload(

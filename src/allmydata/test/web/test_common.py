@@ -9,8 +9,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import gc
 
@@ -64,12 +87,14 @@ from .common import (
     assert_soup_has_tag_with_attributes,
 )
 
+
 class StaticResource(Resource, object):
     """
     ``StaticResource`` is a resource that returns whatever Python object it is
     given from its render method.  This is useful for testing
     ``render_exception``\\ 's handling of different render results.
     """
+
     def __init__(self, response):
         Resource.__init__(self)
         self._response = response
@@ -85,11 +110,13 @@ class RenderExceptionTests(SyncTestCase):
     """
     Tests for ``render_exception`` (including the private helper ``_finish``).
     """
+
     def test_exception(self):
         """
         If the decorated method raises an exception then the exception is rendered
         into the response.
         """
+
         class R(Resource):
             @render_exception
             def render(self, request):
@@ -134,7 +161,7 @@ class RenderExceptionTests(SyncTestCase):
         If the decorated method returns a ``unicode`` string then that string is
         UTF-8 encoded and rendered into the response.
         """
-        text = u"\N{SNOWMAN}"
+        text = "\N{SNOWMAN}"
         resource = StaticResource(text)
         self.assertThat(
             render(resource, {}),
@@ -162,7 +189,7 @@ class RenderExceptionTests(SyncTestCase):
         If the decorated method returns a ``DecodedURL`` then a redirect to that
         location is rendered into the response.
         """
-        loc = u"http://example.invalid/foo?bar=baz"
+        loc = "http://example.invalid/foo?bar=baz"
         resource = StaticResource(DecodedURL.from_text(loc))
         self.assertThat(
             render(resource, {}),
@@ -170,10 +197,11 @@ class RenderExceptionTests(SyncTestCase):
                 MatchesPredicate(
                     lambda value: assert_soup_has_tag_with_attributes(
                         self,
-                        BeautifulSoup(value, 'html5lib'),
+                        BeautifulSoup(value, "html5lib"),
                         "meta",
-                        {"http-equiv": "refresh",
-                         "content": "0;URL={}".format(loc),
+                        {
+                            "http-equiv": "refresh",
+                            "content": "0;URL={}".format(loc),
                         },
                     )
                     # The assertion will raise if it has a problem, otherwise
@@ -203,6 +231,7 @@ class RenderExceptionTests(SyncTestCase):
         responsible for finishing the request itself.
         """
         the_request = []
+
         class R(Resource):
             @render_exception
             def render(self, request):

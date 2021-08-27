@@ -6,28 +6,73 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 from past.builtins import unicode
 
 from zope.interface import implementer
-from allmydata.interfaces import ICheckResults, ICheckAndRepairResults, \
-     IDeepCheckResults, IDeepCheckAndRepairResults, IURI, IDisplayableServer
+from allmydata.interfaces import (
+    ICheckResults,
+    ICheckAndRepairResults,
+    IDeepCheckResults,
+    IDeepCheckAndRepairResults,
+    IURI,
+    IDisplayableServer,
+)
 from allmydata.util import base32
+
 
 @implementer(ICheckResults)
 class CheckResults(object):
-
-    def __init__(self, uri, storage_index,
-                 healthy, recoverable, count_happiness,
-                 count_shares_needed, count_shares_expected,
-                 count_shares_good, count_good_share_hosts,
-                 count_recoverable_versions, count_unrecoverable_versions,
-                 servers_responding, sharemap,
-                 count_wrong_shares, list_corrupt_shares, count_corrupt_shares,
-                 list_incompatible_shares, count_incompatible_shares,
-                 summary, report, share_problems, servermap):
+    def __init__(
+        self,
+        uri,
+        storage_index,
+        healthy,
+        recoverable,
+        count_happiness,
+        count_shares_needed,
+        count_shares_expected,
+        count_shares_good,
+        count_good_share_hosts,
+        count_recoverable_versions,
+        count_unrecoverable_versions,
+        servers_responding,
+        sharemap,
+        count_wrong_shares,
+        list_corrupt_shares,
+        count_corrupt_shares,
+        list_incompatible_shares,
+        count_incompatible_shares,
+        summary,
+        report,
+        share_problems,
+        servermap,
+    ):
         assert IURI.providedBy(uri), uri
         self._uri = uri
         self._storage_index = storage_index
@@ -74,23 +119,27 @@ class CheckResults(object):
             summary = unicode(summary, "utf-8")
         assert isinstance(summary, unicode)  # should be a single string
         self._summary = summary
-        assert not isinstance(report, str) # should be list of strings
+        assert not isinstance(report, str)  # should be list of strings
         self._report = report
         if servermap:
             from allmydata.mutable.servermap import ServerMap
+
             assert isinstance(servermap, ServerMap), servermap
-        self._servermap = servermap # mutable only
+        self._servermap = servermap  # mutable only
         self._share_problems = share_problems
 
     def get_storage_index(self):
         return self._storage_index
+
     def get_storage_index_string(self):
         return base32.b2a(self._storage_index)
+
     def get_uri(self):
         return self._uri
 
     def is_healthy(self):
         return self._healthy
+
     def is_recoverable(self):
         return self._recoverable
 
@@ -99,11 +148,13 @@ class CheckResults(object):
 
     def get_encoding_needed(self):
         return self._count_shares_needed
+
     def get_encoding_expected(self):
         return self._count_shares_expected
 
     def get_share_counter_good(self):
         return self._count_shares_good
+
     def get_share_counter_wrong(self):
         return self._count_wrong_shares
 
@@ -121,6 +172,7 @@ class CheckResults(object):
 
     def get_version_counter_recoverable(self):
         return self._count_recoverable_versions
+
     def get_version_counter_unrecoverable(self):
         return self._count_unrecoverable_versions
 
@@ -132,61 +184,73 @@ class CheckResults(object):
         for shnum, servers in self._sharemap.items():
             sharemap[shnum] = sorted([s.get_serverid() for s in servers])
         responding = [s.get_serverid() for s in self._servers_responding]
-        corrupt = [(s.get_serverid(), SI, shnum)
-                   for (s, SI, shnum) in self._list_corrupt_shares]
-        incompatible = [(s.get_serverid(), SI, shnum)
-                        for (s, SI, shnum) in self._list_incompatible_shares]
-        d = {"count-happiness": self._count_happiness,
-             "count-shares-needed": self._count_shares_needed,
-             "count-shares-expected": self._count_shares_expected,
-             "count-shares-good": self._count_shares_good,
-             "count-good-share-hosts": self._count_good_share_hosts,
-             "count-recoverable-versions": self._count_recoverable_versions,
-             "count-unrecoverable-versions": self._count_unrecoverable_versions,
-             "servers-responding": responding,
-             "sharemap": sharemap,
-             "count-wrong-shares": self._count_wrong_shares,
-             "list-corrupt-shares": corrupt,
-             "count-corrupt-shares": self._count_corrupt_shares,
-             "list-incompatible-shares": incompatible,
-             "count-incompatible-shares": self._count_incompatible_shares,
-             }
+        corrupt = [
+            (s.get_serverid(), SI, shnum)
+            for (s, SI, shnum) in self._list_corrupt_shares
+        ]
+        incompatible = [
+            (s.get_serverid(), SI, shnum)
+            for (s, SI, shnum) in self._list_incompatible_shares
+        ]
+        d = {
+            "count-happiness": self._count_happiness,
+            "count-shares-needed": self._count_shares_needed,
+            "count-shares-expected": self._count_shares_expected,
+            "count-shares-good": self._count_shares_good,
+            "count-good-share-hosts": self._count_good_share_hosts,
+            "count-recoverable-versions": self._count_recoverable_versions,
+            "count-unrecoverable-versions": self._count_unrecoverable_versions,
+            "servers-responding": responding,
+            "sharemap": sharemap,
+            "count-wrong-shares": self._count_wrong_shares,
+            "list-corrupt-shares": corrupt,
+            "count-corrupt-shares": self._count_corrupt_shares,
+            "list-incompatible-shares": incompatible,
+            "count-incompatible-shares": self._count_incompatible_shares,
+        }
         return d
 
     def get_summary(self):
         return self._summary
+
     def get_report(self):
         return self._report
+
     def get_share_problems(self):
         return self._share_problems
+
     def get_servermap(self):
         return self._servermap
 
+
 @implementer(ICheckAndRepairResults)
 class CheckAndRepairResults(object):
-
     def __init__(self, storage_index):
         self.storage_index = storage_index
         self.repair_attempted = False
 
     def get_storage_index(self):
         return self.storage_index
+
     def get_storage_index_string(self):
         return base32.b2a(self.storage_index)
+
     def get_repair_attempted(self):
         return self.repair_attempted
+
     def get_repair_successful(self):
         if not self.repair_attempted:
             return False
         return self.repair_successful
+
     def get_pre_repair_results(self):
         return self.pre_repair_results
+
     def get_post_repair_results(self):
         return self.post_repair_results
 
 
 class DeepResultsBase(object):
-
     def __init__(self, root_storage_index):
         self.root_storage_index = root_storage_index
         if root_storage_index is None:
@@ -224,10 +288,9 @@ class DeepResultsBase(object):
 
 @implementer(IDeepCheckResults)
 class DeepCheckResults(DeepResultsBase):
-
     def add_check(self, r, path):
         if not r:
-            return # non-distributed object, i.e. LIT file
+            return  # non-distributed object, i.e. LIT file
         r = ICheckResults(r)
         assert isinstance(path, (list, tuple))
         self.objects_checked += 1
@@ -242,17 +305,17 @@ class DeepCheckResults(DeepResultsBase):
         self.corrupt_shares.extend(r.get_corrupt_shares())
 
     def get_counters(self):
-        return {"count-objects-checked": self.objects_checked,
-                "count-objects-healthy": self.objects_healthy,
-                "count-objects-unhealthy": self.objects_unhealthy,
-                "count-objects-unrecoverable": self.objects_unrecoverable,
-                "count-corrupt-shares": len(self.corrupt_shares),
-                }
+        return {
+            "count-objects-checked": self.objects_checked,
+            "count-objects-healthy": self.objects_healthy,
+            "count-objects-unhealthy": self.objects_unhealthy,
+            "count-objects-unrecoverable": self.objects_unrecoverable,
+            "count-corrupt-shares": len(self.corrupt_shares),
+        }
 
 
 @implementer(IDeepCheckAndRepairResults)
 class DeepCheckAndRepairResults(DeepResultsBase):
-
     def __init__(self, root_storage_index):
         DeepResultsBase.__init__(self, root_storage_index)
         self.objects_healthy_post_repair = 0
@@ -265,7 +328,7 @@ class DeepCheckAndRepairResults(DeepResultsBase):
 
     def add_check_and_repair(self, r, path):
         if not r:
-            return # non-distributed object, i.e. LIT file
+            return  # non-distributed object, i.e. LIT file
         r = ICheckAndRepairResults(r)
         assert isinstance(path, (list, tuple))
         pre_repair = r.get_pre_repair_results()
@@ -295,19 +358,20 @@ class DeepCheckAndRepairResults(DeepResultsBase):
         self.corrupt_shares_post_repair.extend(post_repair.get_corrupt_shares())
 
     def get_counters(self):
-        return {"count-objects-checked": self.objects_checked,
-                "count-objects-healthy-pre-repair": self.objects_healthy,
-                "count-objects-unhealthy-pre-repair": self.objects_unhealthy,
-                "count-objects-unrecoverable-pre-repair": self.objects_unrecoverable,
-                "count-objects-healthy-post-repair": self.objects_healthy_post_repair,
-                "count-objects-unhealthy-post-repair": self.objects_unhealthy_post_repair,
-                "count-objects-unrecoverable-post-repair": self.objects_unrecoverable_post_repair,
-                "count-repairs-attempted": self.repairs_attempted,
-                "count-repairs-successful": self.repairs_successful,
-                "count-repairs-unsuccessful": self.repairs_unsuccessful,
-                "count-corrupt-shares-pre-repair": len(self.corrupt_shares),
-                "count-corrupt-shares-post-repair": len(self.corrupt_shares_post_repair),
-                }
+        return {
+            "count-objects-checked": self.objects_checked,
+            "count-objects-healthy-pre-repair": self.objects_healthy,
+            "count-objects-unhealthy-pre-repair": self.objects_unhealthy,
+            "count-objects-unrecoverable-pre-repair": self.objects_unrecoverable,
+            "count-objects-healthy-post-repair": self.objects_healthy_post_repair,
+            "count-objects-unhealthy-post-repair": self.objects_unhealthy_post_repair,
+            "count-objects-unrecoverable-post-repair": self.objects_unrecoverable_post_repair,
+            "count-repairs-attempted": self.repairs_attempted,
+            "count-repairs-successful": self.repairs_successful,
+            "count-repairs-unsuccessful": self.repairs_unsuccessful,
+            "count-corrupt-shares-pre-repair": len(self.corrupt_shares),
+            "count-corrupt-shares-post-repair": len(self.corrupt_shares_post_repair),
+        }
 
     def get_remaining_corrupt_shares(self):
         return self.corrupt_shares_post_repair

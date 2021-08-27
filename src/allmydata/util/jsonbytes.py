@@ -10,20 +10,46 @@ from __future__ import division
 from __future__ import print_function
 
 from future.utils import PY2, PY3
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import json
 import codecs
 
 if PY2:
+
     def backslashreplace_py2(ex):
         """
         On Python 2 'backslashreplace' error handler doesn't work, so write our
         own.
         """
-        return ''.join('\\x{:02x}'.format(ord(c))
-                       for c in ex.object[ex.start:ex.end]), ex.end
+        return (
+            "".join("\\x{:02x}".format(ord(c)) for c in ex.object[ex.start : ex.end]),
+            ex.end,
+        )
 
     codecs.register_error("backslashreplace_tahoe_py2", backslashreplace_py2)
 
@@ -61,13 +87,12 @@ class UTF8BytesJSONEncoder(json.JSONEncoder):
     """
     A JSON encoder than can also encode UTF-8 encoded strings.
     """
+
     def encode(self, o, **kwargs):
-        return json.JSONEncoder.encode(
-            self, bytes_to_unicode(False, o), **kwargs)
+        return json.JSONEncoder.encode(self, bytes_to_unicode(False, o), **kwargs)
 
     def iterencode(self, o, **kwargs):
-        return json.JSONEncoder.iterencode(
-            self, bytes_to_unicode(False, o), **kwargs)
+        return json.JSONEncoder.iterencode(self, bytes_to_unicode(False, o), **kwargs)
 
 
 class AnyBytesJSONEncoder(json.JSONEncoder):
@@ -77,13 +102,12 @@ class AnyBytesJSONEncoder(json.JSONEncoder):
     Bytes are decoded to strings using UTF-8, if that fails to decode then the
     bytes are quoted.
     """
+
     def encode(self, o, **kwargs):
-        return json.JSONEncoder.encode(
-            self, bytes_to_unicode(True, o), **kwargs)
+        return json.JSONEncoder.encode(self, bytes_to_unicode(True, o), **kwargs)
 
     def iterencode(self, o, **kwargs):
-        return json.JSONEncoder.iterencode(
-            self, bytes_to_unicode(True, o), **kwargs)
+        return json.JSONEncoder.iterencode(self, bytes_to_unicode(True, o), **kwargs)
 
 
 def dumps(obj, *args, **kwargs):

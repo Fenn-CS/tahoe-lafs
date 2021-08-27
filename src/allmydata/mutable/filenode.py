@@ -7,8 +7,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import random
 
@@ -18,18 +41,34 @@ from foolscap.api import eventually
 
 from allmydata.crypto import aes
 from allmydata.crypto import rsa
-from allmydata.interfaces import IMutableFileNode, ICheckable, ICheckResults, \
-     NotEnoughSharesError, MDMF_VERSION, SDMF_VERSION, IMutableUploadable, \
-     IMutableFileVersion, IWriteable
+from allmydata.interfaces import (
+    IMutableFileNode,
+    ICheckable,
+    ICheckResults,
+    NotEnoughSharesError,
+    MDMF_VERSION,
+    SDMF_VERSION,
+    IMutableUploadable,
+    IMutableFileVersion,
+    IWriteable,
+)
 from allmydata.util import hashutil, log, consumer, deferredutil, mathutil
 from allmydata.util.assertutil import precondition
-from allmydata.uri import WriteableSSKFileURI, ReadonlySSKFileURI, \
-                          WriteableMDMFFileURI, ReadonlyMDMFFileURI
+from allmydata.uri import (
+    WriteableSSKFileURI,
+    ReadonlySSKFileURI,
+    WriteableMDMFFileURI,
+    ReadonlyMDMFFileURI,
+)
 from allmydata.monitor import Monitor
-from allmydata.mutable.publish import Publish, MutableData,\
-                                      TransformingUploadable
-from allmydata.mutable.common import MODE_READ, MODE_WRITE, MODE_CHECK, UnrecoverableFileError, \
-     UncoordinatedWriteError
+from allmydata.mutable.publish import Publish, MutableData, TransformingUploadable
+from allmydata.mutable.common import (
+    MODE_READ,
+    MODE_WRITE,
+    MODE_CHECK,
+    UnrecoverableFileError,
+    UncoordinatedWriteError,
+)
 from allmydata.mutable.servermap import ServerMap, ServermapUpdater
 from allmydata.mutable.retrieve import Retrieve
 from allmydata.mutable.checker import MutableChecker, MutableCheckAndRepairer
@@ -40,43 +79,45 @@ class BackoffAgent(object):
     # these parameters are copied from foolscap.reconnector, which gets them
     # from twisted.internet.protocol.ReconnectingClientFactory
     initialDelay = 1.0
-    factor = 2.7182818284590451 # (math.e)
-    jitter = 0.11962656492 # molar Planck constant times c, Joule meter/mole
+    factor = 2.7182818284590451  # (math.e)
+    jitter = 0.11962656492  # molar Planck constant times c, Joule meter/mole
     maxRetries = 4
 
     def __init__(self):
         self._delay = self.initialDelay
         self._count = 0
+
     def delay(self, node, f):
         self._count += 1
         if self._count == 4:
             return f
         self._delay = self._delay * self.factor
-        self._delay = random.normalvariate(self._delay,
-                                           self._delay * self.jitter)
+        self._delay = random.normalvariate(self._delay, self._delay * self.jitter)
         d = defer.Deferred()
         reactor.callLater(self._delay, d.callback, None)
         return d
 
+
 # use nodemaker.create_mutable_file() to make one of these
+
 
 @implementer(IMutableFileNode, ICheckable)
 class MutableFileNode(object):
-
-    def __init__(self, storage_broker, secret_holder,
-                 default_encoding_parameters, history):
+    def __init__(
+        self, storage_broker, secret_holder, default_encoding_parameters, history
+    ):
         self._storage_broker = storage_broker
         self._secret_holder = secret_holder
         self._default_encoding_parameters = default_encoding_parameters
         self._history = history
-        self._pubkey = None # filled in upon first read
-        self._privkey = None # filled in if we're mutable
+        self._pubkey = None  # filled in upon first read
+        self._privkey = None  # filled in if we're mutable
         # we keep track of the last encoding parameters that we use. These
         # are updated upon retrieve, and used by publish. If we publish
         # without ever reading (i.e. overwrite()), then we use these values.
         self._required_shares = default_encoding_parameters["k"]
         self._total_shares = default_encoding_parameters["n"]
-        self._sharemap = {} # known shares, shnum-to-[nodeids]
+        self._sharemap = {}  # known shares, shnum-to-[nodeids]
         self._most_recent_size = None
         # filled in after __init__ if we're being created for the first time;
         # filled in by the servermap updater before publishing, otherwise.
@@ -97,8 +138,13 @@ class MutableFileNode(object):
         self._downloader_hints = {}
 
     def __repr__(self):
-        if hasattr(self, '_uri'):
-            return "<%s %x %s %r>" % (self.__class__.__name__, id(self), self.is_readonly() and 'RO' or 'RW', self._uri.abbrev())
+        if hasattr(self, "_uri"):
+            return "<%s %x %s %r>" % (
+                self.__class__.__name__,
+                id(self),
+                self.is_readonly() and "RO" or "RW",
+                self._uri.abbrev(),
+            )
         else:
             return "<%s %x %s %s>" % (self.__class__.__name__, id(self), None, None)
 
@@ -131,8 +177,7 @@ class MutableFileNode(object):
 
         return self
 
-    def create_with_keys(self, keypair, contents,
-                         version=SDMF_VERSION):
+    def create_with_keys(self, keypair, contents, version=SDMF_VERSION):
         """Call this to create a brand-new mutable file. It will create the
         shares, find homes for them, and upload the initial contents (created
         with the same rules as IClient.create_mutable_file() ). Returns a
@@ -167,8 +212,10 @@ class MutableFileNode(object):
         if IMutableUploadable.providedBy(contents):
             return contents
 
-        assert callable(contents), "%s should be callable, not %s" % \
-               (contents, type(contents))
+        assert callable(contents), "%s should be callable, not %s" % (
+            contents,
+            type(contents),
+        )
         return contents(self)
 
     def _encrypt_privkey(self, writekey, privkey):
@@ -183,13 +230,16 @@ class MutableFileNode(object):
 
     def _populate_pubkey(self, pubkey):
         self._pubkey = pubkey
+
     def _populate_required_shares(self, required_shares):
         self._required_shares = required_shares
+
     def _populate_total_shares(self, total_shares):
         self._total_shares = total_shares
 
     def _populate_privkey(self, privkey):
         self._privkey = privkey
+
     def _populate_encprivkey(self, encprivkey):
         self._encprivkey = encprivkey
 
@@ -197,12 +247,14 @@ class MutableFileNode(object):
         seed = server.get_foolscap_write_enabler_seed()
         assert len(seed) == 20
         return hashutil.ssk_write_enabler_hash(self._writekey, seed)
+
     def get_renewal_secret(self, server):
         crs = self._secret_holder.get_renewal_secret()
         frs = hashutil.file_renewal_secret_hash(crs, self._storage_index)
         lease_seed = server.get_lease_seed()
         assert len(lease_seed) == 20
         return hashutil.bucket_renewal_secret_hash(frs, lease_seed)
+
     def get_cancel_secret(self, server):
         ccs = self._secret_holder.get_cancel_secret()
         fcs = hashutil.file_cancel_secret_hash(ccs, self._storage_index)
@@ -212,21 +264,28 @@ class MutableFileNode(object):
 
     def get_writekey(self):
         return self._writekey
+
     def get_readkey(self):
         return self._readkey
+
     def get_storage_index(self):
         return self._storage_index
+
     def get_fingerprint(self):
         return self._fingerprint
+
     def get_privkey(self):
         return self._privkey
+
     def get_encprivkey(self):
         return self._encprivkey
+
     def get_pubkey(self):
         return self._pubkey
 
     def get_required_shares(self):
         return self._required_shares
+
     def get_total_shares(self):
         return self._total_shares
 
@@ -247,10 +306,13 @@ class MutableFileNode(object):
 
     def get_cap(self):
         return self._uri
+
     def get_readcap(self):
         return self._uri.get_readonly()
+
     def get_verify_cap(self):
         return self._uri.get_verify_cap()
+
     def get_repair_cap(self):
         if self._uri.is_readonly():
             return None
@@ -270,8 +332,12 @@ class MutableFileNode(object):
     def get_readonly(self):
         if self.is_readonly():
             return self
-        ro = MutableFileNode(self._storage_broker, self._secret_holder,
-                             self._default_encoding_parameters, self._history)
+        ro = MutableFileNode(
+            self._storage_broker,
+            self._secret_holder,
+            self._default_encoding_parameters,
+            self._history,
+        )
         ro.init_from_cap(self._uri.get_readonly())
         return ro
 
@@ -305,13 +371,13 @@ class MutableFileNode(object):
     # ICheckable
 
     def check(self, monitor, verify=False, add_lease=False):
-        checker = MutableChecker(self, self._storage_broker,
-                                 self._history, monitor)
+        checker = MutableChecker(self, self._storage_broker, self._history, monitor)
         return checker.check(verify, add_lease)
 
     def check_and_repair(self, monitor, verify=False, add_lease=False):
-        checker = MutableCheckAndRepairer(self, self._storage_broker,
-                                          self._history, monitor)
+        checker = MutableCheckAndRepairer(
+            self, self._storage_broker, self._history, monitor
+        )
         return checker.check(verify, add_lease)
 
     #################################
@@ -319,11 +385,9 @@ class MutableFileNode(object):
 
     def repair(self, check_results, force=False, monitor=None):
         assert ICheckResults(check_results)
-        r = Repairer(self, check_results, self._storage_broker,
-                     self._history, monitor)
+        r = Repairer(self, check_results, self._storage_broker, self._history, monitor)
         d = r.start(force)
         return d
-
 
     #################################
     # IFileNode
@@ -335,7 +399,6 @@ class MutableFileNode(object):
         represent
         """
         return self.get_readable_version()
-
 
     def get_readable_version(self, servermap=None, version=None):
         """
@@ -352,30 +415,30 @@ class MutableFileNode(object):
         representing the best recoverable version of the file.
         """
         d = self._get_version_from_servermap(MODE_READ, servermap, version)
+
         def _build_version(servermap_and_their_version):
             (servermap, their_version) = servermap_and_their_version
             assert their_version in servermap.recoverable_versions()
             assert their_version in servermap.make_versionmap()
 
-            mfv = MutableFileVersion(self,
-                                     servermap,
-                                     their_version,
-                                     self._storage_index,
-                                     self._storage_broker,
-                                     self._readkey,
-                                     history=self._history)
+            mfv = MutableFileVersion(
+                self,
+                servermap,
+                their_version,
+                self._storage_index,
+                self._storage_broker,
+                self._readkey,
+                history=self._history,
+            )
             assert mfv.is_readonly()
             mfv.set_downloader_hints(self._downloader_hints)
             # our caller can use this to download the contents of the
             # mutable file.
             return mfv
+
         return d.addCallback(_build_version)
 
-
-    def _get_version_from_servermap(self,
-                                    mode,
-                                    servermap=None,
-                                    version=None):
+    def _get_version_from_servermap(self, mode, servermap=None, version=None):
         """
         I return a Deferred that fires with (servermap, version).
 
@@ -415,8 +478,8 @@ class MutableFileNode(object):
                 raise UnrecoverableFileError("no recoverable versions")
 
             return (servermap, v)
-        return d.addCallback(_get_version, version)
 
+        return d.addCallback(_get_version, version)
 
     def download_best_version(self):
         """
@@ -424,7 +487,6 @@ class MutableFileNode(object):
         version of this mutable file.
         """
         return self._do_serialized(self._download_best_version)
-
 
     def _download_best_version(self):
         """
@@ -453,14 +515,12 @@ class MutableFileNode(object):
         d.addErrback(_maybe_retry)
         return d
 
-
     def _record_size(self, mfv):
         """
         I record the size of a mutable file version.
         """
         self._most_recent_size = mfv.get_size()
         return mfv
-
 
     def get_size_of_best_version(self):
         """
@@ -471,7 +531,6 @@ class MutableFileNode(object):
         """
         d = self.get_best_readable_version()
         return d.addCallback(lambda mfv: mfv.get_size())
-
 
     #################################
     # IMutableFileNode
@@ -484,7 +543,6 @@ class MutableFileNode(object):
         will try to make a writeable version if I can.
         """
         return self.get_mutable_version(servermap=servermap)
-
 
     def get_mutable_version(self, servermap=None, version=None):
         """
@@ -499,33 +557,34 @@ class MutableFileNode(object):
         instead of performing my own servermap update.
         """
         if self.is_readonly():
-            return self.get_readable_version(servermap=servermap,
-                                             version=version)
+            return self.get_readable_version(servermap=servermap, version=version)
 
         # get_mutable_version => write intent, so we require that the
         # servermap is updated in MODE_WRITE
         d = self._get_version_from_servermap(MODE_WRITE, servermap, version)
+
         def _build_version(servermap_and_smap_version):
             # these should have been set by the servermap update.
             (servermap, smap_version) = servermap_and_smap_version
             assert self._secret_holder
             assert self._writekey
 
-            mfv = MutableFileVersion(self,
-                                     servermap,
-                                     smap_version,
-                                     self._storage_index,
-                                     self._storage_broker,
-                                     self._readkey,
-                                     self._writekey,
-                                     self._secret_holder,
-                                     history=self._history)
+            mfv = MutableFileVersion(
+                self,
+                servermap,
+                smap_version,
+                self._storage_index,
+                self._storage_broker,
+                self._readkey,
+                self._writekey,
+                self._secret_holder,
+                history=self._history,
+            )
             assert not mfv.is_readonly()
             mfv.set_downloader_hints(self._downloader_hints)
             return mfv
 
         return d.addCallback(_build_version)
-
 
     # XXX: I'm uncomfortable with the difference between upload and
     #      overwrite, which, FWICT, is basically that you don't have to
@@ -553,7 +612,6 @@ class MutableFileNode(object):
         # TODO: Update downloader hints.
         return self._do_serialized(self._overwrite, new_contents)
 
-
     def _overwrite(self, new_contents):
         """
         I am the serialized sibling of overwrite.
@@ -562,7 +620,6 @@ class MutableFileNode(object):
         d.addCallback(lambda mfv: mfv.overwrite(new_contents))
         d.addCallback(self._did_upload, new_contents.get_size())
         return d
-
 
     def upload(self, new_contents, servermap):
         """
@@ -573,7 +630,6 @@ class MutableFileNode(object):
         """
         # TODO: Update downloader hints
         return self._do_serialized(self._upload, new_contents, servermap)
-
 
     def modify(self, modifier, backoffer=None):
         """
@@ -586,7 +642,6 @@ class MutableFileNode(object):
         # TODO: Update downloader hints.
         return self._do_serialized(self._modify, modifier, backoffer)
 
-
     def _modify(self, modifier, backoffer):
         """
         I am the serialized sibling of modify.
@@ -594,7 +649,6 @@ class MutableFileNode(object):
         d = self.get_best_mutable_version()
         d.addCallback(lambda mfv: mfv.modify(modifier, backoffer))
         return d
-
 
     def download_version(self, servermap, version, fetch_privkey=False):
         """
@@ -605,7 +659,6 @@ class MutableFileNode(object):
         d = self.get_readable_version(servermap, version)
         return d.addCallback(lambda mfv: mfv.download_to_data(fetch_privkey))
 
-
     def get_servermap(self, mode):
         """
         I return a servermap that has been updated in mode.
@@ -614,7 +667,6 @@ class MutableFileNode(object):
         MODE_ANYTHING. See servermap.py for more on what these mean.
         """
         return self._do_serialized(self._get_servermap, mode)
-
 
     def _get_servermap(self, mode):
         """
@@ -629,7 +681,6 @@ class MutableFileNode(object):
             d.addCallback(self._get_size_from_servermap)
         return d
 
-
     def _get_size_from_servermap(self, servermap):
         """
         I extract the size of the best version of this file and record
@@ -638,31 +689,26 @@ class MutableFileNode(object):
         """
         if servermap.recoverable_versions():
             v = servermap.best_recoverable_version()
-            size = v[4] # verinfo[4] == size
+            size = v[4]  # verinfo[4] == size
             self._most_recent_size = size
         return servermap
 
-
     def _update_servermap(self, servermap, mode):
-        u = ServermapUpdater(self, self._storage_broker, Monitor(), servermap,
-                             mode)
+        u = ServermapUpdater(self, self._storage_broker, Monitor(), servermap, mode)
         if self._history:
             self._history.notify_mapupdate(u.get_status())
         return u.update()
 
-
-    #def set_version(self, version):
-        # I can be set in two ways:
-        #  1. When the node is created.
-        #  2. (for an existing share) when the Servermap is updated
-        #     before I am read.
+    # def set_version(self, version):
+    # I can be set in two ways:
+    #  1. When the node is created.
+    #  2. (for an existing share) when the Servermap is updated
+    #     before I am read.
     #    assert version in (MDMF_VERSION, SDMF_VERSION)
     #    self._protocol_version = version
 
-
     def get_version(self):
         return self._protocol_version
-
 
     def _do_serialized(self, cb, *args, **kwargs):
         # note: to avoid deadlock, this callable is *not* allowed to invoke
@@ -682,7 +728,6 @@ class MutableFileNode(object):
         self._serializer.addErrback(log.err)
         return d
 
-
     def _upload(self, new_contents, servermap):
         """
         A MutableFileNode still has to have some way of getting
@@ -696,12 +741,10 @@ class MutableFileNode(object):
         # Then have the publisher call that method when it's done publishing?
         p = Publish(self, self._storage_broker, servermap)
         if self._history:
-            self._history.notify_publish(p.get_status(),
-                                         new_contents.get_size())
+            self._history.notify_publish(p.get_status(), new_contents.get_size())
         d = p.publish(new_contents)
         d.addCallback(self._did_upload, new_contents.get_size())
         return d
-
 
     def set_downloader_hints(self, hints):
         self._downloader_hints = hints
@@ -726,16 +769,18 @@ class MutableFileVersion(object):
     reference.
     """
 
-    def __init__(self,
-                 node,
-                 servermap,
-                 version,
-                 storage_index,
-                 storage_broker,
-                 readcap,
-                 writekey=None,
-                 write_secrets=None,
-                 history=None):
+    def __init__(
+        self,
+        node,
+        servermap,
+        version,
+        storage_index,
+        storage_broker,
+        readcap,
+        writekey=None,
+        write_secrets=None,
+        history=None,
+    ):
 
         self._node = node
         self._servermap = servermap
@@ -745,19 +790,17 @@ class MutableFileVersion(object):
         self._history = history
         self._storage_broker = storage_broker
 
-        #assert isinstance(readcap, IURI)
+        # assert isinstance(readcap, IURI)
         self._readcap = readcap
 
         self._writekey = writekey
         self._serializer = defer.succeed(None)
 
-
     def get_sequence_number(self):
         """
         Get the sequence number of the mutable version that I represent.
         """
-        return self._version[0] # verinfo[0] == the sequence number
-
+        return self._version[0]  # verinfo[0] == the sequence number
 
     # TODO: Terminology?
     def get_writekey(self):
@@ -765,7 +808,6 @@ class MutableFileVersion(object):
         I return a writekey or None if I don't have a writekey.
         """
         return self._writekey
-
 
     def set_downloader_hints(self, hints):
         """
@@ -775,13 +817,11 @@ class MutableFileVersion(object):
 
         self._downloader_hints = hints
 
-
     def get_downloader_hints(self):
         """
         I return the downloader hints.
         """
         return self._downloader_hints
-
 
     def overwrite(self, new_contents):
         """
@@ -792,13 +832,11 @@ class MutableFileVersion(object):
 
         return self._do_serialized(self._overwrite, new_contents)
 
-
     def _overwrite(self, new_contents):
         assert IMutableUploadable.providedBy(new_contents)
         assert self._servermap.get_last_update()[0] == MODE_WRITE
 
         return self._upload(new_contents)
-
 
     def modify(self, modifier, backoffer=None):
         """I use a modifier callback to apply a change to the mutable file.
@@ -844,12 +882,10 @@ class MutableFileVersion(object):
 
         return self._do_serialized(self._modify, modifier, backoffer)
 
-
     def _modify(self, modifier, backoffer):
         if backoffer is None:
             backoffer = BackoffAgent().delay
         return self._modify_and_retry(modifier, backoffer, True)
-
 
     def _modify_and_retry(self, modifier, backoffer, first_time):
         """
@@ -866,8 +902,8 @@ class MutableFileVersion(object):
             # careful on subsequent tries.
             d = self._update_servermap(mode=MODE_CHECK)
 
-        d.addCallback(lambda ignored:
-            self._modify_once(modifier, first_time))
+        d.addCallback(lambda ignored: self._modify_once(modifier, first_time))
+
         def _retry(f):
             f.trap(UncoordinatedWriteError)
             # Uh oh, it broke. We're allowed to trust the servermap for our
@@ -876,13 +912,13 @@ class MutableFileVersion(object):
             # uploader, and if the race is to converge correctly, we
             # need to know about that upload.
             d2 = defer.maybeDeferred(backoffer, self, f)
-            d2.addCallback(lambda ignored:
-                           self._modify_and_retry(modifier,
-                                                  backoffer, False))
+            d2.addCallback(
+                lambda ignored: self._modify_and_retry(modifier, backoffer, False)
+            )
             return d2
+
         d.addErrback(_retry)
         return d
-
 
     def _modify_once(self, modifier, first_time):
         """
@@ -894,12 +930,13 @@ class MutableFileVersion(object):
         # download_to_data is serialized, so we have to call this to
         # avoid deadlock.
         d = self._try_to_download_data()
+
         def _apply(old_contents):
             new_contents = modifier(old_contents, self._servermap, first_time)
-            precondition((isinstance(new_contents, bytes) or
-                          new_contents is None),
-                         "Modifier function must return bytes "
-                         "or None")
+            precondition(
+                (isinstance(new_contents, bytes) or new_contents is None),
+                "Modifier function must return bytes " "or None",
+            )
 
             if new_contents is None or new_contents == old_contents:
                 log.msg("no changes")
@@ -916,9 +953,9 @@ class MutableFileVersion(object):
                 new_contents = MutableData(new_contents)
 
             return self._upload(new_contents)
+
         d.addCallback(_apply)
         return d
-
 
     def is_readonly(self):
         """
@@ -928,7 +965,6 @@ class MutableFileVersion(object):
         """
         return self._writekey is None
 
-
     def is_mutable(self):
         """
         I return True, since mutable files are always mutable by
@@ -936,20 +972,17 @@ class MutableFileVersion(object):
         """
         return True
 
-
     def get_storage_index(self):
         """
         I return the storage index of the reference that I encapsulate.
         """
         return self._storage_index
 
-
     def get_size(self):
         """
         I return the length, in bytes, of this readable object.
         """
         return self._servermap.size_of_version(self._version)
-
 
     def download_to_data(self, fetch_privkey=False):  # type: ignore # fixme
         """
@@ -961,7 +994,6 @@ class MutableFileVersion(object):
         d = self.read(c, fetch_privkey=fetch_privkey)
         d.addCallback(lambda mc: b"".join(mc.chunks))
         return d
-
 
     def _try_to_download_data(self):
         """
@@ -975,27 +1007,28 @@ class MutableFileVersion(object):
         d.addCallback(lambda mc: b"".join(mc.chunks))
         return d
 
-
     def read(self, consumer, offset=0, size=None, fetch_privkey=False):
         """
         I read a portion (possibly all) of the mutable file that I
         reference into consumer.
         """
-        return self._do_serialized(self._read, consumer, offset, size,
-                                   fetch_privkey)
-
+        return self._do_serialized(self._read, consumer, offset, size, fetch_privkey)
 
     def _read(self, consumer, offset=0, size=None, fetch_privkey=False):
         """
         I am the serialized companion of read.
         """
-        r = Retrieve(self._node, self._storage_broker, self._servermap,
-                     self._version, fetch_privkey)
+        r = Retrieve(
+            self._node,
+            self._storage_broker,
+            self._servermap,
+            self._version,
+            fetch_privkey,
+        )
         if self._history:
             self._history.notify_retrieve(r.get_status())
         d = r.download(consumer, offset, size)
         return d
-
 
     def _do_serialized(self, cb, *args, **kwargs):
         # note: to avoid deadlock, this callable is *not* allowed to invoke
@@ -1015,17 +1048,14 @@ class MutableFileVersion(object):
         self._serializer.addErrback(log.err)
         return d
 
-
     def _upload(self, new_contents):
-        #assert self._pubkey, "update_servermap must be called before publish"
+        # assert self._pubkey, "update_servermap must be called before publish"
         p = Publish(self._node, self._storage_broker, self._servermap)
         if self._history:
-            self._history.notify_publish(p.get_status(),
-                                         new_contents.get_size())
+            self._history.notify_publish(p.get_status(), new_contents.get_size())
         d = p.publish(new_contents)
         d.addCallback(self._did_upload, new_contents.get_size())
         return d
-
 
     def _did_upload(self, res, size):
         self._most_recent_size = size
@@ -1047,7 +1077,6 @@ class MutableFileVersion(object):
         """
         return self._do_serialized(self._update, data, offset)
 
-
     def _update(self, data, offset):
         """
         I update the mutable file version represented by this particular
@@ -1058,15 +1087,15 @@ class MutableFileVersion(object):
         new_size = data.get_size() + offset
         old_size = self.get_size()
         segment_size = self._version[3]
-        num_old_segments = mathutil.div_ceil(old_size,
-                                             segment_size)
-        num_new_segments = mathutil.div_ceil(new_size,
-                                             segment_size)
-        log.msg("got %d old segments, %d new segments" % \
-                        (num_old_segments, num_new_segments))
+        num_old_segments = mathutil.div_ceil(old_size, segment_size)
+        num_new_segments = mathutil.div_ceil(new_size, segment_size)
+        log.msg(
+            "got %d old segments, %d new segments"
+            % (num_old_segments, num_new_segments)
+        )
 
         # We do a whole file re-encode if the file is an SDMF file.
-        if self._version[2]: # version[2] == SDMF salt, which MDMF lacks
+        if self._version[2]:  # version[2] == SDMF salt, which MDMF lacks
             log.msg("doing re-encode instead of in-place update")
             return self._do_modify_update(data, offset)
 
@@ -1077,13 +1106,13 @@ class MutableFileVersion(object):
         d.addCallback(self._build_uploadable_and_finish, data, offset)
         return d
 
-
     def _do_modify_update(self, data, offset):
         """
         I perform a file update by modifying the contents of the file
         after downloading it, then reuploading it. I am less efficient
         than _do_update_update, but am necessary for certain updates.
         """
+
         def m(old, servermap, first_time):
             start = offset
             rest = offset + data.get_size()
@@ -1091,8 +1120,8 @@ class MutableFileVersion(object):
             new += b"".join(data.read(data.get_size()))
             new += old[rest:]
             return new
-        return self._modify(m, None)
 
+        return self._modify(m, None)
 
     def _do_update_update(self, data, offset):
         """
@@ -1126,9 +1155,7 @@ class MutableFileVersion(object):
 
         # Now ask for the servermap to be updated in MODE_WRITE with
         # this update range.
-        return self._update_servermap(update_range=(start_segment,
-                                                    end_segment))
-
+        return self._update_servermap(update_range=(start_segment, end_segment))
 
     def _decode_and_decrypt_segments(self, ignored, data, offset):
         """
@@ -1138,8 +1165,7 @@ class MutableFileVersion(object):
         used by the new uploadable. I return a Deferred that fires with
         the segments.
         """
-        r = Retrieve(self._node, self._storage_broker, self._servermap,
-                     self._version)
+        r = Retrieve(self._node, self._storage_broker, self._servermap, self._version)
         # decode: takes in our blocks and salts from the servermap,
         # returns a Deferred that fires with the corresponding plaintext
         # segments. Does not download -- simply takes advantage of
@@ -1150,9 +1176,9 @@ class MutableFileVersion(object):
         # abstractions, you should rewrite them instead of going around
         # them.
         update_data = sm.update_data
-        start_segments = {} # shnum -> start segment
-        end_segments = {} # shnum -> end segment
-        blockhashes = {} # shnum -> blockhash tree
+        start_segments = {}  # shnum -> start segment
+        end_segments = {}  # shnum -> end segment
+        blockhashes = {}  # shnum -> blockhash tree
         for (shnum, original_data) in list(update_data.items()):
             data = [d[1] for d in original_data if d[0] == self._version]
             # data is [(blockhashes,start,end)..]
@@ -1165,14 +1191,13 @@ class MutableFileVersion(object):
 
             # datum is (blockhashes,start,end)
             blockhashes[shnum] = datum[0]
-            start_segments[shnum] = datum[1] # (block,salt) bytestrings
+            start_segments[shnum] = datum[1]  # (block,salt) bytestrings
             end_segments[shnum] = datum[2]
 
         d1 = r.decode(start_segments, self._start_segment)
         d2 = r.decode(end_segments, self._end_segment)
         d3 = defer.succeed(blockhashes)
         return deferredutil.gatherResults([d1, d2, d3])
-
 
     def _build_uploadable_and_finish(self, segments_and_bht, data, offset):
         """
@@ -1182,13 +1207,11 @@ class MutableFileVersion(object):
         uploadable, and return a Deferred when the publish operation has
         completed without issue.
         """
-        u = TransformingUploadable(data, offset,
-                                   self._version[3],
-                                   segments_and_bht[0],
-                                   segments_and_bht[1])
+        u = TransformingUploadable(
+            data, offset, self._version[3], segments_and_bht[0], segments_and_bht[1]
+        )
         p = Publish(self._node, self._storage_broker, self._servermap)
         return p.update(u, offset, segments_and_bht[2], self._version)
-
 
     def _update_servermap(self, mode=MODE_WRITE, update_range=None):
         """
@@ -1196,14 +1219,18 @@ class MutableFileVersion(object):
         servermap update is done.
         """
         if update_range:
-            u = ServermapUpdater(self._node, self._storage_broker, Monitor(),
-                                 self._servermap,
-                                 mode=mode,
-                                 update_range=update_range)
+            u = ServermapUpdater(
+                self._node,
+                self._storage_broker,
+                Monitor(),
+                self._servermap,
+                mode=mode,
+                update_range=update_range,
+            )
         else:
-            u = ServermapUpdater(self._node, self._storage_broker, Monitor(),
-                                 self._servermap,
-                                 mode=mode)
+            u = ServermapUpdater(
+                self._node, self._storage_broker, Monitor(), self._servermap, mode=mode
+            )
         return u.update()
 
     # https://tahoe-lafs.org/trac/tahoe-lafs/ticket/3562

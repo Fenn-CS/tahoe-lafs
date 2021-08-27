@@ -10,8 +10,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 from six import ensure_text
 
@@ -57,18 +80,20 @@ from ..util.eliotutil import (
     inline_callbacks,
 )
 
+
 def get_root_from_file(src):
     srcdir = os.path.dirname(os.path.dirname(os.path.normcase(os.path.realpath(src))))
 
     root = os.path.dirname(srcdir)
-    if os.path.basename(srcdir) == 'site-packages':
-        if re.search(r'python.+\..+', os.path.basename(root)):
+    if os.path.basename(srcdir) == "site-packages":
+        if re.search(r"python.+\..+", os.path.basename(root)):
             root = os.path.dirname(root)
         root = os.path.dirname(root)
-    elif os.path.basename(root) == 'src':
+    elif os.path.basename(root) == "src":
         root = os.path.dirname(root)
 
     return root
+
 
 srcfile = allmydata.__file__
 rootdir = get_root_from_file(srcfile)
@@ -89,7 +114,7 @@ def run_bintahoe(extra_argv, python_options=None):
     argv = [executable]
     if python_options is not None:
         argv.extend(python_options)
-    argv.extend([u"-b", u"-m", u"allmydata.scripts.runner"])
+    argv.extend(["-b", "-m", "allmydata.scripts.runner"])
     argv.extend(extra_argv)
     argv = list(unicode_to_argv(arg) for arg in argv)
     p = Popen(argv, stdout=PIPE, stderr=PIPE)
@@ -108,10 +133,10 @@ class BinTahoe(common_util.SignalMixin, unittest.TestCase):
         """
         The runner script receives unmangled non-ASCII values in argv.
         """
-        tricky = u"\u00F6"
+        tricky = "\u00F6"
         out, err, returncode = run_bintahoe([tricky])
         self.assertEqual(returncode, 1)
-        self.assertIn(u"Unknown command: " + tricky, out)
+        self.assertIn("Unknown command: " + tricky, out)
 
     def test_with_python_options(self):
         """
@@ -124,47 +149,55 @@ class BinTahoe(common_util.SignalMixin, unittest.TestCase):
 
         # -t is a harmless option that warns about tabs so we can add it
         # without impacting other behavior noticably.
-        out, err, returncode = run_bintahoe([u"--version"], python_options=[u"-t"])
+        out, err, returncode = run_bintahoe(["--version"], python_options=["-t"])
         self.assertEqual(returncode, 0)
-        self.assertTrue(out.startswith(allmydata.__appname__ + '/'))
+        self.assertTrue(out.startswith(allmydata.__appname__ + "/"))
 
     def test_help_eliot_destinations(self):
-        out, err, returncode = run_bintahoe([u"--help-eliot-destinations"])
-        self.assertIn(u"\tfile:<path>", out)
+        out, err, returncode = run_bintahoe(["--help-eliot-destinations"])
+        self.assertIn("\tfile:<path>", out)
         self.assertEqual(returncode, 0)
 
     def test_eliot_destination(self):
-        out, err, returncode = run_bintahoe([
-            # Proves little but maybe more than nothing.
-            u"--eliot-destination=file:-",
-            # Throw in *some* command or the process exits with error, making
-            # it difficult for us to see if the previous arg was accepted or
-            # not.
-            u"--help",
-        ])
+        out, err, returncode = run_bintahoe(
+            [
+                # Proves little but maybe more than nothing.
+                "--eliot-destination=file:-",
+                # Throw in *some* command or the process exits with error, making
+                # it difficult for us to see if the previous arg was accepted or
+                # not.
+                "--help",
+            ]
+        )
         self.assertEqual(returncode, 0)
 
     def test_unknown_eliot_destination(self):
-        out, err, returncode = run_bintahoe([
-            u"--eliot-destination=invalid:more",
-        ])
+        out, err, returncode = run_bintahoe(
+            [
+                "--eliot-destination=invalid:more",
+            ]
+        )
         self.assertEqual(1, returncode)
-        self.assertIn(u"Unknown destination description", out)
-        self.assertIn(u"invalid:more", out)
+        self.assertIn("Unknown destination description", out)
+        self.assertIn("invalid:more", out)
 
     def test_malformed_eliot_destination(self):
-        out, err, returncode = run_bintahoe([
-            u"--eliot-destination=invalid",
-        ])
+        out, err, returncode = run_bintahoe(
+            [
+                "--eliot-destination=invalid",
+            ]
+        )
         self.assertEqual(1, returncode)
-        self.assertIn(u"must be formatted like", out)
+        self.assertIn("must be formatted like", out)
 
     def test_escape_in_eliot_destination(self):
-        out, err, returncode = run_bintahoe([
-            u"--eliot-destination=file:@foo",
-        ])
+        out, err, returncode = run_bintahoe(
+            [
+                "--eliot-destination=file:@foo",
+            ]
+        )
         self.assertEqual(1, returncode)
-        self.assertIn(u"Unsupported escape character", out)
+        self.assertIn("Unsupported escape character", out)
 
 
 class CreateNode(unittest.TestCase):
@@ -197,11 +230,16 @@ class CreateNode(unittest.TestCase):
             # 'create-node', and disabled for 'create-client'.
             tahoe_cfg = os.path.join(n1, "tahoe.cfg")
             self.failUnless(os.path.exists(tahoe_cfg))
-            content = fileutil.read(tahoe_cfg).decode('utf-8').replace('\r\n', '\n')
+            content = fileutil.read(tahoe_cfg).decode("utf-8").replace("\r\n", "\n")
             if kind == "client":
-                self.failUnless(re.search(r"\n\[storage\]\n#.*\nenabled = false\n", content), content)
+                self.failUnless(
+                    re.search(r"\n\[storage\]\n#.*\nenabled = false\n", content),
+                    content,
+                )
             else:
-                self.failUnless(re.search(r"\n\[storage\]\n#.*\nenabled = true\n", content), content)
+                self.failUnless(
+                    re.search(r"\n\[storage\]\n#.*\nenabled = true\n", content), content
+                )
                 self.failUnless("\nreserved_space = 1G\n" in content)
 
         # creating the node a second time should be rejected
@@ -249,14 +287,14 @@ class CreateNode(unittest.TestCase):
             self.failUnless(os.path.exists(os.path.join(n4, tac)))
 
         # make sure it rejects too many arguments
-        self.failUnlessRaises(usage.UsageError, parse_cli,
-                              command, "basedir", "extraarg")
+        self.failUnlessRaises(
+            usage.UsageError, parse_cli, command, "basedir", "extraarg"
+        )
 
         # when creating a non-client, there is no default for the basedir
         if not is_client:
             argv = [command]
-            self.failUnlessRaises(usage.UsageError, parse_cli,
-                                  command)
+            self.failUnlessRaises(usage.UsageError, parse_cli, command)
 
     def test_node(self):
         self.do_create("node", "--hostname=127.0.0.1")
@@ -270,8 +308,10 @@ class CreateNode(unittest.TestCase):
 
     def test_subcommands(self):
         # no arguments should trigger a command listing, via UsageError
-        self.failUnlessRaises(usage.UsageError, parse_cli,
-                              )
+        self.failUnlessRaises(
+            usage.UsageError,
+            parse_cli,
+        )
 
 
 class RunNode(common_util.SignalMixin, unittest.TestCase, pollmixin.PollMixin):
@@ -294,29 +334,33 @@ class RunNode(common_util.SignalMixin, unittest.TestCase, pollmixin.PollMixin):
         The introducer furl is stable across restarts.
         """
         basedir = self.workdir("test_introducer")
-        c1 = os.path.join(basedir, u"c1")
+        c1 = os.path.join(basedir, "c1")
         tahoe = CLINodeAPI(reactor, FilePath(c1))
         self.addCleanup(tahoe.stop_and_wait)
 
-        out, err, returncode = run_bintahoe([
-            u"--quiet",
-            u"create-introducer",
-            u"--basedir", c1,
-            u"--hostname", u"127.0.0.1",
-        ])
+        out, err, returncode = run_bintahoe(
+            [
+                "--quiet",
+                "create-introducer",
+                "--basedir",
+                c1,
+                "--hostname",
+                "127.0.0.1",
+            ]
+        )
 
         self.assertEqual(returncode, 0)
 
         # This makes sure that node.url is written, which allows us to
         # detect when the introducer restarts in _node_has_restarted below.
-        config = fileutil.read(tahoe.config_file.path).decode('utf-8')
-        self.assertIn('{}web.port = {}'.format(linesep, linesep), config)
+        config = fileutil.read(tahoe.config_file.path).decode("utf-8")
+        self.assertIn("{}web.port = {}".format(linesep, linesep), config)
         fileutil.write(
             tahoe.config_file.path,
             config.replace(
-                '{}web.port = {}'.format(linesep, linesep),
-                '{}web.port = 0{}'.format(linesep, linesep),
-            )
+                "{}web.port = {}".format(linesep, linesep),
+                "{}web.port = 0{}".format(linesep, linesep),
+            ),
         )
 
         p = Expect()
@@ -373,23 +417,30 @@ class RunNode(common_util.SignalMixin, unittest.TestCase, pollmixin.PollMixin):
         3) Verify that the pid file is removed after SIGTERM (on POSIX).
         """
         basedir = self.workdir("test_client")
-        c1 = os.path.join(basedir, u"c1")
+        c1 = os.path.join(basedir, "c1")
 
         tahoe = CLINodeAPI(reactor, FilePath(c1))
         # Set this up right now so we don't forget later.
         self.addCleanup(tahoe.cleanup)
 
-        out, err, returncode = run_bintahoe([
-            u"--quiet", u"create-node", u"--basedir", c1,
-            u"--webport", u"0",
-            u"--hostname", u"localhost",
-        ])
+        out, err, returncode = run_bintahoe(
+            [
+                "--quiet",
+                "create-node",
+                "--basedir",
+                c1,
+                "--webport",
+                "0",
+                "--hostname",
+                "localhost",
+            ]
+        )
         self.failUnlessEqual(returncode, 0)
 
         # Check that the --webport option worked.
-        config = fileutil.read(tahoe.config_file.path).decode('utf-8')
+        config = fileutil.read(tahoe.config_file.path).decode("utf-8")
         self.assertIn(
-            '{}web.port = 0{}'.format(linesep, linesep),
+            "{}web.port = 0{}".format(linesep, linesep),
             config,
         )
 
@@ -442,7 +493,6 @@ class RunNode(common_util.SignalMixin, unittest.TestCase, pollmixin.PollMixin):
             # twistd.pid should be gone by now.
             self.assertFalse(tahoe.twistd_pid_file.exists())
 
-
     def _remove(self, res, file):
         fileutil.remove(file)
         return res
@@ -453,7 +503,7 @@ class RunNode(common_util.SignalMixin, unittest.TestCase, pollmixin.PollMixin):
         and exits.
         """
         return self._bad_directory_test(
-            u"test_run_bad_directory",
+            "test_run_bad_directory",
             "tahoe run",
             lambda tahoe, p: tahoe.run(p),
             "is not a recognizable node directory",
@@ -465,13 +515,13 @@ class RunNode(common_util.SignalMixin, unittest.TestCase, pollmixin.PollMixin):
         exits.
         """
         return self._bad_directory_test(
-            u"test_run_bogus_directory",
+            "test_run_bogus_directory",
             "tahoe run",
             lambda tahoe, p: CLINodeAPI(
                 tahoe.reactor,
-                tahoe.basedir.sibling(u"bogus"),
+                tahoe.basedir.sibling("bogus"),
             ).run(p),
-            "does not look like a directory at all"
+            "does not look like a directory at all",
         )
 
     @inline_callbacks
@@ -509,10 +559,13 @@ class RunNode(common_util.SignalMixin, unittest.TestCase, pollmixin.PollMixin):
 
         client_running = p.expect(b"client running")
 
-        result, index = yield DeferredList([
-            p.expect(expected_message.encode('utf-8')),
-            client_running,
-        ], fireOnOneCallback=True, consumeErrors=True,
+        result, index = yield DeferredList(
+            [
+                p.expect(expected_message.encode("utf-8")),
+                client_running,
+            ],
+            fireOnOneCallback=True,
+            consumeErrors=True,
         )
 
         self.assertEqual(

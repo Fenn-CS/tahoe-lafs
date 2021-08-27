@@ -7,15 +7,38 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import itertools
 from zope.interface import implementer
 from allmydata.interfaces import IDownloadStatus
 
-class ReadEvent(object):
 
+class ReadEvent(object):
     def __init__(self, ev, ds):
         self._ev = ev
         self._ds = ds
@@ -31,7 +54,6 @@ class ReadEvent(object):
 
 
 class SegmentEvent(object):
-
     def __init__(self, ev, ds):
         self._ev = ev
         self._ds = ds
@@ -56,7 +78,6 @@ class SegmentEvent(object):
 
 
 class DYHBEvent(object):
-
     def __init__(self, ev, ds):
         self._ev = ev
         self._ds = ds
@@ -74,7 +95,6 @@ class DYHBEvent(object):
 
 
 class BlockRequestEvent(object):
-
     def __init__(self, ev, ds):
         self._ev = ev
         self._ds = ds
@@ -152,66 +172,73 @@ class DownloadStatus(object):
         #  response_length (None until success)
         self.block_requests = []
 
-        self.known_shares = [] # (server, shnum)
+        self.known_shares = []  # (server, shnum)
         self.problems = []
 
         self.misc_events = []
 
     def add_misc_event(self, what, start, finish=None):
-        self.misc_events.append( {"what": what,
-                                  "start_time": start,
-                                  "finish_time": finish,
-                                  } )
+        self.misc_events.append(
+            {
+                "what": what,
+                "start_time": start,
+                "finish_time": finish,
+            }
+        )
 
     def add_read_event(self, start, length, when):
         if self.first_timestamp is None:
             self.first_timestamp = when
-        r = { "start": start,
-              "length": length,
-              "start_time": when,
-              "finish_time": None,
-              "bytes_returned": 0,
-              "decrypt_time": 0,
-              "paused_time": 0,
-              }
+        r = {
+            "start": start,
+            "length": length,
+            "start_time": when,
+            "finish_time": None,
+            "bytes_returned": 0,
+            "decrypt_time": 0,
+            "paused_time": 0,
+        }
         self.read_events.append(r)
         return ReadEvent(r, self)
 
     def add_segment_request(self, segnum, when):
         if self.first_timestamp is None:
             self.first_timestamp = when
-        r = { "segment_number": segnum,
-              "start_time": when,
-              "active_time": None,
-              "finish_time": None,
-              "success": None,
-              "decode_time": None,
-              "segment_start": None,
-              "segment_length": None,
-              }
+        r = {
+            "segment_number": segnum,
+            "start_time": when,
+            "active_time": None,
+            "finish_time": None,
+            "success": None,
+            "decode_time": None,
+            "segment_start": None,
+            "segment_length": None,
+        }
         self.segment_events.append(r)
         return SegmentEvent(r, self)
 
     def add_dyhb_request(self, server, when):
-        r = { "server": server,
-              "start_time": when,
-              "success": None,
-              "response_shnums": None,
-              "finish_time": None,
-              }
+        r = {
+            "server": server,
+            "start_time": when,
+            "success": None,
+            "response_shnums": None,
+            "finish_time": None,
+        }
         self.dyhb_requests.append(r)
         return DYHBEvent(r, self)
 
     def add_block_request(self, server, shnum, start, length, when):
-        r = { "server": server,
-              "shnum": shnum,
-              "start": start,
-              "length": length,
-              "start_time": when,
-              "finish_time": None,
-              "success": None,
-              "response_length": None,
-              }
+        r = {
+            "server": server,
+            "shnum": shnum,
+            "start": start,
+            "length": length,
+            "start_time": when,
+            "finish_time": None,
+            "success": None,
+            "response_length": None,
+        }
         self.block_requests.append(r)
         return BlockRequestEvent(r, self)
 
@@ -219,8 +246,8 @@ class DownloadStatus(object):
         if self.last_timestamp is None or when > self.last_timestamp:
             self.last_timestamp = when
 
-    def add_known_share(self, server, shnum): # XXX use me
-        self.known_shares.append( (server, shnum) )
+    def add_known_share(self, server, shnum):  # XXX use me
+        self.known_shares.append((server, shnum))
 
     def add_problem(self, p):
         self.problems.append(p)
@@ -228,24 +255,36 @@ class DownloadStatus(object):
     # IDownloadStatus methods
     def get_counter(self):
         return self.counter
+
     def get_storage_index(self):
         return self.storage_index
+
     def get_size(self):
         return self.size
+
     def get_status(self):
         # mention all outstanding segment requests
-        outstanding = set([s_ev["segment_number"]
-                           for s_ev in self.segment_events
-                           if s_ev["finish_time"] is None])
-        errorful = set([s_ev["segment_number"]
-                        for s_ev in self.segment_events
-                        if s_ev["success"] is False])
+        outstanding = set(
+            [
+                s_ev["segment_number"]
+                for s_ev in self.segment_events
+                if s_ev["finish_time"] is None
+            ]
+        )
+        errorful = set(
+            [
+                s_ev["segment_number"]
+                for s_ev in self.segment_events
+                if s_ev["success"] is False
+            ]
+        )
+
         def join(segnums):
             if len(segnums) == 1:
                 return "segment %s" % list(segnums)[0]
             else:
-                return "segments %s" % (",".join([str(i)
-                                                  for i in sorted(segnums)]))
+                return "segments %s" % (",".join([str(i) for i in sorted(segnums)]))
+
         error_s = ""
         if errorful:
             error_s = "; errors on %s" % join(errorful)
@@ -283,5 +322,6 @@ class DownloadStatus(object):
 
     def get_started(self):
         return self.first_timestamp
+
     def get_results(self):
-        return None # TODO
+        return None  # TODO

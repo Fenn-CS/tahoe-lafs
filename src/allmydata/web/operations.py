@@ -7,8 +7,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import time
 from hyperlink import (
@@ -36,23 +59,24 @@ from allmydata.web.common import (
 )
 
 MINUTE = 60
-HOUR = 60*MINUTE
-DAY = 24*HOUR
+HOUR = 60 * MINUTE
+DAY = 24 * HOUR
 
 (MONITOR, RENDERER, WHEN_ADDED) = range(3)
+
 
 class OphandleTable(resource.Resource, service.Service):
     """Renders /operations/%d."""
 
     name = "operations"
 
-    UNCOLLECTED_HANDLE_LIFETIME = 4*DAY
-    COLLECTED_HANDLE_LIFETIME = 1*DAY
+    UNCOLLECTED_HANDLE_LIFETIME = 4 * DAY
+    COLLECTED_HANDLE_LIFETIME = 1 * DAY
 
     def __init__(self, clock=None):
         super(OphandleTable, self).__init__()
         # both of these are indexed by ophandle
-        self.handles = {} # tuple of (monitor, renderer, when_added)
+        self.handles = {}  # tuple of (monitor, renderer, when_added)
         self.timers = {}
         # The tests will provide a deterministic clock
         # (twisted.internet.task.Clock) that they can control so that
@@ -64,7 +88,7 @@ class OphandleTable(resource.Resource, service.Service):
         for t in self.timers.values():
             if t.active():
                 t.cancel()
-        del self.handles # this is not restartable
+        del self.handles  # this is not restartable
         del self.timers
         return service.Service.stopService(self)
 
@@ -102,18 +126,20 @@ class OphandleTable(resource.Resource, service.Service):
         ophandle = get_arg(req, "ophandle").decode("utf-8")
         assert ophandle
         here = DecodedURL.from_text(str(URLPath.fromRequest(req)))
-        target = here.click(u"/").child(u"operations", ophandle)
+        target = here.click("/").child("operations", ophandle)
         output = get_arg(req, "output")
         if output:
-            target = target.add(u"output", output.decode("utf-8"))
+            target = target.add("output", output.decode("utf-8"))
         return target
 
     @exception_to_child
     def getChild(self, name, req):
         ophandle = name
         if ophandle not in self.handles:
-            raise WebError("unknown/expired handle '%s'" % escape(str(ophandle, "utf-8")),
-                           NOT_FOUND)
+            raise WebError(
+                "unknown/expired handle '%s'" % escape(str(ophandle, "utf-8")),
+                NOT_FOUND,
+            )
         (monitor, renderer, when_added) = self.handles[ophandle]
 
         t = get_arg(req, "t", "status")
@@ -157,7 +183,7 @@ class OphandleTable(resource.Resource, service.Service):
 
 
 class ReloadMixin(object):
-    REFRESH_TIME = 1*MINUTE
+    REFRESH_TIME = 1 * MINUTE
 
     @renderer
     def refresh(self, req, tag):
@@ -176,12 +202,17 @@ class ReloadMixin(object):
         ophandle = req.prepath[-1]
         reload_target = ophandle + b"?output=html"
         cancel_target = ophandle + b"?t=cancel"
-        cancel_button = T.form(T.input(type="submit", value="Cancel"),
-                               action=cancel_target,
-                               method="POST",
-                               enctype="multipart/form-data",)
+        cancel_button = T.form(
+            T.input(type="submit", value="Cancel"),
+            action=cancel_target,
+            method="POST",
+            enctype="multipart/form-data",
+        )
 
-        return (T.h2("Operation still running: ",
-                     T.a("Reload", href=reload_target),
-                     ),
-                cancel_button,)
+        return (
+            T.h2(
+                "Operation still running: ",
+                T.a("Reload", href=reload_target),
+            ),
+            cancel_button,
+        )

@@ -55,18 +55,42 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
-if PY2:
-    from builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
 
-from allmydata.util import mathutil # from the pyutil library
+if PY2:
+    from builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
+
+from allmydata.util import mathutil  # from the pyutil library
 
 from allmydata.util import base32
 from allmydata.util.hashutil import tagged_hash, tagged_pair_hash
 
-__version__ = '1.0.0-allmydata'
+__version__ = "1.0.0-allmydata"
 
-BLOCK_SIZE     = 65536
+BLOCK_SIZE = 65536
 MAX_CHUNK_SIZE = BLOCK_SIZE + 4096
+
 
 def roundup_pow2(x):
     """
@@ -103,8 +127,8 @@ class CompleteBinaryTreeMixin(object):
         """
         Index of the parent of C{i}.
         """
-        if i < 1 or (hasattr(self, '__len__') and i >= len(self)):
-            raise IndexError('index out of range: ' + repr(i))
+        if i < 1 or (hasattr(self, "__len__") and i >= len(self)):
+            raise IndexError("index out of range: " + repr(i))
         return (i - 1) // 2
 
     def lchild(self, i):
@@ -112,8 +136,8 @@ class CompleteBinaryTreeMixin(object):
         Index of the left child of C{i}.
         """
         ans = 2 * i + 1
-        if i < 0 or (hasattr(self, '__len__') and ans >= len(self)):
-            raise IndexError('index out of range: ' + repr(i))
+        if i < 0 or (hasattr(self, "__len__") and ans >= len(self)):
+            raise IndexError("index out of range: " + repr(i))
         return ans
 
     def rchild(self, i):
@@ -121,8 +145,8 @@ class CompleteBinaryTreeMixin(object):
         Index of right child of C{i}.
         """
         ans = 2 * i + 2
-        if i < 0 or (hasattr(self, '__len__') and ans >= len(self)):
-            raise IndexError('index out of range: ' + repr(i))
+        if i < 0 or (hasattr(self, "__len__") and ans >= len(self)):
+            raise IndexError("index out of range: " + repr(i))
         return ans
 
     def sibling(self, i):
@@ -140,7 +164,7 @@ class CompleteBinaryTreeMixin(object):
         Return a list of node indices that are necessary for the hash chain.
         """
         if i < 0 or i >= len(self):
-            raise IndexError('index out of range: 0 >= %s < %s' % (i, len(self)))
+            raise IndexError("index out of range: 0 >= %s < %s" % (i, len(self)))
         needed = []
         here = i
         while here != 0:
@@ -151,23 +175,23 @@ class CompleteBinaryTreeMixin(object):
     def depth_first(self, i=0):
         yield i, 0
         try:
-            for child,childdepth in self.depth_first(self.lchild(i)):
-                yield child, childdepth+1
+            for child, childdepth in self.depth_first(self.lchild(i)):
+                yield child, childdepth + 1
         except IndexError:
             pass
         try:
-            for child,childdepth in self.depth_first(self.rchild(i)):
-                yield child, childdepth+1
+            for child, childdepth in self.depth_first(self.rchild(i)):
+                yield child, childdepth + 1
         except IndexError:
             pass
 
     def dump(self):
         lines = []
-        for i,depth in self.depth_first():
+        for i, depth in self.depth_first():
             value = base32.b2a_or_none(self[i])
             if value is not None:
                 value = str(value, "utf-8")
-            lines.append("%s%3d: %s" % ("  "*depth, i, value))
+            lines.append("%s%3d: %s" % ("  " * depth, i, value))
         return "\n".join(lines) + "\n"
 
     def get_leaf_index(self, leafnum):
@@ -176,16 +200,20 @@ class CompleteBinaryTreeMixin(object):
     def get_leaf(self, leafnum):
         return self[self.first_leaf_num + leafnum]
 
+
 def depth_of(i):
     """Return the depth or level of the given node. Level 0 contains node 0
     Level 1 contains nodes 1 and 2. Level 2 contains nodes 3,4,5,6."""
-    return mathutil.log_floor(i+1, 2)
+    return mathutil.log_floor(i + 1, 2)
+
 
 def empty_leaf_hash(i):
-    return tagged_hash(b'Merkle tree empty leaf', b"%d" % i)
+    return tagged_hash(b"Merkle tree empty leaf", b"%d" % i)
+
 
 def pair_hash(a, b):
-    return tagged_pair_hash(b'Merkle tree internal node', a, b)
+    return tagged_pair_hash(b"Merkle tree internal node", a, b)
+
 
 class HashTree(CompleteBinaryTreeMixin, list):
     """
@@ -218,17 +246,18 @@ class HashTree(CompleteBinaryTreeMixin, list):
 
         # Augment the list.
         start = len(L)
-        end   = roundup_pow2(len(L))
+        end = roundup_pow2(len(L))
         self.first_leaf_num = end - 1
-        L     = L + [None] * (end - start)
+        L = L + [None] * (end - start)
         for i in range(start, end):
             L[i] = empty_leaf_hash(i)
         # Form each row of the tree.
         rows = [L]
         while len(rows[-1]) != 1:
             last = rows[-1]
-            rows += [[pair_hash(last[2*i], last[2*i+1])
-                                for i in range(len(last)//2)]]
+            rows += [
+                [pair_hash(last[2 * i], last[2 * i + 1]) for i in range(len(last) // 2)]
+            ]
         # Flatten the list of rows into a single list.
         rows.reverse()
         self[:] = sum(rows, [])
@@ -267,8 +296,10 @@ class HashTree(CompleteBinaryTreeMixin, list):
 class NotEnoughHashesError(Exception):
     pass
 
+
 class BadHashError(Exception):
     pass
+
 
 class IncompleteHashTree(CompleteBinaryTreeMixin, list):
     """I am a hash tree which may or may not be complete. I can be used to
@@ -296,17 +327,16 @@ class IncompleteHashTree(CompleteBinaryTreeMixin, list):
     def __init__(self, num_leaves):
         L = [None] * num_leaves
         start = len(L)
-        end   = roundup_pow2(len(L))
+        end = roundup_pow2(len(L))
         self.first_leaf_num = end - 1
-        L     = L + [None] * (end - start)
+        L = L + [None] * (end - start)
         rows = [L]
         while len(rows[-1]) != 1:
             last = rows[-1]
-            rows += [[None for i in range(len(last)//2)]]
+            rows += [[None for i in range(len(last) // 2)]]
         # Flatten the list of rows into a single list.
         rows.reverse()
         self[:] = sum(rows, [])
-
 
     def needed_hashes(self, leafnum, include_leaf=False):
         """Which new hashes do I need to validate a given data block?
@@ -390,16 +420,17 @@ class IncompleteHashTree(CompleteBinaryTreeMixin, list):
         for h in leaves.values():
             assert isinstance(h, bytes)
         new_hashes = hashes.copy()
-        for leafnum,leafhash in leaves.items():
+        for leafnum, leafhash in leaves.items():
             hashnum = self.first_leaf_num + leafnum
             if hashnum in new_hashes:
                 if new_hashes[hashnum] != leafhash:
-                    raise BadHashError("got conflicting hashes in my "
-                                       "arguments: leaves[%d] != hashes[%d]"
-                                       % (leafnum, hashnum))
+                    raise BadHashError(
+                        "got conflicting hashes in my "
+                        "arguments: leaves[%d] != hashes[%d]" % (leafnum, hashnum)
+                    )
             new_hashes[hashnum] = leafhash
 
-        remove_upon_failure = set() # we'll remove these if the check fails
+        remove_upon_failure = set()  # we'll remove these if the check fails
 
         # visualize this method in the following way:
         #  A: start with the empty or partially-populated tree as shown in
@@ -422,21 +453,21 @@ class IncompleteHashTree(CompleteBinaryTreeMixin, list):
         #     to the root, discard every hash we've added.
 
         try:
-            num_levels = depth_of(len(self)-1)
+            num_levels = depth_of(len(self) - 1)
             # hashes_to_check[level] is set(index). This holds the "red dots"
             # described above
-            hashes_to_check = [set() for level in range(num_levels+1)]
+            hashes_to_check = [set() for level in range(num_levels + 1)]
 
             # first we provisionally add all hashes to the tree, comparing
             # any duplicates
-            for i,h in new_hashes.items():
+            for i, h in new_hashes.items():
                 if self[i]:
                     if self[i] != h:
-                        raise BadHashError("new hash %r does not match "
-                                           "existing hash %r at %r"
-                                           % (base32.b2a(h),
-                                              base32.b2a(self[i]),
-                                              self._name_hash(i)))
+                        raise BadHashError(
+                            "new hash %r does not match "
+                            "existing hash %r at %r"
+                            % (base32.b2a(h), base32.b2a(self[i]), self._name_hash(i))
+                        )
                 else:
                     level = depth_of(i)
                     hashes_to_check[level].add(i)
@@ -460,20 +491,21 @@ class IncompleteHashTree(CompleteBinaryTreeMixin, list):
                     if self[siblingnum] is None:
                         # without a sibling, we can't compute a parent, and
                         # we can't verify this node
-                        raise NotEnoughHashesError("unable to validate [%d]"%i)
+                        raise NotEnoughHashesError("unable to validate [%d]" % i)
                     parentnum = self.parent(i)
                     # make sure we know right from left
                     leftnum, rightnum = sorted([i, siblingnum])
                     new_parent_hash = pair_hash(self[leftnum], self[rightnum])
                     if self[parentnum]:
                         if self[parentnum] != new_parent_hash:
-                            raise BadHashError("h([%d]+[%d]) != h[%d]" %
-                                               (leftnum, rightnum, parentnum))
+                            raise BadHashError(
+                                "h([%d]+[%d]) != h[%d]" % (leftnum, rightnum, parentnum)
+                            )
                     else:
                         self[parentnum] = new_parent_hash
                         remove_upon_failure.add(parentnum)
                         parent_level = depth_of(parentnum)
-                        assert parent_level == level-1
+                        assert parent_level == level - 1
                         hashes_to_check[parent_level].add(parentnum)
 
                     # our sibling is now as valid as this node

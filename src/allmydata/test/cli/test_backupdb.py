@@ -7,9 +7,31 @@ from __future__ import division
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
     # Don't import future bytes so we don't break a couple of tests
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import sys
 import os.path, time
@@ -20,6 +42,7 @@ from allmydata.util import fileutil
 from allmydata.util.encodingutil import listdir_unicode
 from allmydata.scripts import backupdb
 from ..common_util import skip_if_cannot_represent_filename
+
 
 class BackupDB(unittest.TestCase):
     def create(self, dbfile):
@@ -40,9 +63,12 @@ class BackupDB(unittest.TestCase):
         fileutil.make_dirs(basedir)
         dbfile = os.path.join(basedir, "dbfile")
         stderr = StringIO()
-        created = backupdb.get_backupdb(dbfile, stderr=stderr,
-                                        create_version=(backupdb.SCHEMA_v1, 1),
-                                        just_create=True)
+        created = backupdb.get_backupdb(
+            dbfile,
+            stderr=stderr,
+            create_version=(backupdb.SCHEMA_v1, 1),
+            just_create=True,
+        )
         self.failUnless(created, "unable to create v1 backupdb")
         # now we should have a v1 database on disk
         bdb = self.create(dbfile)
@@ -53,12 +79,12 @@ class BackupDB(unittest.TestCase):
         fileutil.make_dirs(basedir)
 
         # put a non-DB file in the way
-        not_a_db = ("I do not look like a sqlite database\n" +
-                    "I'M NOT" * 1000) # OS-X sqlite-2.3.2 takes some convincing
+        not_a_db = (
+            "I do not look like a sqlite database\n" + "I'M NOT" * 1000
+        )  # OS-X sqlite-2.3.2 takes some convincing
         self.writeto("not-a-database", not_a_db)
         stderr_f = StringIO()
-        bdb = backupdb.get_backupdb(os.path.join(basedir, "not-a-database"),
-                                    stderr_f)
+        bdb = backupdb.get_backupdb(os.path.join(basedir, "not-a-database"), stderr_f)
         self.failUnlessEqual(bdb, None)
         stderr = stderr_f.getvalue()
         self.failUnlessIn("backupdb file is unusable", stderr)
@@ -74,11 +100,10 @@ class BackupDB(unittest.TestCase):
         self.failUnlessEqual(bdb, None)
         stderr = stderr_f.getvalue()
         # the error-message is different under PyPy ... not sure why?
-        if 'pypy' in sys.version.lower():
+        if "pypy" in sys.version.lower():
             self.failUnlessIn("Could not open database", stderr)
         else:
             self.failUnlessIn("unable to open database file", stderr)
-
 
     def writeto(self, filename, data):
         fn = os.path.join(self.basedir, filename)
@@ -109,7 +134,7 @@ class BackupDB(unittest.TestCase):
         self.failUnlessEqual(type(r.was_uploaded()), bytes)
         self.failUnlessEqual(r.should_check(), False)
 
-        time.sleep(1.0) # make sure the timestamp changes
+        time.sleep(1.0)  # make sure the timestamp changes
         self.writeto("foo.txt", "NEW")
 
         r = bdb.check_file(foo_fn)
@@ -137,7 +162,7 @@ class BackupDB(unittest.TestCase):
         r = bdb.check_file(blah_fn)
         self.failUnlessEqual(r.was_uploaded(), b"blah-cap")
         self.failUnlessEqual(r.should_check(), True)
-        r.did_check_healthy("results") # we know they're ignored for now
+        r.did_check_healthy("results")  # we know they're ignored for now
 
         bdb.NO_CHECK_BEFORE = 200
         bdb.ALWAYS_CHECK_AFTER = 400
@@ -147,7 +172,7 @@ class BackupDB(unittest.TestCase):
         self.failUnlessEqual(r.should_check(), False)
 
         os.unlink(os.path.join(basedir, "foo.txt"))
-        fileutil.make_dirs(os.path.join(basedir, "foo.txt")) # file becomes dir
+        fileutil.make_dirs(os.path.join(basedir, "foo.txt"))  # file becomes dir
         r = bdb.check_file(foo_fn)
         self.failUnlessEqual(r.was_uploaded(), False)
 
@@ -167,8 +192,7 @@ class BackupDB(unittest.TestCase):
         bdb = backupdb.get_backupdb(where, stderr_f)
         self.failUnlessEqual(bdb, None)
         stderr = stderr_f.getvalue()
-        self.failUnlessEqual(stderr.strip(),
-                             "Unable to handle backupdb version 0")
+        self.failUnlessEqual(stderr.strip(), "Unable to handle backupdb version 0")
 
     def test_directory(self):
         self.basedir = basedir = os.path.join("backupdb", "directory")
@@ -176,9 +200,11 @@ class BackupDB(unittest.TestCase):
         dbfile = os.path.join(basedir, "dbfile")
         bdb = self.create(dbfile)
 
-        contents = {u"file1": b"URI:CHK:blah1",
-                    u"file2": b"URI:CHK:blah2",
-                    u"dir1": b"URI:DIR2-CHK:baz2"}
+        contents = {
+            "file1": b"URI:CHK:blah1",
+            "file2": b"URI:CHK:blah2",
+            "dir1": b"URI:DIR2-CHK:baz2",
+        }
         r = bdb.check_directory(contents)
         self.failUnless(isinstance(r, backupdb.DirectoryResult))
         self.failIf(r.was_created())
@@ -217,32 +243,32 @@ class BackupDB(unittest.TestCase):
         self.failUnlessEqual(r.was_created(), dircap)
         self.failUnlessEqual(r.should_check(), False)
 
-
-        contents2 = {u"file1": b"URI:CHK:blah1",
-                     u"dir1": b"URI:DIR2-CHK:baz2"}
+        contents2 = {"file1": b"URI:CHK:blah1", "dir1": b"URI:DIR2-CHK:baz2"}
         r = bdb.check_directory(contents2)
         self.failIf(r.was_created())
 
-        contents3 = {u"file1": b"URI:CHK:blah1",
-                     u"file2": b"URI:CHK:blah3",
-                     u"dir1": b"URI:DIR2-CHK:baz2"}
+        contents3 = {
+            "file1": b"URI:CHK:blah1",
+            "file2": b"URI:CHK:blah3",
+            "dir1": b"URI:DIR2-CHK:baz2",
+        }
         r = bdb.check_directory(contents3)
         self.failIf(r.was_created())
 
     def test_unicode(self):
-        skip_if_cannot_represent_filename(u"f\u00f6\u00f6.txt")
-        skip_if_cannot_represent_filename(u"b\u00e5r.txt")
+        skip_if_cannot_represent_filename("f\u00f6\u00f6.txt")
+        skip_if_cannot_represent_filename("b\u00e5r.txt")
 
         self.basedir = basedir = os.path.join("backupdb", "unicode")
         fileutil.make_dirs(basedir)
         dbfile = os.path.join(basedir, "dbfile")
         bdb = self.create(dbfile)
 
-        self.writeto(u"f\u00f6\u00f6.txt", "foo.txt")
+        self.writeto("f\u00f6\u00f6.txt", "foo.txt")
         files = [fn for fn in listdir_unicode(str(basedir)) if fn.endswith(".txt")]
         self.failUnlessEqual(len(files), 1)
         foo_fn = os.path.join(basedir, files[0])
-        #print(foo_fn, type(foo_fn))
+        # print(foo_fn, type(foo_fn))
 
         r = bdb.check_file(foo_fn)
         self.failUnlessEqual(r.was_uploaded(), False)
@@ -252,8 +278,8 @@ class BackupDB(unittest.TestCase):
         self.failUnlessEqual(r.was_uploaded(), b"foo-cap")
         self.failUnlessEqual(r.should_check(), False)
 
-        bar_fn = self.writeto(u"b\u00e5r.txt", "bar.txt")
-        #print(bar_fn, type(bar_fn))
+        bar_fn = self.writeto("b\u00e5r.txt", "bar.txt")
+        # print(bar_fn, type(bar_fn))
 
         r = bdb.check_file(bar_fn)
         self.failUnlessEqual(r.was_uploaded(), False)
@@ -262,4 +288,3 @@ class BackupDB(unittest.TestCase):
         r = bdb.check_file(bar_fn)
         self.failUnlessEqual(r.was_uploaded(), b"bar-cap")
         self.failUnlessEqual(r.should_check(), False)
-

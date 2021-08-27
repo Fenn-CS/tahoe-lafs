@@ -10,8 +10,31 @@ from __future__ import division
 from __future__ import print_function
 
 from future.utils import PY2, native_str
+
 if PY2:
-    from builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 from twisted.trial import unittest
 from twisted.python.failure import Failure
@@ -41,8 +64,12 @@ class Log(unittest.TestCase):
             raise SampleError("simple sample")
         except:
             f = Failure()
-        tahoe_log.err(format="intentional sample error",
-                      failure=f, level=tahoe_log.OPERATIONAL, umid="wO9UoQ")
+        tahoe_log.err(
+            format="intentional sample error",
+            failure=f,
+            level=tahoe_log.OPERATIONAL,
+            umid="wO9UoQ",
+        )
         result = self.flushLoggedErrors(SampleError)
         self.assertEqual(len(result), 1)
 
@@ -51,6 +78,7 @@ class Log(unittest.TestCase):
         If facility is passed to PrefixingLogMixin.__init__, it is used as
         default facility.
         """
+
         class LoggingObject1(tahoe_log.PrefixingLogMixin):
             pass
 
@@ -65,48 +93,52 @@ class Log(unittest.TestCase):
         If prefix is passed to PrefixingLogMixin.__init__, it is used in
         message rendering.
         """
+
         class LoggingObject4(tahoe_log.PrefixingLogMixin):
             pass
 
         obj = LoggingObject4("fac", prefix="pre1")
         obj.log("hello")
         obj.log("world")
-        self.assertEqual(self.messages[-2][0], '<LoggingObject4 #1>(pre1): hello')
-        self.assertEqual(self.messages[-1][0], '<LoggingObject4 #1>(pre1): world')
+        self.assertEqual(self.messages[-2][0], "<LoggingObject4 #1>(pre1): hello")
+        self.assertEqual(self.messages[-1][0], "<LoggingObject4 #1>(pre1): world")
 
     def test_with_bytes_prefix(self):
         """
         If bytes prefix is passed to PrefixingLogMixin.__init__, it is used in
         message rendering.
         """
+
         class LoggingObject5(tahoe_log.PrefixingLogMixin):
             pass
 
         obj = LoggingObject5("fac", prefix=b"pre1")
         obj.log("hello")
         obj.log("world")
-        self.assertEqual(self.messages[-2][0], '<LoggingObject5 #1>(pre1): hello')
-        self.assertEqual(self.messages[-1][0], '<LoggingObject5 #1>(pre1): world')
+        self.assertEqual(self.messages[-2][0], "<LoggingObject5 #1>(pre1): hello")
+        self.assertEqual(self.messages[-1][0], "<LoggingObject5 #1>(pre1): world")
 
     def test_no_prefix(self):
         """
         If no prefix is passed to PrefixingLogMixin.__init__, it is not used in
         message rendering.
         """
+
         class LoggingObject2(tahoe_log.PrefixingLogMixin):
             pass
 
         obj = LoggingObject2()
         obj.log("hello")
         obj.log("world")
-        self.assertEqual(self.messages[-2][0], '<LoggingObject2 #1>: hello')
-        self.assertEqual(self.messages[-1][0], '<LoggingObject2 #1>: world')
+        self.assertEqual(self.messages[-2][0], "<LoggingObject2 #1>: hello")
+        self.assertEqual(self.messages[-1][0], "<LoggingObject2 #1>: world")
 
     def test_numming(self):
         """
         Objects inheriting from PrefixingLogMixin get a unique number from a
         class-specific counter.
         """
+
         class LoggingObject3(tahoe_log.PrefixingLogMixin):
             pass
 
@@ -114,8 +146,8 @@ class Log(unittest.TestCase):
         obj2 = LoggingObject3()
         obj.log("hello")
         obj2.log("world")
-        self.assertEqual(self.messages[-2][0], '<LoggingObject3 #1>: hello')
-        self.assertEqual(self.messages[-1][0], '<LoggingObject3 #2>: world')
+        self.assertEqual(self.messages[-2][0], "<LoggingObject3 #1>: hello")
+        self.assertEqual(self.messages[-1][0], "<LoggingObject3 #2>: world")
 
     def test_parent_id(self):
         """
@@ -124,6 +156,7 @@ class Log(unittest.TestCase):
 
         This logic is pretty bogus, but that's what the code does.
         """
+
         class LoggingObject1(tahoe_log.PrefixingLogMixin):
             pass
 
@@ -134,14 +167,16 @@ class Log(unittest.TestCase):
         obj.log("two", parent="par2")
         obj.log("three")
         obj.log("four")
-        self.assertEqual([m[2] for m in self.messages],
-                         [None, "par1", "par2", "msg1", "msg1"])
+        self.assertEqual(
+            [m[2] for m in self.messages], [None, "par1", "par2", "msg1", "msg1"]
+        )
 
     def test_grandparent_id(self):
         """
         If grandparent message id is given, it's used as parent id of the first
         message.
         """
+
         class LoggingObject1(tahoe_log.PrefixingLogMixin):
             pass
 
@@ -152,11 +187,13 @@ class Log(unittest.TestCase):
         obj.log("two", parent="par2")
         obj.log("three")
         obj.log("four")
-        self.assertEqual([m[2] for m in self.messages],
-                         ["grand", "par1", "par2", "msg1", "msg1"])
+        self.assertEqual(
+            [m[2] for m in self.messages], ["grand", "par1", "par2", "msg1", "msg1"]
+        )
 
     def test_native_string_keys(self):
         """Keyword argument keys are all native strings."""
+
         class LoggingObject17(tahoe_log.PrefixingLogMixin):
             pass
 

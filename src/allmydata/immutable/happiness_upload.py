@@ -10,9 +10,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
     # We omit dict, just in case newdict breaks things for external Python 2 code.
-    from builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, list, object, range, str, max, min  # noqa: F401
+    from builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 from queue import PriorityQueue
 
@@ -29,12 +51,13 @@ def augmenting_path_for(graph):
     bfs_tree = bfs(graph, 0)
     if bfs_tree[len(graph) - 1]:
         n = len(graph) - 1
-        path = [] # [(u, v)], where u and v are vertices in the graph
+        path = []  # [(u, v)], where u and v are vertices in the graph
         while n != 0:
             path.insert(0, (bfs_tree[n], n))
             n = bfs_tree[n]
         return path
     return False
+
 
 def bfs(graph, s):
     """
@@ -47,13 +70,13 @@ def bfs(graph, s):
     # WHITE vertices are those that we haven't seen or explored yet.
     WHITE = 0
     # GRAY vertices are those we have seen, but haven't explored yet
-    GRAY  = 1
+    GRAY = 1
     # BLACK vertices are those we have seen and explored
     BLACK = 2
-    color        = [WHITE for i in range(len(graph))]
-    predecessor  = [None for i in range(len(graph))]
-    distance     = [-1 for i in range(len(graph))]
-    queue = [s] # vertices that we haven't explored yet.
+    color = [WHITE for i in range(len(graph))]
+    predecessor = [None for i in range(len(graph))]
+    distance = [-1 for i in range(len(graph))]
+    queue = [s]  # vertices that we haven't explored yet.
     color[s] = GRAY
     distance[s] = 0
     while queue:
@@ -66,6 +89,7 @@ def bfs(graph, s):
                 queue.append(v)
         color[n] = BLACK
     return predecessor
+
 
 def residual_network(graph, f):
     """
@@ -165,7 +189,7 @@ def _compute_maximum_graph(graph, shareIndices):
         for (u, v) in path:
             flow_function[u][v] += delta
             flow_function[v][u] -= delta
-            residual_graph, residual_function = residual_network(graph,flow_function)
+            residual_graph, residual_function = residual_network(graph, flow_function)
 
     new_mappings = {}
     for shareIndex in shareIndices:
@@ -190,6 +214,7 @@ def _extract_ids(mappings):
                 peers.add(item)
     return (peers, shares)
 
+
 def _distribute_homeless_shares(mappings, homeless_shares, peers_to_shares):
     """
     Shares which are not mapped to a peer in the maximum spanning graph
@@ -198,7 +223,7 @@ def _distribute_homeless_shares(mappings, homeless_shares, peers_to_shares):
     available peers. If possible a share will be placed on the server it was
     originally on, signifying the lease should be renewed instead.
     """
-    #print("mappings, homeless_shares, peers_to_shares %s %s %s" % (mappings, homeless_shares, peers_to_shares))
+    # print("mappings, homeless_shares, peers_to_shares %s %s %s" % (mappings, homeless_shares, peers_to_shares))
     servermap_peerids = set([key for key in peers_to_shares])
     servermap_shareids = set()
     for key in sorted(peers_to_shares.keys()):
@@ -235,7 +260,8 @@ def _distribute_homeless_shares(mappings, homeless_shares, peers_to_shares):
     for share in to_distribute:
         peer = pQueue.get()
         mappings[share] = set([peer[1]])
-        pQueue.put((peer[0]+1, peer[1]))
+        pQueue.put((peer[0] + 1, peer[1]))
+
 
 def _convert_mappings(index_to_peer, index_to_share, maximum_graph):
     """
@@ -250,7 +276,9 @@ def _convert_mappings(index_to_peer, index_to_share, maximum_graph):
         if peer == None:
             converted_mappings.setdefault(index_to_share[share], None)
         else:
-            converted_mappings.setdefault(index_to_share[share], set([index_to_peer[peer]]))
+            converted_mappings.setdefault(
+                index_to_share[share], set([index_to_peer[peer]])
+            )
     return converted_mappings
 
 
@@ -272,8 +300,8 @@ def _servermap_flow_graph(peers, shares, servermap):
     indexedShares = []
     sink_num = len(peers) + len(shares) + 1
     graph.append([peer_to_index[peer] for peer in peers])
-    #print("share_to_index %s" % share_to_index)
-    #print("servermap %s" % servermap)
+    # print("share_to_index %s" % share_to_index)
+    # print("servermap %s" % servermap)
     for peer in peers:
         if peer in servermap:
             for s in servermap[peer]:
@@ -329,6 +357,7 @@ def _flow_network(peerIndices, shareIndices):
     graph.append([])
     return graph
 
+
 def share_placement(peers, readonly_peers, shares, peers_to_shares):
     """
     Generates the allocations the upload should based on the given
@@ -352,7 +381,9 @@ def share_placement(peers, readonly_peers, shares, peers_to_shares):
             for share in peers_to_shares[peer]:
                 readonly_shares.add(share)
 
-    readonly_mappings = _calculate_mappings(readonly_peers, readonly_shares, readonly_map)
+    readonly_mappings = _calculate_mappings(
+        readonly_peers, readonly_shares, readonly_map
+    )
     used_peers, used_shares = _extract_ids(readonly_mappings)
 
     # Calculate share placement for the remaining existing allocations
@@ -383,12 +414,15 @@ def share_placement(peers, readonly_peers, shares, peers_to_shares):
     # won't be preserved by existing allocations.
     new_peers = new_peers - existing_peers - used_peers
 
-
     new_shares = new_shares - existing_shares - used_shares
     new_mappings = _calculate_mappings(new_peers, new_shares)
-    #print("new_peers %s" % new_peers)
-    #print("new_mappings %s" % new_mappings)
-    mappings = dict(list(readonly_mappings.items()) + list(existing_mappings.items()) + list(new_mappings.items()))
+    # print("new_peers %s" % new_peers)
+    # print("new_mappings %s" % new_mappings)
+    mappings = dict(
+        list(readonly_mappings.items())
+        + list(existing_mappings.items())
+        + list(new_mappings.items())
+    )
     homeless_shares = set()
     for share in mappings:
         if mappings[share] is None:
@@ -396,12 +430,9 @@ def share_placement(peers, readonly_peers, shares, peers_to_shares):
     if len(homeless_shares) != 0:
         # 'servermap' should contain only read/write peers
         _distribute_homeless_shares(
-            mappings, homeless_shares,
-            {
-                k: v
-                for k, v in list(peers_to_shares.items())
-                if k not in readonly_peers
-            }
+            mappings,
+            homeless_shares,
+            {k: v for k, v in list(peers_to_shares.items()) if k not in readonly_peers},
         )
 
     # now, if any share is *still* mapped to None that means "don't
@@ -412,9 +443,7 @@ def share_placement(peers, readonly_peers, shares, peers_to_shares):
         while True:
             for peer in peers:
                 yield peer
+
     peer_iter = round_robin(peers - readonly_peers)
 
-    return {
-        k: v.pop() if v else next(peer_iter)
-        for k, v in list(mappings.items())
-    }
+    return {k: v.pop() if v else next(peer_iter) for k, v in list(mappings.items())}

@@ -8,36 +8,58 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 from twisted.trial import unittest
 from twisted.internet import defer
 from allmydata.monitor import Monitor
-from allmydata.mutable.common import \
-     MODE_CHECK, MODE_ANYTHING, MODE_WRITE, MODE_READ
+from allmydata.mutable.common import MODE_CHECK, MODE_ANYTHING, MODE_WRITE, MODE_READ
 from allmydata.mutable.publish import MutableData
 from allmydata.mutable.servermap import ServerMap, ServermapUpdater
 from .util import PublishMixin
+
 
 class Servermap(unittest.TestCase, PublishMixin):
     def setUp(self):
         return self.publish_one()
 
-    def make_servermap(self, mode=MODE_CHECK, fn=None, sb=None,
-                       update_range=None):
+    def make_servermap(self, mode=MODE_CHECK, fn=None, sb=None, update_range=None):
         if fn is None:
             fn = self._fn
         if sb is None:
             sb = self._storage_broker
-        smu = ServermapUpdater(fn, sb, Monitor(),
-                               ServerMap(), mode, update_range=update_range)
+        smu = ServermapUpdater(
+            fn, sb, Monitor(), ServerMap(), mode, update_range=update_range
+        )
         d = smu.update()
         return d
 
     def update_servermap(self, oldmap, mode=MODE_CHECK):
-        smu = ServermapUpdater(self._fn, self._storage_broker, Monitor(),
-                               oldmap, mode)
+        smu = ServermapUpdater(self._fn, self._storage_broker, Monitor(), oldmap, mode)
         d = smu.update()
         return d
 
@@ -96,16 +118,17 @@ class Servermap(unittest.TestCase, PublishMixin):
 
         # create a new file, which is large enough to knock the privkey out
         # of the early part of the file
-        LARGE = b"These are Larger contents" * 200 # about 5KB
+        LARGE = b"These are Larger contents" * 200  # about 5KB
         LARGE_uploadable = MutableData(LARGE)
         d.addCallback(lambda res: self._nodemaker.create_mutable_file(LARGE_uploadable))
+
         def _created(large_fn):
             large_fn2 = self._nodemaker.create_from_cap(large_fn.get_uri())
             return self.make_servermap(MODE_WRITE, large_fn2)
+
         d.addCallback(_created)
         d.addCallback(lambda sm: self.failUnlessOneRecoverable(sm, 10))
         return d
-
 
     def test_mark_bad(self):
         d = defer.succeed(None)
@@ -113,6 +136,7 @@ class Servermap(unittest.TestCase, PublishMixin):
 
         d.addCallback(lambda res: ms(mode=MODE_READ))
         d.addCallback(lambda sm: self.failUnlessOneRecoverable(sm, 6))
+
         def _made_map(sm):
             v = sm.best_recoverable_version()
             vm = sm.make_versionmap()
@@ -124,10 +148,12 @@ class Servermap(unittest.TestCase, PublishMixin):
             # new shares should be found to replace the missing ones.
             for (shnum, server, timestamp) in shares:
                 if shnum < 5:
-                    self._corrupted.add( (server, shnum) )
+                    self._corrupted.add((server, shnum))
                     sm.mark_bad_share(server, shnum, b"")
             return self.update_servermap(sm, MODE_WRITE)
+
         d.addCallback(_made_map)
+
         def _check_map(sm):
             # this should find all 5 shares that weren't marked bad
             v = sm.best_recoverable_version()
@@ -135,9 +161,11 @@ class Servermap(unittest.TestCase, PublishMixin):
             shares = list(vm[v])
             for (server, shnum) in self._corrupted:
                 server_shares = sm.debug_shares_on_server(server)
-                self.failIf(shnum in server_shares,
-                            "%d was in %s" % (shnum, server_shares))
+                self.failIf(
+                    shnum in server_shares, "%d was in %s" % (shnum, server_shares)
+                )
             self.failUnlessEqual(len(shares), 5)
+
         d.addCallback(_check_map)
         return d
 
@@ -149,10 +177,10 @@ class Servermap(unittest.TestCase, PublishMixin):
         self.failUnlessEqual(len(sm.shares_available()), 0)
 
     def test_no_shares(self):
-        self._storage._peers = {} # delete all shares
+        self._storage._peers = {}  # delete all shares
         ms = self.make_servermap
         d = defer.succeed(None)
-#
+        #
         d.addCallback(lambda res: ms(mode=MODE_CHECK))
         d.addCallback(lambda sm: self.failUnlessNoneRecoverable(sm))
 
@@ -173,7 +201,7 @@ class Servermap(unittest.TestCase, PublishMixin):
         best = sm.best_recoverable_version()
         self.failUnlessEqual(best, None)
         self.failUnlessEqual(len(sm.shares_available()), 1)
-        self.failUnlessEqual(list(sm.shares_available().values())[0], (2,3,10) )
+        self.failUnlessEqual(list(sm.shares_available().values())[0], (2, 3, 10))
         return sm
 
     def test_not_quite_enough_shares(self):
@@ -192,8 +220,7 @@ class Servermap(unittest.TestCase, PublishMixin):
 
         d.addCallback(lambda res: ms(mode=MODE_CHECK))
         d.addCallback(lambda sm: self.failUnlessNotQuiteEnough(sm))
-        d.addCallback(lambda sm:
-                      self.failUnlessEqual(len(sm.make_sharemap()), 2))
+        d.addCallback(lambda sm: self.failUnlessEqual(len(sm.make_sharemap()), 2))
         d.addCallback(lambda res: ms(mode=MODE_ANYTHING))
         d.addCallback(lambda sm: self.failUnlessNotQuiteEnough(sm))
         d.addCallback(lambda res: ms(mode=MODE_WRITE))
@@ -203,46 +230,45 @@ class Servermap(unittest.TestCase, PublishMixin):
 
         return d
 
-
     def test_servermapupdater_finds_mdmf_files(self):
         # setUp already published an MDMF file for us. We just need to
         # make sure that when we run the ServermapUpdater, the file is
         # reported to have one recoverable version.
         d = defer.succeed(None)
-        d.addCallback(lambda ignored:
-            self.publish_mdmf())
-        d.addCallback(lambda ignored:
-            self.make_servermap(mode=MODE_CHECK))
+        d.addCallback(lambda ignored: self.publish_mdmf())
+        d.addCallback(lambda ignored: self.make_servermap(mode=MODE_CHECK))
         # Calling make_servermap also updates the servermap in the mode
         # that we specify, so we just need to see what it says.
         def _check_servermap(sm):
             self.failUnlessEqual(len(sm.recoverable_versions()), 1)
+
         d.addCallback(_check_servermap)
         return d
 
-
     def test_fetch_update(self):
         d = defer.succeed(None)
-        d.addCallback(lambda ignored:
-            self.publish_mdmf())
-        d.addCallback(lambda ignored:
-            self.make_servermap(mode=MODE_WRITE, update_range=(1, 2)))
+        d.addCallback(lambda ignored: self.publish_mdmf())
+        d.addCallback(
+            lambda ignored: self.make_servermap(mode=MODE_WRITE, update_range=(1, 2))
+        )
+
         def _check_servermap(sm):
             # 10 shares
             self.failUnlessEqual(len(sm.update_data), 10)
             # one version
             for data in sm.update_data.values():
                 self.failUnlessEqual(len(data), 1)
+
         d.addCallback(_check_servermap)
         return d
 
-
     def test_servermapupdater_finds_sdmf_files(self):
         d = defer.succeed(None)
-        d.addCallback(lambda ignored:
-            self.publish_sdmf())
-        d.addCallback(lambda ignored:
-            self.make_servermap(mode=MODE_CHECK))
-        d.addCallback(lambda servermap:
-            self.failUnlessEqual(len(servermap.recoverable_versions()), 1))
+        d.addCallback(lambda ignored: self.publish_sdmf())
+        d.addCallback(lambda ignored: self.make_servermap(mode=MODE_CHECK))
+        d.addCallback(
+            lambda servermap: self.failUnlessEqual(
+                len(servermap.recoverable_versions()), 1
+            )
+        )
         return d

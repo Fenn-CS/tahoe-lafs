@@ -9,11 +9,35 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 if PY2:
     import string
+
     maketrans = string.maketrans
     translate = string.translate
 else:
@@ -26,12 +50,13 @@ from allmydata.util.mathutil import log_ceil, log_floor
 
 chars = b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 
-BASE62CHAR = b'[' + chars + b']'
+BASE62CHAR = b"[" + chars + b"]"
 
-vals = b''.join([byteschr(i) for i in range(62)])
+vals = b"".join([byteschr(i) for i in range(62)])
 c2vtranstable = maketrans(chars, vals)
 v2ctranstable = maketrans(vals, chars)
 identitytranstable = maketrans(chars, chars)
+
 
 def b2a(os):
     """
@@ -39,9 +64,16 @@ def b2a(os):
 
     @return the contents of os in base-62 encoded form, as bytes
     """
-    cs = b2a_l(os, len(os)*8)
-    assert num_octets_that_encode_to_this_many_chars(len(cs)) == len(os), "%s != %s, numchars: %s" % (num_octets_that_encode_to_this_many_chars(len(cs)), len(os), len(cs))
+    cs = b2a_l(os, len(os) * 8)
+    assert num_octets_that_encode_to_this_many_chars(len(cs)) == len(
+        os
+    ), "%s != %s, numchars: %s" % (
+        num_octets_that_encode_to_this_many_chars(len(cs)),
+        len(os),
+        len(cs),
+    )
     return cs
+
 
 def b2a_l(os, lengthinbits):
     """
@@ -70,10 +102,12 @@ def b2a_l(os, lengthinbits):
     """
     # We call bytes() again for Python 2, to ensure literals are using future's
     # Python 3-compatible variant.
-    os = [o for o in reversed(bytes(os))] # treat os as big-endian -- and we want to process the least-significant o first
+    os = [
+        o for o in reversed(bytes(os))
+    ]  # treat os as big-endian -- and we want to process the least-significant o first
 
     value = 0
-    numvalues = 1 # the number of possible values that value could be
+    numvalues = 1  # the number of possible values that value could be
     for o in os:
         o *= numvalues
         value += o
@@ -85,19 +119,25 @@ def b2a_l(os, lengthinbits):
         value //= 62
         numvalues //= 62
 
-    return translate(bytes([c for c in reversed(chars)]), v2ctranstable) # make it big-endian
+    return translate(
+        bytes([c for c in reversed(chars)]), v2ctranstable
+    )  # make it big-endian
+
 
 def num_octets_that_encode_to_this_many_chars(numcs):
-    return log_floor(62**numcs, 256)
+    return log_floor(62 ** numcs, 256)
+
 
 def num_chars_that_this_many_octets_encode_to(numos):
-    return log_ceil(256**numos, 62)
+    return log_ceil(256 ** numos, 62)
+
 
 def a2b(cs):
     """
     @param cs the base-62 encoded data (a string)
     """
-    return a2b_l(cs, num_octets_that_encode_to_this_many_chars(len(cs))*8)
+    return a2b_l(cs, num_octets_that_encode_to_this_many_chars(len(cs)) * 8)
+
 
 def a2b_l(cs, lengthinbits):
     """
@@ -116,20 +156,22 @@ def a2b_l(cs, lengthinbits):
     """
     # We call bytes() again for Python 2, to ensure literals are using future's
     # Python 3-compatible variant.
-    cs = [c for c in reversed(bytes(translate(cs, c2vtranstable)))] # treat cs as big-endian -- and we want to process the least-significant c first
+    cs = [
+        c for c in reversed(bytes(translate(cs, c2vtranstable)))
+    ]  # treat cs as big-endian -- and we want to process the least-significant c first
 
     value = 0
-    numvalues = 1 # the number of possible values that value could be
+    numvalues = 1  # the number of possible values that value could be
     for c in cs:
         c *= numvalues
         value += c
         numvalues *= 62
 
-    numvalues = 2**lengthinbits
+    numvalues = 2 ** lengthinbits
     result_bytes = []
     while numvalues > 1:
         result_bytes.append(value % 256)
         value //= 256
         numvalues //= 256
 
-    return bytes([b for b in reversed(result_bytes)]) # make it big-endian
+    return bytes([b for b in reversed(result_bytes)])  # make it big-endian

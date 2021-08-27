@@ -7,8 +7,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        max,
+        min,
+    )  # noqa: F401
+
     # Use native unicode() as str() to prevent leaking futurebytes in ways that
     # break string formattin.
     from past.builtins import unicode as str
@@ -65,20 +88,25 @@ class ReplaceMeMixin(object):
         if mutable_type is not None:
             data = MutableFileHandle(req.content)
             d = client.create_mutable_file(data, version=mutable_type)
+
             def _uploaded(newnode):
-                d2 = self.parentnode.set_node(self.name, newnode,
-                                              overwrite=replace)
+                d2 = self.parentnode.set_node(self.name, newnode, overwrite=replace)
                 d2.addCallback(lambda res: newnode)
                 return d2
+
             d.addCallback(_uploaded)
         else:
             assert file_format == "CHK"
             uploadable = FileHandle(req.content, convergence=client.convergence)
-            d = self.parentnode.add_file(self.name, uploadable,
-                                         overwrite=replace)
+            d = self.parentnode.add_file(self.name, uploadable, overwrite=replace)
+
         def _done(filenode):
-            log.msg("webish upload complete",
-                    facility="tahoe.webish", level=log.NOISY, umid="TCjBGQ")
+            log.msg(
+                "webish upload complete",
+                facility="tahoe.webish",
+                level=log.NOISY,
+                umid="TCjBGQ",
+            )
             if self.node:
                 # we've replaced an existing file (or modified a mutable
                 # file), so the response code is 200
@@ -87,6 +115,7 @@ class ReplaceMeMixin(object):
                 # we've created a new file, so the code is 201
                 req.setResponseCode(http.CREATED)
             return filenode.get_uri()
+
         d.addCallback(_done)
         return d
 
@@ -98,7 +127,6 @@ class ReplaceMeMixin(object):
         d.addCallback(lambda res: childnode.get_uri())
         return d
 
-
     def replace_me_with_a_formpost(self, req, client, replace):
         # create a new file, maybe mutable, maybe immutable
         file_format = get_format(req, "CHK")
@@ -107,11 +135,12 @@ class ReplaceMeMixin(object):
             mutable_type = get_mutable_type(file_format)
             uploadable = MutableFileHandle(contents.file)
             d = client.create_mutable_file(uploadable, version=mutable_type)
+
             def _uploaded(newnode):
-                d2 = self.parentnode.set_node(self.name, newnode,
-                                              overwrite=replace)
+                d2 = self.parentnode.set_node(self.name, newnode, overwrite=replace)
                 d2.addCallback(lambda res: newnode.get_uri())
                 return d2
+
             d.addCallback(_uploaded)
             return d
 
@@ -137,8 +166,9 @@ class PlaceHolderNodeHandler(Resource, ReplaceMeMixin):
 
         assert self.parentnode and self.name
         if req.getHeader("content-range"):
-            raise WebError("Content-Range in PUT not yet supported",
-                           http.NOT_IMPLEMENTED)
+            raise WebError(
+                "Content-Range in PUT not yet supported", http.NOT_IMPLEMENTED
+            )
         if not t:
             return self.replace_me_with_a_child(req, self.client, replace)
         if t == b"uri":
@@ -180,15 +210,15 @@ class FileNodeHandler(Resource, ReplaceMeMixin, object):
         if isinstance(self.node, ProhibitedNode):
             raise FileProhibited(self.node.reason)
         if should_create_intermediate_directories(req):
-                return ErrorPage(
-                    http.CONFLICT,
-                    u"Cannot create directory %s, because its parent is a file, "
-                    u"not a directory" % quote_output(name, encoding='utf-8'),
-                    "no details"
-                )
+            return ErrorPage(
+                http.CONFLICT,
+                "Cannot create directory %s, because its parent is a file, "
+                "not a directory" % quote_output(name, encoding="utf-8"),
+                "no details",
+            )
         return ErrorPage(
             http.BAD_REQUEST,
-            u"Files have no children named %s" % quote_output(name, encoding='utf-8'),
+            "Files have no children named %s" % quote_output(name, encoding="utf-8"),
             "no details",
         )
 
@@ -202,7 +232,9 @@ class FileNodeHandler(Resource, ReplaceMeMixin, object):
             # if the client already has the ETag then we can
             # short-circuit the whole process.
             si = self.node.get_storage_index()
-            if si and req.setETag(b'%s-%s' % (base32.b2a(si), t.encode("ascii") or b"")):
+            if si and req.setETag(
+                b"%s-%s" % (base32.b2a(si), t.encode("ascii") or b"")
+            ):
                 return b""
 
         if not t:
@@ -236,8 +268,9 @@ class FileNodeHandler(Resource, ReplaceMeMixin, object):
             else:
                 d = defer.succeed(None)
             if self.parentnode and self.name:
-                d.addCallback(lambda ignored:
-                    self.parentnode.get_metadata_for(self.name))
+                d.addCallback(
+                    lambda ignored: self.parentnode.get_metadata_for(self.name)
+                )
             else:
                 d.addCallback(lambda ignored: None)
             d.addCallback(lambda md: _file_json_metadata(req, self.node, md))
@@ -277,8 +310,10 @@ class FileNodeHandler(Resource, ReplaceMeMixin, object):
                 # Are we a readonly filenode? We shouldn't allow callers
                 # to try to replace us if we are.
                 if self.node.is_readonly():
-                    raise WebError("PUT to a mutable file: replace or update"
-                                   " requested with read-only cap")
+                    raise WebError(
+                        "PUT to a mutable file: replace or update"
+                        " requested with read-only cap"
+                    )
                 if offset is None:
                     return self.replace_my_contents(req)
 
@@ -289,8 +324,9 @@ class FileNodeHandler(Resource, ReplaceMeMixin, object):
 
             else:
                 if offset is not None:
-                    raise WebError("PUT to a file: append operation invoked "
-                                   "on an immutable cap")
+                    raise WebError(
+                        "PUT to a file: append operation invoked " "on an immutable cap"
+                    )
 
                 assert self.parentnode and self.name
                 return self.replace_me_with_a_child(req, self.client, replace)
@@ -358,23 +394,19 @@ class FileNodeHandler(Resource, ReplaceMeMixin, object):
         d.addCallback(lambda res: self.node.get_uri())
         return d
 
-
     def update_my_contents(self, req, offset):
         req.content.seek(0)
         added_contents = MutableFileHandle(req.content)
 
         d = self.node.get_best_mutable_version()
-        d.addCallback(lambda mv:
-            mv.update(added_contents, offset))
-        d.addCallback(lambda ignored:
-            self.node.get_uri())
+        d.addCallback(lambda mv: mv.update(added_contents, offset))
+        d.addCallback(lambda ignored: self.node.get_uri())
         return d
-
 
     def replace_my_contents_with_a_formpost(self, req):
         # we have a mutable file. Get the data from the formpost, and replace
         # the mutable file's contents with it.
-        new_contents = req.fields['file']
+        new_contents = req.fields["file"]
         new_contents = MutableFileHandle(new_contents.file)
 
         d = self.node.overwrite(new_contents)
@@ -395,18 +427,18 @@ class FileDownloader(Resource, object):
         # list of (first,last) inclusive range tuples.
 
         filesize = self.filenode.get_size()
-        assert isinstance(filesize, (int,long)), filesize
+        assert isinstance(filesize, (int, long)), filesize
 
         try:
             # byte-ranges-specifier
-            units, rangeset = range_header.split('=', 1)
-            if units != 'bytes':
-                return None     # nothing else supported
+            units, rangeset = range_header.split("=", 1)
+            if units != "bytes":
+                return None  # nothing else supported
 
             def parse_range(r):
-                first, last = r.split('-', 1)
+                first, last = r.split("-", 1)
 
-                if first == '':
+                if first == "":
                     # suffix-byte-range-spec
                     first = filesize - long(last)
                     last = filesize - 1
@@ -417,7 +449,7 @@ class FileDownloader(Resource, object):
                     first = long(first)
 
                     # last-byte-pos
-                    if last == '':
+                    if last == "":
                         last = filesize - 1
                     else:
                         last = long(last)
@@ -432,17 +464,19 @@ class FileDownloader(Resource, object):
             # Note: the spec uses "1#" for the list of ranges, which
             # implicitly allows whitespace around the ',' separators,
             # so strip it.
-            return [ parse_range(r.strip()) for r in rangeset.split(',') ]
+            return [parse_range(r.strip()) for r in rangeset.split(",")]
         except ValueError:
             return None
 
     @render_exception
     def render(self, req):
         gte = static.getTypeAndEncoding
-        ctype, encoding = gte(self.filename,
-                              static.File.contentTypes,
-                              static.File.contentEncodings,
-                              defaultType="text/plain")
+        ctype, encoding = gte(
+            self.filename,
+            static.File.contentTypes,
+            static.File.contentEncodings,
+            defaultType="text/plain",
+        )
         req.setHeader("content-type", ctype)
         if encoding:
             req.setHeader("content-encoding", encoding)
@@ -452,18 +486,19 @@ class FileDownloader(Resource, object):
             # try to encode the filename, instead we echo back the exact same
             # bytes we were given in the URL. See the comment in
             # FileNodeHandler.render_GET for the sad details.
-            req.setHeader("content-disposition",
-                          b'attachment; filename="%s"' % self.filename)
+            req.setHeader(
+                "content-disposition", b'attachment; filename="%s"' % self.filename
+            )
 
         filesize = self.filenode.get_size()
-        assert isinstance(filesize, (int,long)), filesize
+        assert isinstance(filesize, (int, long)), filesize
         first, size = 0, None
         contentsize = filesize
         req.setHeader("accept-ranges", "bytes")
 
         # TODO: for mutable files, use the roothash. For LIT, hash the data.
         # or maybe just use the URI for CHK and LIT.
-        rangeheader = req.getHeader('range')
+        rangeheader = req.getHeader("range")
         if rangeheader:
             ranges = self.parse_range_header(rangeheader)
 
@@ -475,16 +510,18 @@ class FileDownloader(Resource, object):
                 first, last = ranges[0]
 
                 if first >= filesize:
-                    raise WebError('First beyond end of file',
-                                   http.REQUESTED_RANGE_NOT_SATISFIABLE)
+                    raise WebError(
+                        "First beyond end of file", http.REQUESTED_RANGE_NOT_SATISFIABLE
+                    )
                 else:
                     first = max(0, first)
-                    last = min(filesize-1, last)
+                    last = min(filesize - 1, last)
 
                     req.setResponseCode(http.PARTIAL_CONTENT)
-                    req.setHeader('content-range',"bytes %s-%s/%s" %
-                                  (str(first), str(last),
-                                   str(filesize)))
+                    req.setHeader(
+                        "content-range",
+                        "bytes %s-%s/%s" % (str(first), str(last), str(filesize)),
+                    )
                     contentsize = last - first + 1
                     size = contentsize
 
@@ -514,6 +551,7 @@ class FileDownloader(Resource, object):
                 # We haven't written anything yet, so we can provide a
                 # sensible error message.
                 return f
+
         d.addCallbacks(
             lambda ignored: None,
             _error,
@@ -526,14 +564,14 @@ def _file_json_metadata(req, filenode, edge_metadata):
     ro_uri = filenode.get_readonly_uri()
     data = ("filenode", get_filenode_metadata(filenode))
     if ro_uri:
-        data[1]['ro_uri'] = ro_uri
+        data[1]["ro_uri"] = ro_uri
     if rw_uri:
-        data[1]['rw_uri'] = rw_uri
+        data[1]["rw_uri"] = rw_uri
     verifycap = filenode.get_verify_cap()
     if verifycap:
-        data[1]['verify_uri'] = verifycap.to_string()
+        data[1]["verify_uri"] = verifycap.to_string()
     if edge_metadata is not None:
-        data[1]['metadata'] = edge_metadata
+        data[1]["metadata"] = edge_metadata
 
     return text_plain(json.dumps(data, indent=1) + "\n", req)
 
@@ -549,7 +587,6 @@ def _file_read_only_uri(req, filenode):
 
 
 class FileNodeDownloadHandler(FileNodeHandler):
-
     @exception_to_child
     def getChild(self, name, req):
         return FileNodeDownloadHandler(self.client, self.node, name=name)

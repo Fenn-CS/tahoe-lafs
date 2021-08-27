@@ -7,8 +7,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 from six.moves import cStringIO as StringIO
 from six import ensure_text, ensure_str
@@ -35,33 +58,68 @@ from allmydata.scripts.common_http import socket_error
 import allmydata.scripts.common_http
 
 # Test that the scripts can be imported.
-from allmydata.scripts import create_node, debug, \
-    tahoe_add_alias, tahoe_backup, tahoe_check, tahoe_cp, tahoe_get, tahoe_ls, \
-    tahoe_manifest, tahoe_mkdir, tahoe_mv, tahoe_put, tahoe_unlink, tahoe_webopen, \
-    tahoe_run
-_hush_pyflakes = [create_node, debug,
-    tahoe_add_alias, tahoe_backup, tahoe_check, tahoe_cp, tahoe_get, tahoe_ls,
-    tahoe_manifest, tahoe_mkdir, tahoe_mv, tahoe_put, tahoe_unlink, tahoe_webopen,
-    tahoe_run]
+from allmydata.scripts import (
+    create_node,
+    debug,
+    tahoe_add_alias,
+    tahoe_backup,
+    tahoe_check,
+    tahoe_cp,
+    tahoe_get,
+    tahoe_ls,
+    tahoe_manifest,
+    tahoe_mkdir,
+    tahoe_mv,
+    tahoe_put,
+    tahoe_unlink,
+    tahoe_webopen,
+    tahoe_run,
+)
+
+_hush_pyflakes = [
+    create_node,
+    debug,
+    tahoe_add_alias,
+    tahoe_backup,
+    tahoe_check,
+    tahoe_cp,
+    tahoe_get,
+    tahoe_ls,
+    tahoe_manifest,
+    tahoe_mkdir,
+    tahoe_mv,
+    tahoe_put,
+    tahoe_unlink,
+    tahoe_webopen,
+    tahoe_run,
+]
 
 from allmydata.scripts import common
-from allmydata.scripts.common import DEFAULT_ALIAS, get_aliases, get_alias, \
-     DefaultAliasMarker
+from allmydata.scripts.common import (
+    DEFAULT_ALIAS,
+    get_aliases,
+    get_alias,
+    DefaultAliasMarker,
+)
 
 from allmydata.scripts import cli, debug, runner
-from allmydata.test.common_util import (ReallyEqualMixin, skip_if_cannot_represent_filename,
-                                         run_cli)
+from allmydata.test.common_util import (
+    ReallyEqualMixin,
+    skip_if_cannot_represent_filename,
+    run_cli,
+)
 from allmydata.test.no_network import GridTestMixin
 from allmydata.test.cli.common import CLITestMixin, parse_options
 from twisted.python import usage
 
 from allmydata.util.encodingutil import listdir_unicode, get_io_encoding
 
+
 class CLI(CLITestMixin, unittest.TestCase):
     def _dump_cap(self, *args):
         args = [ensure_text(s) for s in args]
         config = debug.DumpCapOptions()
-        config.stdout,config.stderr = StringIO(), StringIO()
+        config.stdout, config.stderr = StringIO(), StringIO()
         config.parseOptions(args)
         debug.dump_cap(config)
         self.failIf(config.stderr.getvalue())
@@ -74,26 +132,39 @@ class CLI(CLITestMixin, unittest.TestCase):
         needed_shares = 25
         total_shares = 100
         size = 1234
-        u = uri.CHKFileURI(key=key,
-                           uri_extension_hash=uri_extension_hash,
-                           needed_shares=needed_shares,
-                           total_shares=total_shares,
-                           size=size)
+        u = uri.CHKFileURI(
+            key=key,
+            uri_extension_hash=uri_extension_hash,
+            needed_shares=needed_shares,
+            total_shares=total_shares,
+            size=size,
+        )
         output = self._dump_cap(u.to_string())
         self.failUnless("CHK File:" in output, output)
         self.failUnless("key: aaaqeayeaudaocajbifqydiob4" in output, output)
-        self.failUnless("UEB hash: nf3nimquen7aeqm36ekgxomalstenpkvsdmf6fplj7swdatbv5oa" in output, output)
+        self.failUnless(
+            "UEB hash: nf3nimquen7aeqm36ekgxomalstenpkvsdmf6fplj7swdatbv5oa" in output,
+            output,
+        )
         self.failUnless("size: 1234" in output, output)
         self.failUnless("k/N: 25/100" in output, output)
         self.failUnless("storage index: hdis5iaveku6lnlaiccydyid7q" in output, output)
 
-        output = self._dump_cap("--client-secret", "5s33nk3qpvnj2fw3z4mnm2y6fa",
-                                u.to_string())
-        self.failUnless("client renewal secret: znxmki5zdibb5qlt46xbdvk2t55j7hibejq3i5ijyurkr6m6jkhq" in output, output)
+        output = self._dump_cap(
+            "--client-secret", "5s33nk3qpvnj2fw3z4mnm2y6fa", u.to_string()
+        )
+        self.failUnless(
+            "client renewal secret: znxmki5zdibb5qlt46xbdvk2t55j7hibejq3i5ijyurkr6m6jkhq"
+            in output,
+            output,
+        )
 
         output = self._dump_cap(str(u.get_verify_cap().to_string(), "ascii"))
         self.failIf("key: " in output, output)
-        self.failUnless("UEB hash: nf3nimquen7aeqm36ekgxomalstenpkvsdmf6fplj7swdatbv5oa" in output, output)
+        self.failUnless(
+            "UEB hash: nf3nimquen7aeqm36ekgxomalstenpkvsdmf6fplj7swdatbv5oa" in output,
+            output,
+        )
         self.failUnless("size: 1234" in output, output)
         self.failUnless("k/N: 25/100" in output, output)
         self.failUnless("storage index: hdis5iaveku6lnlaiccydyid7q" in output, output)
@@ -102,7 +173,10 @@ class CLI(CLITestMixin, unittest.TestCase):
         output = self._dump_cap(prefixed_u)
         self.failUnless("CHK File:" in output, output)
         self.failUnless("key: aaaqeayeaudaocajbifqydiob4" in output, output)
-        self.failUnless("UEB hash: nf3nimquen7aeqm36ekgxomalstenpkvsdmf6fplj7swdatbv5oa" in output, output)
+        self.failUnless(
+            "UEB hash: nf3nimquen7aeqm36ekgxomalstenpkvsdmf6fplj7swdatbv5oa" in output,
+            output,
+        )
         self.failUnless("size: 1234" in output, output)
         self.failUnless("k/N: 25/100" in output, output)
         self.failUnless("storage index: hdis5iaveku6lnlaiccydyid7q" in output, output)
@@ -123,46 +197,90 @@ class CLI(CLITestMixin, unittest.TestCase):
         self.failUnless("writekey: aeaqcaibaeaqcaibaeaqcaibae" in output, output)
         self.failUnless("readkey: nvgh5vj2ekzzkim5fgtb4gey5y" in output, output)
         self.failUnless("storage index: nt4fwemuw7flestsezvo2eveke" in output, output)
-        self.failUnless("fingerprint: 737p57x6737p57x6737p57x6737p57x6737p57x6737p57x6737a" in output, output)
+        self.failUnless(
+            "fingerprint: 737p57x6737p57x6737p57x6737p57x6737p57x6737p57x6737a"
+            in output,
+            output,
+        )
 
-        output = self._dump_cap("--client-secret", "5s33nk3qpvnj2fw3z4mnm2y6fa",
-                                u.to_string())
-        self.failUnless("file renewal secret: arpszxzc2t6kb4okkg7sp765xgkni5z7caavj7lta73vmtymjlxq" in output, output)
+        output = self._dump_cap(
+            "--client-secret", "5s33nk3qpvnj2fw3z4mnm2y6fa", u.to_string()
+        )
+        self.failUnless(
+            "file renewal secret: arpszxzc2t6kb4okkg7sp765xgkni5z7caavj7lta73vmtymjlxq"
+            in output,
+            output,
+        )
 
         fileutil.make_dirs("cli/test_dump_cap/private")
-        fileutil.write("cli/test_dump_cap/private/secret", "5s33nk3qpvnj2fw3z4mnm2y6fa\n")
-        output = self._dump_cap("--client-dir", "cli/test_dump_cap",
-                                u.to_string())
-        self.failUnless("file renewal secret: arpszxzc2t6kb4okkg7sp765xgkni5z7caavj7lta73vmtymjlxq" in output, output)
+        fileutil.write(
+            "cli/test_dump_cap/private/secret", "5s33nk3qpvnj2fw3z4mnm2y6fa\n"
+        )
+        output = self._dump_cap("--client-dir", "cli/test_dump_cap", u.to_string())
+        self.failUnless(
+            "file renewal secret: arpszxzc2t6kb4okkg7sp765xgkni5z7caavj7lta73vmtymjlxq"
+            in output,
+            output,
+        )
 
-        output = self._dump_cap("--client-dir", "cli/test_dump_cap_BOGUS",
-                                u.to_string())
+        output = self._dump_cap(
+            "--client-dir", "cli/test_dump_cap_BOGUS", u.to_string()
+        )
         self.failIf("file renewal secret:" in output, output)
 
-        output = self._dump_cap("--nodeid", "tqc35esocrvejvg4mablt6aowg6tl43j",
-                                u.to_string())
-        self.failUnless("write_enabler: mgcavriox2wlb5eer26unwy5cw56elh3sjweffckkmivvsxtaknq" in output, output)
+        output = self._dump_cap(
+            "--nodeid", "tqc35esocrvejvg4mablt6aowg6tl43j", u.to_string()
+        )
+        self.failUnless(
+            "write_enabler: mgcavriox2wlb5eer26unwy5cw56elh3sjweffckkmivvsxtaknq"
+            in output,
+            output,
+        )
         self.failIf("file renewal secret:" in output, output)
 
-        output = self._dump_cap("--nodeid", "tqc35esocrvejvg4mablt6aowg6tl43j",
-                                "--client-secret", "5s33nk3qpvnj2fw3z4mnm2y6fa",
-                                u.to_string())
-        self.failUnless("write_enabler: mgcavriox2wlb5eer26unwy5cw56elh3sjweffckkmivvsxtaknq" in output, output)
-        self.failUnless("file renewal secret: arpszxzc2t6kb4okkg7sp765xgkni5z7caavj7lta73vmtymjlxq" in output, output)
-        self.failUnless("lease renewal secret: 7pjtaumrb7znzkkbvekkmuwpqfjyfyamznfz4bwwvmh4nw33lorq" in output, output)
+        output = self._dump_cap(
+            "--nodeid",
+            "tqc35esocrvejvg4mablt6aowg6tl43j",
+            "--client-secret",
+            "5s33nk3qpvnj2fw3z4mnm2y6fa",
+            u.to_string(),
+        )
+        self.failUnless(
+            "write_enabler: mgcavriox2wlb5eer26unwy5cw56elh3sjweffckkmivvsxtaknq"
+            in output,
+            output,
+        )
+        self.failUnless(
+            "file renewal secret: arpszxzc2t6kb4okkg7sp765xgkni5z7caavj7lta73vmtymjlxq"
+            in output,
+            output,
+        )
+        self.failUnless(
+            "lease renewal secret: 7pjtaumrb7znzkkbvekkmuwpqfjyfyamznfz4bwwvmh4nw33lorq"
+            in output,
+            output,
+        )
 
         u = u.get_readonly()
         output = self._dump_cap(u.to_string())
         self.failUnless("SDMF Read-only URI:" in output, output)
         self.failUnless("readkey: nvgh5vj2ekzzkim5fgtb4gey5y" in output, output)
         self.failUnless("storage index: nt4fwemuw7flestsezvo2eveke" in output, output)
-        self.failUnless("fingerprint: 737p57x6737p57x6737p57x6737p57x6737p57x6737p57x6737a" in output, output)
+        self.failUnless(
+            "fingerprint: 737p57x6737p57x6737p57x6737p57x6737p57x6737p57x6737a"
+            in output,
+            output,
+        )
 
         u = u.get_verify_cap()
         output = self._dump_cap(u.to_string())
         self.failUnless("SDMF Verifier URI:" in output, output)
         self.failUnless("storage index: nt4fwemuw7flestsezvo2eveke" in output, output)
-        self.failUnless("fingerprint: 737p57x6737p57x6737p57x6737p57x6737p57x6737p57x6737a" in output, output)
+        self.failUnless(
+            "fingerprint: 737p57x6737p57x6737p57x6737p57x6737p57x6737p57x6737a"
+            in output,
+            output,
+        )
 
     def test_dump_cap_mdmf(self):
         writekey = b"\x01" * 16
@@ -174,47 +292,90 @@ class CLI(CLITestMixin, unittest.TestCase):
         self.failUnless("writekey: aeaqcaibaeaqcaibaeaqcaibae" in output, output)
         self.failUnless("readkey: nvgh5vj2ekzzkim5fgtb4gey5y" in output, output)
         self.failUnless("storage index: nt4fwemuw7flestsezvo2eveke" in output, output)
-        self.failUnless("fingerprint: 737p57x6737p57x6737p57x6737p57x6737p57x6737p57x6737a" in output, output)
+        self.failUnless(
+            "fingerprint: 737p57x6737p57x6737p57x6737p57x6737p57x6737p57x6737a"
+            in output,
+            output,
+        )
 
-        output = self._dump_cap("--client-secret", "5s33nk3qpvnj2fw3z4mnm2y6fa",
-                                u.to_string())
-        self.failUnless("file renewal secret: arpszxzc2t6kb4okkg7sp765xgkni5z7caavj7lta73vmtymjlxq" in output, output)
+        output = self._dump_cap(
+            "--client-secret", "5s33nk3qpvnj2fw3z4mnm2y6fa", u.to_string()
+        )
+        self.failUnless(
+            "file renewal secret: arpszxzc2t6kb4okkg7sp765xgkni5z7caavj7lta73vmtymjlxq"
+            in output,
+            output,
+        )
 
         fileutil.make_dirs("cli/test_dump_cap/private")
-        fileutil.write("cli/test_dump_cap/private/secret", "5s33nk3qpvnj2fw3z4mnm2y6fa\n")
-        output = self._dump_cap("--client-dir", "cli/test_dump_cap",
-                                u.to_string())
-        self.failUnless("file renewal secret: arpszxzc2t6kb4okkg7sp765xgkni5z7caavj7lta73vmtymjlxq" in output, output)
+        fileutil.write(
+            "cli/test_dump_cap/private/secret", "5s33nk3qpvnj2fw3z4mnm2y6fa\n"
+        )
+        output = self._dump_cap("--client-dir", "cli/test_dump_cap", u.to_string())
+        self.failUnless(
+            "file renewal secret: arpszxzc2t6kb4okkg7sp765xgkni5z7caavj7lta73vmtymjlxq"
+            in output,
+            output,
+        )
 
-        output = self._dump_cap("--client-dir", "cli/test_dump_cap_BOGUS",
-                                u.to_string())
+        output = self._dump_cap(
+            "--client-dir", "cli/test_dump_cap_BOGUS", u.to_string()
+        )
         self.failIf("file renewal secret:" in output, output)
 
-        output = self._dump_cap("--nodeid", "tqc35esocrvejvg4mablt6aowg6tl43j",
-                                u.to_string())
-        self.failUnless("write_enabler: mgcavriox2wlb5eer26unwy5cw56elh3sjweffckkmivvsxtaknq" in output, output)
+        output = self._dump_cap(
+            "--nodeid", "tqc35esocrvejvg4mablt6aowg6tl43j", u.to_string()
+        )
+        self.failUnless(
+            "write_enabler: mgcavriox2wlb5eer26unwy5cw56elh3sjweffckkmivvsxtaknq"
+            in output,
+            output,
+        )
         self.failIf("file renewal secret:" in output, output)
 
-        output = self._dump_cap("--nodeid", "tqc35esocrvejvg4mablt6aowg6tl43j",
-                                "--client-secret", "5s33nk3qpvnj2fw3z4mnm2y6fa",
-                                u.to_string())
-        self.failUnless("write_enabler: mgcavriox2wlb5eer26unwy5cw56elh3sjweffckkmivvsxtaknq" in output, output)
-        self.failUnless("file renewal secret: arpszxzc2t6kb4okkg7sp765xgkni5z7caavj7lta73vmtymjlxq" in output, output)
-        self.failUnless("lease renewal secret: 7pjtaumrb7znzkkbvekkmuwpqfjyfyamznfz4bwwvmh4nw33lorq" in output, output)
+        output = self._dump_cap(
+            "--nodeid",
+            "tqc35esocrvejvg4mablt6aowg6tl43j",
+            "--client-secret",
+            "5s33nk3qpvnj2fw3z4mnm2y6fa",
+            u.to_string(),
+        )
+        self.failUnless(
+            "write_enabler: mgcavriox2wlb5eer26unwy5cw56elh3sjweffckkmivvsxtaknq"
+            in output,
+            output,
+        )
+        self.failUnless(
+            "file renewal secret: arpszxzc2t6kb4okkg7sp765xgkni5z7caavj7lta73vmtymjlxq"
+            in output,
+            output,
+        )
+        self.failUnless(
+            "lease renewal secret: 7pjtaumrb7znzkkbvekkmuwpqfjyfyamznfz4bwwvmh4nw33lorq"
+            in output,
+            output,
+        )
 
         u = u.get_readonly()
         output = self._dump_cap(u.to_string())
         self.failUnless("MDMF Read-only URI:" in output, output)
         self.failUnless("readkey: nvgh5vj2ekzzkim5fgtb4gey5y" in output, output)
         self.failUnless("storage index: nt4fwemuw7flestsezvo2eveke" in output, output)
-        self.failUnless("fingerprint: 737p57x6737p57x6737p57x6737p57x6737p57x6737p57x6737a" in output, output)
+        self.failUnless(
+            "fingerprint: 737p57x6737p57x6737p57x6737p57x6737p57x6737p57x6737a"
+            in output,
+            output,
+        )
 
         u = u.get_verify_cap()
         output = self._dump_cap(u.to_string())
         self.failUnless("MDMF Verifier URI:" in output, output)
         self.failUnless("storage index: nt4fwemuw7flestsezvo2eveke" in output, output)
-        self.failUnless("fingerprint: 737p57x6737p57x6737p57x6737p57x6737p57x6737p57x6737a" in output, output)
-
+        self.failUnless(
+            "fingerprint: 737p57x6737p57x6737p57x6737p57x6737p57x6737p57x6737a"
+            in output,
+            output,
+        )
 
     def test_dump_cap_chk_directory(self):
         key = b"\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f"
@@ -222,30 +383,43 @@ class CLI(CLITestMixin, unittest.TestCase):
         needed_shares = 25
         total_shares = 100
         size = 1234
-        u1 = uri.CHKFileURI(key=key,
-                            uri_extension_hash=uri_extension_hash,
-                            needed_shares=needed_shares,
-                            total_shares=total_shares,
-                            size=size)
+        u1 = uri.CHKFileURI(
+            key=key,
+            uri_extension_hash=uri_extension_hash,
+            needed_shares=needed_shares,
+            total_shares=total_shares,
+            size=size,
+        )
         u = uri.ImmutableDirectoryURI(u1)
 
         output = self._dump_cap(u.to_string())
         self.failUnless("CHK Directory URI:" in output, output)
         self.failUnless("key: aaaqeayeaudaocajbifqydiob4" in output, output)
-        self.failUnless("UEB hash: nf3nimquen7aeqm36ekgxomalstenpkvsdmf6fplj7swdatbv5oa" in output, output)
+        self.failUnless(
+            "UEB hash: nf3nimquen7aeqm36ekgxomalstenpkvsdmf6fplj7swdatbv5oa" in output,
+            output,
+        )
         self.failUnless("size: 1234" in output, output)
         self.failUnless("k/N: 25/100" in output, output)
         self.failUnless("storage index: hdis5iaveku6lnlaiccydyid7q" in output, output)
 
-        output = self._dump_cap("--client-secret", "5s33nk3qpvnj2fw3z4mnm2y6fa",
-                                u.to_string())
-        self.failUnless("file renewal secret: csrvkjgomkyyyil5yo4yk5np37p6oa2ve2hg6xmk2dy7kaxsu6xq" in output, output)
+        output = self._dump_cap(
+            "--client-secret", "5s33nk3qpvnj2fw3z4mnm2y6fa", u.to_string()
+        )
+        self.failUnless(
+            "file renewal secret: csrvkjgomkyyyil5yo4yk5np37p6oa2ve2hg6xmk2dy7kaxsu6xq"
+            in output,
+            output,
+        )
 
         u = u.get_verify_cap()
         output = self._dump_cap(u.to_string())
         self.failUnless("CHK Directory Verifier URI:" in output, output)
         self.failIf("key: " in output, output)
-        self.failUnless("UEB hash: nf3nimquen7aeqm36ekgxomalstenpkvsdmf6fplj7swdatbv5oa" in output, output)
+        self.failUnless(
+            "UEB hash: nf3nimquen7aeqm36ekgxomalstenpkvsdmf6fplj7swdatbv5oa" in output,
+            output,
+        )
         self.failUnless("size: 1234" in output, output)
         self.failUnless("k/N: 25/100" in output, output)
         self.failUnless("storage index: hdis5iaveku6lnlaiccydyid7q" in output, output)
@@ -258,41 +432,77 @@ class CLI(CLITestMixin, unittest.TestCase):
 
         output = self._dump_cap(u.to_string())
         self.failUnless("Directory Writeable URI:" in output, output)
-        self.failUnless("writekey: aeaqcaibaeaqcaibaeaqcaibae" in output,
-                        output)
+        self.failUnless("writekey: aeaqcaibaeaqcaibaeaqcaibae" in output, output)
         self.failUnless("readkey: nvgh5vj2ekzzkim5fgtb4gey5y" in output, output)
-        self.failUnless("storage index: nt4fwemuw7flestsezvo2eveke" in output,
-                        output)
-        self.failUnless("fingerprint: 737p57x6737p57x6737p57x6737p57x6737p57x6737p57x6737a" in output, output)
+        self.failUnless("storage index: nt4fwemuw7flestsezvo2eveke" in output, output)
+        self.failUnless(
+            "fingerprint: 737p57x6737p57x6737p57x6737p57x6737p57x6737p57x6737a"
+            in output,
+            output,
+        )
 
-        output = self._dump_cap("--client-secret", "5s33nk3qpvnj2fw3z4mnm2y6fa",
-                                u.to_string())
-        self.failUnless("file renewal secret: arpszxzc2t6kb4okkg7sp765xgkni5z7caavj7lta73vmtymjlxq" in output, output)
+        output = self._dump_cap(
+            "--client-secret", "5s33nk3qpvnj2fw3z4mnm2y6fa", u.to_string()
+        )
+        self.failUnless(
+            "file renewal secret: arpszxzc2t6kb4okkg7sp765xgkni5z7caavj7lta73vmtymjlxq"
+            in output,
+            output,
+        )
 
-        output = self._dump_cap("--nodeid", "tqc35esocrvejvg4mablt6aowg6tl43j",
-                                u.to_string())
-        self.failUnless("write_enabler: mgcavriox2wlb5eer26unwy5cw56elh3sjweffckkmivvsxtaknq" in output, output)
+        output = self._dump_cap(
+            "--nodeid", "tqc35esocrvejvg4mablt6aowg6tl43j", u.to_string()
+        )
+        self.failUnless(
+            "write_enabler: mgcavriox2wlb5eer26unwy5cw56elh3sjweffckkmivvsxtaknq"
+            in output,
+            output,
+        )
         self.failIf("file renewal secret:" in output, output)
 
-        output = self._dump_cap("--nodeid", "tqc35esocrvejvg4mablt6aowg6tl43j",
-                                "--client-secret", "5s33nk3qpvnj2fw3z4mnm2y6fa",
-                                u.to_string())
-        self.failUnless("write_enabler: mgcavriox2wlb5eer26unwy5cw56elh3sjweffckkmivvsxtaknq" in output, output)
-        self.failUnless("file renewal secret: arpszxzc2t6kb4okkg7sp765xgkni5z7caavj7lta73vmtymjlxq" in output, output)
-        self.failUnless("lease renewal secret: 7pjtaumrb7znzkkbvekkmuwpqfjyfyamznfz4bwwvmh4nw33lorq" in output, output)
+        output = self._dump_cap(
+            "--nodeid",
+            "tqc35esocrvejvg4mablt6aowg6tl43j",
+            "--client-secret",
+            "5s33nk3qpvnj2fw3z4mnm2y6fa",
+            u.to_string(),
+        )
+        self.failUnless(
+            "write_enabler: mgcavriox2wlb5eer26unwy5cw56elh3sjweffckkmivvsxtaknq"
+            in output,
+            output,
+        )
+        self.failUnless(
+            "file renewal secret: arpszxzc2t6kb4okkg7sp765xgkni5z7caavj7lta73vmtymjlxq"
+            in output,
+            output,
+        )
+        self.failUnless(
+            "lease renewal secret: 7pjtaumrb7znzkkbvekkmuwpqfjyfyamznfz4bwwvmh4nw33lorq"
+            in output,
+            output,
+        )
 
         u = u.get_readonly()
         output = self._dump_cap(u.to_string())
         self.failUnless("Directory Read-only URI:" in output, output)
         self.failUnless("readkey: nvgh5vj2ekzzkim5fgtb4gey5y" in output, output)
         self.failUnless("storage index: nt4fwemuw7flestsezvo2eveke" in output, output)
-        self.failUnless("fingerprint: 737p57x6737p57x6737p57x6737p57x6737p57x6737p57x6737a" in output, output)
+        self.failUnless(
+            "fingerprint: 737p57x6737p57x6737p57x6737p57x6737p57x6737p57x6737a"
+            in output,
+            output,
+        )
 
         u = u.get_verify_cap()
         output = self._dump_cap(u.to_string())
         self.failUnless("Directory Verifier URI:" in output, output)
         self.failUnless("storage index: nt4fwemuw7flestsezvo2eveke" in output, output)
-        self.failUnless("fingerprint: 737p57x6737p57x6737p57x6737p57x6737p57x6737p57x6737a" in output, output)
+        self.failUnless(
+            "fingerprint: 737p57x6737p57x6737p57x6737p57x6737p57x6737p57x6737a"
+            in output,
+            output,
+        )
 
     def test_dump_cap_mdmf_directory(self):
         writekey = b"\x01" * 16
@@ -302,46 +512,81 @@ class CLI(CLITestMixin, unittest.TestCase):
 
         output = self._dump_cap(u.to_string())
         self.failUnless("Directory Writeable URI:" in output, output)
-        self.failUnless("writekey: aeaqcaibaeaqcaibaeaqcaibae" in output,
-                        output)
+        self.failUnless("writekey: aeaqcaibaeaqcaibaeaqcaibae" in output, output)
         self.failUnless("readkey: nvgh5vj2ekzzkim5fgtb4gey5y" in output, output)
-        self.failUnless("storage index: nt4fwemuw7flestsezvo2eveke" in output,
-                        output)
-        self.failUnless("fingerprint: 737p57x6737p57x6737p57x6737p57x6737p57x6737p57x6737a" in output, output)
+        self.failUnless("storage index: nt4fwemuw7flestsezvo2eveke" in output, output)
+        self.failUnless(
+            "fingerprint: 737p57x6737p57x6737p57x6737p57x6737p57x6737p57x6737a"
+            in output,
+            output,
+        )
 
-        output = self._dump_cap("--client-secret", "5s33nk3qpvnj2fw3z4mnm2y6fa",
-                                u.to_string())
-        self.failUnless("file renewal secret: arpszxzc2t6kb4okkg7sp765xgkni5z7caavj7lta73vmtymjlxq" in output, output)
+        output = self._dump_cap(
+            "--client-secret", "5s33nk3qpvnj2fw3z4mnm2y6fa", u.to_string()
+        )
+        self.failUnless(
+            "file renewal secret: arpszxzc2t6kb4okkg7sp765xgkni5z7caavj7lta73vmtymjlxq"
+            in output,
+            output,
+        )
 
-        output = self._dump_cap("--nodeid", "tqc35esocrvejvg4mablt6aowg6tl43j",
-                                u.to_string())
-        self.failUnless("write_enabler: mgcavriox2wlb5eer26unwy5cw56elh3sjweffckkmivvsxtaknq" in output, output)
+        output = self._dump_cap(
+            "--nodeid", "tqc35esocrvejvg4mablt6aowg6tl43j", u.to_string()
+        )
+        self.failUnless(
+            "write_enabler: mgcavriox2wlb5eer26unwy5cw56elh3sjweffckkmivvsxtaknq"
+            in output,
+            output,
+        )
         self.failIf("file renewal secret:" in output, output)
 
-        output = self._dump_cap("--nodeid", "tqc35esocrvejvg4mablt6aowg6tl43j",
-                                "--client-secret", "5s33nk3qpvnj2fw3z4mnm2y6fa",
-                                u.to_string())
-        self.failUnless("write_enabler: mgcavriox2wlb5eer26unwy5cw56elh3sjweffckkmivvsxtaknq" in output, output)
-        self.failUnless("file renewal secret: arpszxzc2t6kb4okkg7sp765xgkni5z7caavj7lta73vmtymjlxq" in output, output)
-        self.failUnless("lease renewal secret: 7pjtaumrb7znzkkbvekkmuwpqfjyfyamznfz4bwwvmh4nw33lorq" in output, output)
+        output = self._dump_cap(
+            "--nodeid",
+            "tqc35esocrvejvg4mablt6aowg6tl43j",
+            "--client-secret",
+            "5s33nk3qpvnj2fw3z4mnm2y6fa",
+            u.to_string(),
+        )
+        self.failUnless(
+            "write_enabler: mgcavriox2wlb5eer26unwy5cw56elh3sjweffckkmivvsxtaknq"
+            in output,
+            output,
+        )
+        self.failUnless(
+            "file renewal secret: arpszxzc2t6kb4okkg7sp765xgkni5z7caavj7lta73vmtymjlxq"
+            in output,
+            output,
+        )
+        self.failUnless(
+            "lease renewal secret: 7pjtaumrb7znzkkbvekkmuwpqfjyfyamznfz4bwwvmh4nw33lorq"
+            in output,
+            output,
+        )
 
         u = u.get_readonly()
         output = self._dump_cap(u.to_string())
         self.failUnless("Directory Read-only URI:" in output, output)
         self.failUnless("readkey: nvgh5vj2ekzzkim5fgtb4gey5y" in output, output)
         self.failUnless("storage index: nt4fwemuw7flestsezvo2eveke" in output, output)
-        self.failUnless("fingerprint: 737p57x6737p57x6737p57x6737p57x6737p57x6737p57x6737a" in output, output)
+        self.failUnless(
+            "fingerprint: 737p57x6737p57x6737p57x6737p57x6737p57x6737p57x6737a"
+            in output,
+            output,
+        )
 
         u = u.get_verify_cap()
         output = self._dump_cap(u.to_string())
         self.failUnless("Directory Verifier URI:" in output, output)
         self.failUnless("storage index: nt4fwemuw7flestsezvo2eveke" in output, output)
-        self.failUnless("fingerprint: 737p57x6737p57x6737p57x6737p57x6737p57x6737p57x6737a" in output, output)
-
+        self.failUnless(
+            "fingerprint: 737p57x6737p57x6737p57x6737p57x6737p57x6737p57x6737a"
+            in output,
+            output,
+        )
 
     def _catalog_shares(self, *basedirs):
         o = debug.CatalogSharesOptions()
-        o.stdout,o.stderr = StringIO(), StringIO()
+        o.stdout, o.stderr = StringIO(), StringIO()
         args = list(basedirs)
         o.parseOptions(args)
         debug.catalog_shares(o)
@@ -351,12 +596,15 @@ class CLI(CLITestMixin, unittest.TestCase):
 
     def test_catalog_shares_error(self):
         nodedir1 = "cli/test_catalog_shares/node1"
-        sharedir = os.path.join(nodedir1, "storage", "shares", "mq", "mqfblse6m5a6dh45isu2cg7oji")
+        sharedir = os.path.join(
+            nodedir1, "storage", "shares", "mq", "mqfblse6m5a6dh45isu2cg7oji"
+        )
         fileutil.make_dirs(sharedir)
         fileutil.write("cli/test_catalog_shares/node1/storage/shares/mq/not-a-dir", "")
         # write a bogus share that looks a little bit like CHK
-        fileutil.write(os.path.join(sharedir, "8"),
-                       b"\x00\x00\x00\x01" + b"\xff" * 200) # this triggers an assert
+        fileutil.write(
+            os.path.join(sharedir, "8"), b"\x00\x00\x00\x01" + b"\xff" * 200
+        )  # this triggers an assert
 
         nodedir2 = "cli/test_catalog_shares/node2"
         fileutil.make_dirs(nodedir2)
@@ -365,86 +613,105 @@ class CLI(CLITestMixin, unittest.TestCase):
         # now make sure that the 'catalog-shares' commands survives the error
         out, err = self._catalog_shares(nodedir1, nodedir2)
         self.assertEqual(out, "")
-        self.failUnless("Error processing " in err,
-                        "didn't see 'error processing' in '%s'" % err)
-        #self.failUnless(nodedir1 in err,
+        self.failUnless(
+            "Error processing " in err, "didn't see 'error processing' in '%s'" % err
+        )
+        # self.failUnless(nodedir1 in err,
         #                "didn't see '%s' in '%s'" % (nodedir1, err))
         # windows mangles the path, and os.path.join isn't enough to make
         # up for it, so just look for individual strings
-        self.failUnless("node1" in err,
-                        "didn't see 'node1' in '%s'" % err)
-        self.failUnless("mqfblse6m5a6dh45isu2cg7oji" in err,
-                        "didn't see 'mqfblse6m5a6dh45isu2cg7oji' in '%s'" % err)
+        self.failUnless("node1" in err, "didn't see 'node1' in '%s'" % err)
+        self.failUnless(
+            "mqfblse6m5a6dh45isu2cg7oji" in err,
+            "didn't see 'mqfblse6m5a6dh45isu2cg7oji' in '%s'" % err,
+        )
 
     def test_alias(self):
-        def s128(c): return base32.b2a(c*(128//8))
-        def s256(c): return base32.b2a(c*(256//8))
+        def s128(c):
+            return base32.b2a(c * (128 // 8))
+
+        def s256(c):
+            return base32.b2a(c * (256 // 8))
+
         TA = b"URI:DIR2:%s:%s" % (s128(b"T"), s256(b"T"))
         WA = b"URI:DIR2:%s:%s" % (s128(b"W"), s256(b"W"))
         CA = b"URI:DIR2:%s:%s" % (s128(b"C"), s256(b"C"))
-        aliases = {"tahoe": TA,
-                   "work": WA,
-                   "c": CA}
+        aliases = {"tahoe": TA, "work": WA, "c": CA}
+
         def ga1(path):
-            return get_alias(aliases, path, u"tahoe")
+            return get_alias(aliases, path, "tahoe")
+
         uses_lettercolon = common.platform_uses_lettercolon_drivename()
-        self.failUnlessReallyEqual(ga1(u"bare"), (TA, b"bare"))
-        self.failUnlessReallyEqual(ga1(u"baredir/file"), (TA, b"baredir/file"))
-        self.failUnlessReallyEqual(ga1(u"baredir/file:7"), (TA, b"baredir/file:7"))
-        self.failUnlessReallyEqual(ga1(u"tahoe:"), (TA, b""))
-        self.failUnlessReallyEqual(ga1(u"tahoe:file"), (TA, b"file"))
-        self.failUnlessReallyEqual(ga1(u"tahoe:dir/file"), (TA, b"dir/file"))
-        self.failUnlessReallyEqual(ga1(u"work:"), (WA, b""))
-        self.failUnlessReallyEqual(ga1(u"work:file"), (WA, b"file"))
-        self.failUnlessReallyEqual(ga1(u"work:dir/file"), (WA, b"dir/file"))
+        self.failUnlessReallyEqual(ga1("bare"), (TA, b"bare"))
+        self.failUnlessReallyEqual(ga1("baredir/file"), (TA, b"baredir/file"))
+        self.failUnlessReallyEqual(ga1("baredir/file:7"), (TA, b"baredir/file:7"))
+        self.failUnlessReallyEqual(ga1("tahoe:"), (TA, b""))
+        self.failUnlessReallyEqual(ga1("tahoe:file"), (TA, b"file"))
+        self.failUnlessReallyEqual(ga1("tahoe:dir/file"), (TA, b"dir/file"))
+        self.failUnlessReallyEqual(ga1("work:"), (WA, b""))
+        self.failUnlessReallyEqual(ga1("work:file"), (WA, b"file"))
+        self.failUnlessReallyEqual(ga1("work:dir/file"), (WA, b"dir/file"))
         # default != None means we really expect a tahoe path, regardless of
         # whether we're on windows or not. This is what 'tahoe get' uses.
-        self.failUnlessReallyEqual(ga1(u"c:"), (CA, b""))
-        self.failUnlessReallyEqual(ga1(u"c:file"), (CA, b"file"))
-        self.failUnlessReallyEqual(ga1(u"c:dir/file"), (CA, b"dir/file"))
-        self.failUnlessReallyEqual(ga1(u"URI:stuff"), (b"URI:stuff", b""))
-        self.failUnlessReallyEqual(ga1(u"URI:stuff/file"), (b"URI:stuff", b"file"))
-        self.failUnlessReallyEqual(ga1(u"URI:stuff:./file"), (b"URI:stuff", b"file"))
-        self.failUnlessReallyEqual(ga1(u"URI:stuff/dir/file"), (b"URI:stuff", b"dir/file"))
-        self.failUnlessReallyEqual(ga1(u"URI:stuff:./dir/file"), (b"URI:stuff", b"dir/file"))
-        self.failUnlessRaises(common.UnknownAliasError, ga1, u"missing:")
-        self.failUnlessRaises(common.UnknownAliasError, ga1, u"missing:dir")
-        self.failUnlessRaises(common.UnknownAliasError, ga1, u"missing:dir/file")
+        self.failUnlessReallyEqual(ga1("c:"), (CA, b""))
+        self.failUnlessReallyEqual(ga1("c:file"), (CA, b"file"))
+        self.failUnlessReallyEqual(ga1("c:dir/file"), (CA, b"dir/file"))
+        self.failUnlessReallyEqual(ga1("URI:stuff"), (b"URI:stuff", b""))
+        self.failUnlessReallyEqual(ga1("URI:stuff/file"), (b"URI:stuff", b"file"))
+        self.failUnlessReallyEqual(ga1("URI:stuff:./file"), (b"URI:stuff", b"file"))
+        self.failUnlessReallyEqual(
+            ga1("URI:stuff/dir/file"), (b"URI:stuff", b"dir/file")
+        )
+        self.failUnlessReallyEqual(
+            ga1("URI:stuff:./dir/file"), (b"URI:stuff", b"dir/file")
+        )
+        self.failUnlessRaises(common.UnknownAliasError, ga1, "missing:")
+        self.failUnlessRaises(common.UnknownAliasError, ga1, "missing:dir")
+        self.failUnlessRaises(common.UnknownAliasError, ga1, "missing:dir/file")
 
         def ga2(path):
             return get_alias(aliases, path, None)
-        self.failUnlessReallyEqual(ga2(u"bare"), (DefaultAliasMarker, b"bare"))
-        self.failUnlessReallyEqual(ga2(u"baredir/file"),
-                             (DefaultAliasMarker, b"baredir/file"))
-        self.failUnlessReallyEqual(ga2(u"baredir/file:7"),
-                             (DefaultAliasMarker, b"baredir/file:7"))
-        self.failUnlessReallyEqual(ga2(u"baredir/sub:1/file:7"),
-                             (DefaultAliasMarker, b"baredir/sub:1/file:7"))
-        self.failUnlessReallyEqual(ga2(u"tahoe:"), (TA, b""))
-        self.failUnlessReallyEqual(ga2(u"tahoe:file"), (TA, b"file"))
-        self.failUnlessReallyEqual(ga2(u"tahoe:dir/file"), (TA, b"dir/file"))
+
+        self.failUnlessReallyEqual(ga2("bare"), (DefaultAliasMarker, b"bare"))
+        self.failUnlessReallyEqual(
+            ga2("baredir/file"), (DefaultAliasMarker, b"baredir/file")
+        )
+        self.failUnlessReallyEqual(
+            ga2("baredir/file:7"), (DefaultAliasMarker, b"baredir/file:7")
+        )
+        self.failUnlessReallyEqual(
+            ga2("baredir/sub:1/file:7"), (DefaultAliasMarker, b"baredir/sub:1/file:7")
+        )
+        self.failUnlessReallyEqual(ga2("tahoe:"), (TA, b""))
+        self.failUnlessReallyEqual(ga2("tahoe:file"), (TA, b"file"))
+        self.failUnlessReallyEqual(ga2("tahoe:dir/file"), (TA, b"dir/file"))
         # on windows, we really want c:foo to indicate a local file.
         # default==None is what 'tahoe cp' uses.
         if uses_lettercolon:
-            self.failUnlessReallyEqual(ga2(u"c:"), (DefaultAliasMarker, b"c:"))
-            self.failUnlessReallyEqual(ga2(u"c:file"), (DefaultAliasMarker, b"c:file"))
-            self.failUnlessReallyEqual(ga2(u"c:dir/file"),
-                                 (DefaultAliasMarker, b"c:dir/file"))
+            self.failUnlessReallyEqual(ga2("c:"), (DefaultAliasMarker, b"c:"))
+            self.failUnlessReallyEqual(ga2("c:file"), (DefaultAliasMarker, b"c:file"))
+            self.failUnlessReallyEqual(
+                ga2("c:dir/file"), (DefaultAliasMarker, b"c:dir/file")
+            )
         else:
-            self.failUnlessReallyEqual(ga2(u"c:"), (CA, b""))
-            self.failUnlessReallyEqual(ga2(u"c:file"), (CA, b"file"))
-            self.failUnlessReallyEqual(ga2(u"c:dir/file"), (CA, b"dir/file"))
-        self.failUnlessReallyEqual(ga2(u"work:"), (WA, b""))
-        self.failUnlessReallyEqual(ga2(u"work:file"), (WA, b"file"))
-        self.failUnlessReallyEqual(ga2(u"work:dir/file"), (WA, b"dir/file"))
-        self.failUnlessReallyEqual(ga2(u"URI:stuff"), (b"URI:stuff", b""))
-        self.failUnlessReallyEqual(ga2(u"URI:stuff/file"), (b"URI:stuff", b"file"))
-        self.failUnlessReallyEqual(ga2(u"URI:stuff:./file"), (b"URI:stuff", b"file"))
-        self.failUnlessReallyEqual(ga2(u"URI:stuff/dir/file"), (b"URI:stuff", b"dir/file"))
-        self.failUnlessReallyEqual(ga2(u"URI:stuff:./dir/file"), (b"URI:stuff", b"dir/file"))
-        self.failUnlessRaises(common.UnknownAliasError, ga2, u"missing:")
-        self.failUnlessRaises(common.UnknownAliasError, ga2, u"missing:dir")
-        self.failUnlessRaises(common.UnknownAliasError, ga2, u"missing:dir/file")
+            self.failUnlessReallyEqual(ga2("c:"), (CA, b""))
+            self.failUnlessReallyEqual(ga2("c:file"), (CA, b"file"))
+            self.failUnlessReallyEqual(ga2("c:dir/file"), (CA, b"dir/file"))
+        self.failUnlessReallyEqual(ga2("work:"), (WA, b""))
+        self.failUnlessReallyEqual(ga2("work:file"), (WA, b"file"))
+        self.failUnlessReallyEqual(ga2("work:dir/file"), (WA, b"dir/file"))
+        self.failUnlessReallyEqual(ga2("URI:stuff"), (b"URI:stuff", b""))
+        self.failUnlessReallyEqual(ga2("URI:stuff/file"), (b"URI:stuff", b"file"))
+        self.failUnlessReallyEqual(ga2("URI:stuff:./file"), (b"URI:stuff", b"file"))
+        self.failUnlessReallyEqual(
+            ga2("URI:stuff/dir/file"), (b"URI:stuff", b"dir/file")
+        )
+        self.failUnlessReallyEqual(
+            ga2("URI:stuff:./dir/file"), (b"URI:stuff", b"dir/file")
+        )
+        self.failUnlessRaises(common.UnknownAliasError, ga2, "missing:")
+        self.failUnlessRaises(common.UnknownAliasError, ga2, "missing:dir")
+        self.failUnlessRaises(common.UnknownAliasError, ga2, "missing:dir/file")
 
         def ga3(path):
             old = common.pretend_platform_uses_lettercolon
@@ -454,62 +721,76 @@ class CLI(CLITestMixin, unittest.TestCase):
             finally:
                 common.pretend_platform_uses_lettercolon = old
             return retval
-        self.failUnlessReallyEqual(ga3(u"bare"), (DefaultAliasMarker, b"bare"))
-        self.failUnlessReallyEqual(ga3(u"baredir/file"),
-                             (DefaultAliasMarker, b"baredir/file"))
-        self.failUnlessReallyEqual(ga3(u"baredir/file:7"),
-                             (DefaultAliasMarker, b"baredir/file:7"))
-        self.failUnlessReallyEqual(ga3(u"baredir/sub:1/file:7"),
-                             (DefaultAliasMarker, b"baredir/sub:1/file:7"))
-        self.failUnlessReallyEqual(ga3(u"tahoe:"), (TA, b""))
-        self.failUnlessReallyEqual(ga3(u"tahoe:file"), (TA, b"file"))
-        self.failUnlessReallyEqual(ga3(u"tahoe:dir/file"), (TA, b"dir/file"))
-        self.failUnlessReallyEqual(ga3(u"c:"), (DefaultAliasMarker, b"c:"))
-        self.failUnlessReallyEqual(ga3(u"c:file"), (DefaultAliasMarker, b"c:file"))
-        self.failUnlessReallyEqual(ga3(u"c:dir/file"),
-                             (DefaultAliasMarker, b"c:dir/file"))
-        self.failUnlessReallyEqual(ga3(u"work:"), (WA, b""))
-        self.failUnlessReallyEqual(ga3(u"work:file"), (WA, b"file"))
-        self.failUnlessReallyEqual(ga3(u"work:dir/file"), (WA, b"dir/file"))
-        self.failUnlessReallyEqual(ga3(u"URI:stuff"), (b"URI:stuff", b""))
-        self.failUnlessReallyEqual(ga3(u"URI:stuff:./file"), (b"URI:stuff", b"file"))
-        self.failUnlessReallyEqual(ga3(u"URI:stuff:./dir/file"), (b"URI:stuff", b"dir/file"))
-        self.failUnlessRaises(common.UnknownAliasError, ga3, u"missing:")
-        self.failUnlessRaises(common.UnknownAliasError, ga3, u"missing:dir")
-        self.failUnlessRaises(common.UnknownAliasError, ga3, u"missing:dir/file")
+
+        self.failUnlessReallyEqual(ga3("bare"), (DefaultAliasMarker, b"bare"))
+        self.failUnlessReallyEqual(
+            ga3("baredir/file"), (DefaultAliasMarker, b"baredir/file")
+        )
+        self.failUnlessReallyEqual(
+            ga3("baredir/file:7"), (DefaultAliasMarker, b"baredir/file:7")
+        )
+        self.failUnlessReallyEqual(
+            ga3("baredir/sub:1/file:7"), (DefaultAliasMarker, b"baredir/sub:1/file:7")
+        )
+        self.failUnlessReallyEqual(ga3("tahoe:"), (TA, b""))
+        self.failUnlessReallyEqual(ga3("tahoe:file"), (TA, b"file"))
+        self.failUnlessReallyEqual(ga3("tahoe:dir/file"), (TA, b"dir/file"))
+        self.failUnlessReallyEqual(ga3("c:"), (DefaultAliasMarker, b"c:"))
+        self.failUnlessReallyEqual(ga3("c:file"), (DefaultAliasMarker, b"c:file"))
+        self.failUnlessReallyEqual(
+            ga3("c:dir/file"), (DefaultAliasMarker, b"c:dir/file")
+        )
+        self.failUnlessReallyEqual(ga3("work:"), (WA, b""))
+        self.failUnlessReallyEqual(ga3("work:file"), (WA, b"file"))
+        self.failUnlessReallyEqual(ga3("work:dir/file"), (WA, b"dir/file"))
+        self.failUnlessReallyEqual(ga3("URI:stuff"), (b"URI:stuff", b""))
+        self.failUnlessReallyEqual(ga3("URI:stuff:./file"), (b"URI:stuff", b"file"))
+        self.failUnlessReallyEqual(
+            ga3("URI:stuff:./dir/file"), (b"URI:stuff", b"dir/file")
+        )
+        self.failUnlessRaises(common.UnknownAliasError, ga3, "missing:")
+        self.failUnlessRaises(common.UnknownAliasError, ga3, "missing:dir")
+        self.failUnlessRaises(common.UnknownAliasError, ga3, "missing:dir/file")
         # calling get_alias with a path that doesn't include an alias and
         # default set to something that isn't in the aliases argument should
         # raise an UnknownAliasError.
         def ga4(path):
-            return get_alias(aliases, path, u"badddefault:")
-        self.failUnlessRaises(common.UnknownAliasError, ga4, u"afile")
-        self.failUnlessRaises(common.UnknownAliasError, ga4, u"a/dir/path/")
+            return get_alias(aliases, path, "badddefault:")
+
+        self.failUnlessRaises(common.UnknownAliasError, ga4, "afile")
+        self.failUnlessRaises(common.UnknownAliasError, ga4, "a/dir/path/")
 
         def ga5(path):
             old = common.pretend_platform_uses_lettercolon
             try:
                 common.pretend_platform_uses_lettercolon = True
-                retval = get_alias(aliases, path, u"baddefault:")
+                retval = get_alias(aliases, path, "baddefault:")
             finally:
                 common.pretend_platform_uses_lettercolon = old
             return retval
-        self.failUnlessRaises(common.UnknownAliasError, ga5, u"C:\\Windows")
+
+        self.failUnlessRaises(common.UnknownAliasError, ga5, "C:\\Windows")
 
     def test_alias_tolerance(self):
-        def s128(c): return base32.b2a(c*(128//8))
-        def s256(c): return base32.b2a(c*(256//8))
+        def s128(c):
+            return base32.b2a(c * (128 // 8))
+
+        def s256(c):
+            return base32.b2a(c * (256 // 8))
+
         TA = b"URI:DIR2:%s:%s" % (s128(b"T"), s256(b"T"))
-        aliases = {"present": TA,
-                   "future": b"URI-FROM-FUTURE:ooh:aah"}
+        aliases = {"present": TA, "future": b"URI-FROM-FUTURE:ooh:aah"}
+
         def ga1(path):
-            return get_alias(aliases, path, u"tahoe")
-        self.failUnlessReallyEqual(ga1(u"present:file"), (TA, b"file"))
+            return get_alias(aliases, path, "tahoe")
+
+        self.failUnlessReallyEqual(ga1("present:file"), (TA, b"file"))
         # this throws, via assert IDirnodeURI.providedBy(), since get_alias()
         # wants a dirnode, and the future cap gives us UnknownURI instead.
-        self.failUnlessRaises(AssertionError, ga1, u"future:stuff")
+        self.failUnlessRaises(AssertionError, ga1, "future:stuff")
 
     def test_listdir_unicode_good(self):
-        filenames = [u'L\u00F4zane', u'Bern', u'Gen\u00E8ve']  # must be NFC
+        filenames = ["L\u00F4zane", "Bern", "Gen\u00E8ve"]  # must be NFC
 
         for name in filenames:
             skip_if_cannot_represent_filename(name)
@@ -531,11 +812,13 @@ class CLI(CLITestMixin, unittest.TestCase):
         ns = Namespace()
 
         ns.parse_called = False
+
         def call_parse_or_exit(args):
             ns.parse_called = True
             raise exc
 
         ns.sys_exit_called = False
+
         def call_sys_exit(exitcode):
             ns.sys_exit_called = True
             self.failUnlessEqual(exitcode, 1)
@@ -548,13 +831,13 @@ class CLI(CLITestMixin, unittest.TestCase):
             # it's safe to drop it on the floor.
             del d
 
-        patcher = MonkeyPatcher((runner, 'parse_or_exit_with_explanation',
-                                 call_parse_or_exit),
-                                (sys, 'argv', ["tahoe"]),
-                                (sys, 'exit', call_sys_exit),
-                                (sys, 'stderr', stderr),
-                                (task, 'react', fake_react),
-                                )
+        patcher = MonkeyPatcher(
+            (runner, "parse_or_exit_with_explanation", call_parse_or_exit),
+            (sys, "argv", ["tahoe"]),
+            (sys, "exit", call_sys_exit),
+            (sys, "stderr", stderr),
+            (task, "react", fake_react),
+        )
         patcher.runWithPatches(runner.run)
 
         self.failUnless(ns.parse_called)
@@ -662,11 +945,15 @@ class Help(unittest.TestCase):
         options = debug.FlogtoolOptions()
         help = str(options)
         self.failUnlessIn(" [global-options] debug flogtool ", help)
-        self.failUnlessInNormalized("The 'tahoe debug flogtool' command uses the correct imports", help)
+        self.failUnlessInNormalized(
+            "The 'tahoe debug flogtool' command uses the correct imports", help
+        )
 
         for (option, shortcut, oClass, desc) in options.subCommands:
             subhelp = str(oClass())
-            self.failUnlessIn(" [global-options] debug flogtool %s " % (option,), subhelp)
+            self.failUnlessIn(
+                " [global-options] debug flogtool %s " % (option,), subhelp
+            )
 
 
 class Ln(GridTestMixin, CLITestMixin, unittest.TestCase):
@@ -683,17 +970,18 @@ class Ln(GridTestMixin, CLITestMixin, unittest.TestCase):
         self.basedir = "cli/Ln/ln_without_alias"
         self.set_up_grid(oneshare=True)
         d = self.do_cli("ln", "from", "to")
+
         def _check(args):
             (rc, out, err) = args
             self.failUnlessReallyEqual(rc, 1)
             self.failUnlessIn("error:", err)
             self.assertEqual(out, "")
+
         d.addCallback(_check)
         # Make sure that validation extends to the "to" parameter
         d.addCallback(lambda ign: self.do_cli("create-alias", "havasu"))
         d.addCallback(lambda ign: self._create_test_file())
-        d.addCallback(lambda ign: self.do_cli("put", self.datafile,
-                                              "havasu:from"))
+        d.addCallback(lambda ign: self.do_cli("put", self.datafile, "havasu:from"))
         d.addCallback(lambda ign: self.do_cli("ln", "havasu:from", "to"))
         d.addCallback(_check)
         return d
@@ -704,17 +992,18 @@ class Ln(GridTestMixin, CLITestMixin, unittest.TestCase):
         self.basedir = "cli/Ln/ln_with_nonexistent_alias"
         self.set_up_grid(oneshare=True)
         d = self.do_cli("ln", "havasu:from", "havasu:to")
+
         def _check(args):
             (rc, out, err) = args
             self.failUnlessReallyEqual(rc, 1)
             self.failUnlessIn("error:", err)
+
         d.addCallback(_check)
         # Make sure that validation occurs on the to parameter if the
         # from parameter passes.
         d.addCallback(lambda ign: self.do_cli("create-alias", "havasu"))
         d.addCallback(lambda ign: self._create_test_file())
-        d.addCallback(lambda ign: self.do_cli("put", self.datafile,
-                                              "havasu:from"))
+        d.addCallback(lambda ign: self.do_cli("put", self.datafile, "havasu:from"))
         d.addCallback(lambda ign: self.do_cli("ln", "havasu:from", "huron:to"))
         d.addCallback(_check)
         return d
@@ -723,6 +1012,7 @@ class Ln(GridTestMixin, CLITestMixin, unittest.TestCase):
 class Admin(unittest.TestCase):
     def test_generate_keypair(self):
         d = run_cli("admin", "generate-keypair")
+
         def _done(args):
             (rc, stdout, stderr) = args
             lines = [line.strip() for line in stdout.splitlines()]
@@ -735,12 +1025,14 @@ class Admin(unittest.TestCase):
             self.failUnless(privkey_bits[1].startswith("priv-v0-"), lines[0])
             self.failUnless(pubkey_bits[1].startswith("pub-v0-"), lines[1])
             sk, pk = ed25519.signing_keypair_from_string(
-                privkey_bits[1].encode("ascii"))
+                privkey_bits[1].encode("ascii")
+            )
             vk_bytes = pubkey_bits[1].encode("ascii")
             self.assertEqual(
                 ed25519.string_from_verifying_key(pk),
                 vk_bytes,
             )
+
         d.addCallback(_done)
         return d
 
@@ -749,6 +1041,7 @@ class Admin(unittest.TestCase):
         priv_key_str = str(ed25519.string_from_signing_key(priv_key), "ascii")
         pub_key_str = str(ed25519.string_from_verifying_key(pub_key), "ascii")
         d = run_cli("admin", "derive-pubkey", priv_key_str)
+
         def _done(args):
             (rc, stdout, stderr) = args
             lines = stdout.split("\n")
@@ -758,8 +1051,9 @@ class Admin(unittest.TestCase):
             vk_header = "public: pub-v0-"
             self.failUnless(privkey_line.startswith(sk_header), privkey_line)
             self.failUnless(pubkey_line.startswith(vk_header), pubkey_line)
-            pub_key_str2 = pubkey_line[len(vk_header):]
+            pub_key_str2 = pubkey_line[len(vk_header) :]
             self.assertEqual("pub-v0-" + pub_key_str2, pub_key_str)
+
         d.addCallback(_done)
         return d
 
@@ -772,35 +1066,49 @@ class Errors(GridTestMixin, CLITestMixin, unittest.TestCase):
         self.fileurls = {}
         DATA = b"data" * 100
         d = c0.upload(upload.Data(DATA, convergence=b""))
+
         def _stash_bad(ur):
             self.uri_1share = ur.get_uri()
-            self.delete_shares_numbered(ur.get_uri(), list(range(1,10)))
+            self.delete_shares_numbered(ur.get_uri(), list(range(1, 10)))
+
         d.addCallback(_stash_bad)
 
         # the download is abandoned as soon as it's clear that we won't get
         # enough shares. The one remaining share might be in either the
         # COMPLETE or the PENDING state.
-        in_complete_msg = "ran out of shares: complete=sh0 pending= overdue= unused= need 3"
-        in_pending_msg_regex = "ran out of shares: complete= pending=Share\(.+\) overdue= unused= need 3"
+        in_complete_msg = (
+            "ran out of shares: complete=sh0 pending= overdue= unused= need 3"
+        )
+        in_pending_msg_regex = (
+            "ran out of shares: complete= pending=Share\(.+\) overdue= unused= need 3"
+        )
 
         d.addCallback(lambda ign: self.do_cli("get", self.uri_1share))
+
         def _check1(args):
             (rc, out, err) = args
             self.failIfEqual(rc, 0)
             self.failUnless("410 Gone" in err, err)
             self.failUnlessIn("NotEnoughSharesError: ", err)
-            self.failUnless(in_complete_msg in err or re.search(in_pending_msg_regex, err))
+            self.failUnless(
+                in_complete_msg in err or re.search(in_pending_msg_regex, err)
+            )
+
         d.addCallback(_check1)
 
         targetf = os.path.join(self.basedir, "output")
         d.addCallback(lambda ign: self.do_cli("get", self.uri_1share, targetf))
+
         def _check2(args):
             (rc, out, err) = args
             self.failIfEqual(rc, 0)
             self.failUnless("410 Gone" in err, err)
             self.failUnlessIn("NotEnoughSharesError: ", err)
-            self.failUnless(in_complete_msg in err or re.search(in_pending_msg_regex, err))
+            self.failUnless(
+                in_complete_msg in err or re.search(in_pending_msg_regex, err)
+            )
             self.failIf(os.path.exists(targetf))
+
         d.addCallback(_check2)
 
         return d
@@ -813,15 +1121,21 @@ class Errors(GridTestMixin, CLITestMixin, unittest.TestCase):
 
         # Simulate a connection error
         def _socket_error(*args, **kwargs):
-            raise socket_error('test error')
-        self.patch(allmydata.scripts.common_http.http_client.HTTPConnection,
-                   "endheaders", _socket_error)
+            raise socket_error("test error")
+
+        self.patch(
+            allmydata.scripts.common_http.http_client.HTTPConnection,
+            "endheaders",
+            _socket_error,
+        )
 
         d = self.do_cli("mkdir")
+
         def _check_invalid(args):
             (rc, stdout, stderr) = args
             self.failIfEqual(rc, 0)
             self.failUnlessIn("Error trying to connect to http://127.0.0.1", stderr)
+
         d.addCallback(_check_invalid)
         return d
 
@@ -833,12 +1147,14 @@ class Get(GridTestMixin, CLITestMixin, unittest.TestCase):
         # hasn't been created yet.
         self.basedir = "cli/Get/get_without_alias"
         self.set_up_grid(oneshare=True)
-        d = self.do_cli('get', 'file')
+        d = self.do_cli("get", "file")
+
         def _check(args):
             (rc, out, err) = args
             self.failUnlessReallyEqual(rc, 1)
             self.failUnlessIn("error:", err)
             self.assertEqual(out, "")
+
         d.addCallback(_check)
         return d
 
@@ -848,12 +1164,14 @@ class Get(GridTestMixin, CLITestMixin, unittest.TestCase):
         self.basedir = "cli/Get/get_with_nonexistent_alias"
         self.set_up_grid(oneshare=True)
         d = self.do_cli("get", "nonexistent:file")
+
         def _check(args):
             (rc, out, err) = args
             self.failUnlessReallyEqual(rc, 1)
             self.failUnlessIn("error:", err)
             self.failUnlessIn("nonexistent", err)
             self.assertEqual(out, "")
+
         d.addCallback(_check)
         return d
 
@@ -866,11 +1184,13 @@ class Manifest(GridTestMixin, CLITestMixin, unittest.TestCase):
         self.basedir = "cli/Manifest/manifest_without_alias"
         self.set_up_grid(oneshare=True)
         d = self.do_cli("manifest")
+
         def _check(args):
             (rc, out, err) = args
             self.failUnlessReallyEqual(rc, 1)
             self.failUnlessIn("error:", err)
             self.assertEqual(out, "")
+
         d.addCallback(_check)
         return d
 
@@ -880,12 +1200,14 @@ class Manifest(GridTestMixin, CLITestMixin, unittest.TestCase):
         self.basedir = "cli/Manifest/manifest_with_nonexistent_alias"
         self.set_up_grid(oneshare=True)
         d = self.do_cli("manifest", "nonexistent:")
+
         def _check(args):
             (rc, out, err) = args
             self.failUnlessReallyEqual(rc, 1)
             self.failUnlessIn("error:", err)
             self.failUnlessIn("nonexistent", err)
             self.assertEqual(out, "")
+
         d.addCallback(_check)
         return d
 
@@ -897,11 +1219,13 @@ class Mkdir(GridTestMixin, CLITestMixin, unittest.TestCase):
 
         d = self.do_cli("create-alias", "tahoe")
         d.addCallback(lambda res: self.do_cli("mkdir", "test"))
+
         def _check(args):
             (rc, out, err) = args
             self.failUnlessReallyEqual(rc, 0)
             self.assertEqual(err, "")
             self.failUnlessIn("URI:", out)
+
         d.addCallback(_check)
 
         return d
@@ -910,6 +1234,7 @@ class Mkdir(GridTestMixin, CLITestMixin, unittest.TestCase):
         self.basedir = os.path.dirname(self.mktemp())
         self.set_up_grid(oneshare=True)
         d = self.do_cli("create-alias", "tahoe")
+
         def _check(args, st):
             (rc, out, err) = args
             self.failUnlessReallyEqual(rc, 0)
@@ -925,10 +1250,12 @@ class Mkdir(GridTestMixin, CLITestMixin, unittest.TestCase):
             """
             d2 = self.do_cli("mkdir", "--format={}".format(mutable_type), dirname)
             d2.addCallback(_check, uri_prefix)
+
             def _stash_filecap(cap):
                 u = uri.from_string(cap)
                 fn_uri = u.get_filenode_cap()
                 self._filecap = fn_uri.to_string()
+
             d2.addCallback(_stash_filecap)
             d2.addCallback(lambda ign: self.do_cli("ls", "--json", dirname))
             d2.addCallback(_check, uri_prefix)
@@ -946,13 +1273,16 @@ class Mkdir(GridTestMixin, CLITestMixin, unittest.TestCase):
         self.basedir = os.path.dirname(self.mktemp())
         self.set_up_grid(oneshare=True)
         d = self.do_cli("mkdir", "--format=SDMF")
+
         def _check(args, st):
             (rc, out, err) = args
             self.failUnlessReallyEqual(rc, 0)
             self.assertEqual(err, "")
             self.failUnlessIn(st, out)
             return out
+
         d.addCallback(_check, "URI:DIR2")
+
         def _stash_dircap(cap):
             self._dircap = cap
             # Now we're going to feed the cap into uri.from_string...
@@ -961,40 +1291,41 @@ class Mkdir(GridTestMixin, CLITestMixin, unittest.TestCase):
             fn_uri = u.get_filenode_cap()
             # ...and stash that.
             self._filecap = fn_uri.to_string()
+
         d.addCallback(_stash_dircap)
-        d.addCallback(lambda res: self.do_cli("ls", "--json",
-                                              self._filecap))
+        d.addCallback(lambda res: self.do_cli("ls", "--json", self._filecap))
         d.addCallback(_check, '"format": "SDMF"')
         d.addCallback(lambda res: self.do_cli("mkdir", "--format=MDMF"))
         d.addCallback(_check, "URI:DIR2-MDMF")
         d.addCallback(_stash_dircap)
-        d.addCallback(lambda res: self.do_cli("ls", "--json",
-                                              self._filecap))
+        d.addCallback(lambda res: self.do_cli("ls", "--json", self._filecap))
         d.addCallback(_check, '"format": "MDMF"')
         return d
 
     def test_mkdir_bad_mutable_type(self):
         o = cli.MakeDirectoryOptions()
-        self.failUnlessRaises(usage.UsageError,
-                              o.parseOptions,
-                              ["--format=LDMF"])
+        self.failUnlessRaises(usage.UsageError, o.parseOptions, ["--format=LDMF"])
 
     def test_mkdir_unicode(self):
         self.basedir = os.path.dirname(self.mktemp())
         self.set_up_grid(oneshare=True)
 
         try:
-            motorhead_arg = u"tahoe:Mot\u00F6rhead".encode(get_io_encoding())
+            motorhead_arg = "tahoe:Mot\u00F6rhead".encode(get_io_encoding())
         except UnicodeEncodeError:
-            raise unittest.SkipTest("A non-ASCII command argument could not be encoded on this platform.")
+            raise unittest.SkipTest(
+                "A non-ASCII command argument could not be encoded on this platform."
+            )
 
         d = self.do_cli("create-alias", "tahoe")
         d.addCallback(lambda res: self.do_cli("mkdir", motorhead_arg))
+
         def _check(args):
             (rc, out, err) = args
             self.failUnlessReallyEqual(rc, 0)
             self.assertEqual(err, "")
             self.failUnlessIn("URI:", out)
+
         d.addCallback(_check)
 
         return d
@@ -1005,11 +1336,13 @@ class Mkdir(GridTestMixin, CLITestMixin, unittest.TestCase):
         self.basedir = "cli/Mkdir/mkdir_with_nonexistent_alias"
         self.set_up_grid(oneshare=True)
         d = self.do_cli("mkdir", "havasu:")
+
         def _check(args):
             (rc, out, err) = args
             self.failUnlessReallyEqual(rc, 1)
             self.failUnlessIn("error:", err)
             self.assertEqual(out, "")
+
         d.addCallback(_check)
         return d
 
@@ -1029,11 +1362,13 @@ class Unlink(GridTestMixin, CLITestMixin, unittest.TestCase):
         self.basedir = "cli/Unlink/%s_without_alias" % (self.command,)
         self.set_up_grid(oneshare=True)
         d = self.do_cli(self.command, "afile")
+
         def _check(args):
             (rc, out, err) = args
             self.failUnlessReallyEqual(rc, 1)
             self.failUnlessIn("error:", err)
             self.assertEqual(out, "")
+
         d.addCallback(_check)
 
         d.addCallback(lambda ign: self.do_cli(self.command, "afile"))
@@ -1046,12 +1381,14 @@ class Unlink(GridTestMixin, CLITestMixin, unittest.TestCase):
         self.basedir = "cli/Unlink/%s_with_nonexistent_alias" % (self.command,)
         self.set_up_grid(oneshare=True)
         d = self.do_cli(self.command, "nonexistent:afile")
+
         def _check(args):
             (rc, out, err) = args
             self.failUnlessReallyEqual(rc, 1)
             self.failUnlessIn("error:", err)
             self.failUnlessIn("nonexistent", err)
             self.assertEqual(out, "")
+
         d.addCallback(_check)
 
         d.addCallback(lambda ign: self.do_cli(self.command, "nonexistent:afile"))
@@ -1065,11 +1402,13 @@ class Unlink(GridTestMixin, CLITestMixin, unittest.TestCase):
         self._create_test_file()
         d = self.do_cli("create-alias", "tahoe")
         d.addCallback(lambda ign: self.do_cli("put", self.datafile, "tahoe:test"))
+
         def _do_unlink(args):
             (rc, out, err) = args
             self.failUnlessReallyEqual(rc, 0)
             self.failUnless(out.startswith("URI:"), out)
-            return self.do_cli(self.command, out.strip('\n'))
+            return self.do_cli(self.command, out.strip("\n"))
+
         d.addCallback(_do_unlink)
 
         def _check(args):
@@ -1078,6 +1417,7 @@ class Unlink(GridTestMixin, CLITestMixin, unittest.TestCase):
             self.failUnlessIn("'tahoe %s'" % (self.command,), err)
             self.failUnlessIn("path must be given", err)
             self.assertEqual(out, "")
+
         d.addCallback(_check)
         return d
 
@@ -1089,13 +1429,16 @@ class Stats(GridTestMixin, CLITestMixin, unittest.TestCase):
         c0 = self.g.clients[0]
         self.fileurls = {}
         d = c0.create_dirnode()
+
         def _stash_root(n):
             self.rootnode = n
             self.rooturi = n.get_uri()
+
         d.addCallback(_stash_root)
 
         # make sure we can get stats on an empty directory too
         d.addCallback(lambda ign: self.do_cli("stats", self.rooturi))
+
         def _check_stats(args):
             (rc, out, err) = args
             self.assertEqual(err, "")
@@ -1107,6 +1450,7 @@ class Stats(GridTestMixin, CLITestMixin, unittest.TestCase):
             self.failUnlessIn("     count-directories: 1", lines)
             self.failUnlessIn("  size-immutable-files: 0", lines)
             self.failIfIn("Size Histogram:", lines)
+
         d.addCallback(_check_stats)
 
         return d
@@ -1118,11 +1462,13 @@ class Stats(GridTestMixin, CLITestMixin, unittest.TestCase):
         self.basedir = "cli/Stats/stats_without_alias"
         self.set_up_grid(oneshare=True)
         d = self.do_cli("stats")
+
         def _check(args):
             (rc, out, err) = args
             self.failUnlessReallyEqual(rc, 1)
             self.failUnlessIn("error:", err)
             self.assertEqual(out, "")
+
         d.addCallback(_check)
         return d
 
@@ -1132,11 +1478,13 @@ class Stats(GridTestMixin, CLITestMixin, unittest.TestCase):
         self.basedir = "cli/Stats/stats_with_nonexistent_alias"
         self.set_up_grid(oneshare=True)
         d = self.do_cli("stats", "havasu:")
+
         def _check(args):
             (rc, out, err) = args
             self.failUnlessReallyEqual(rc, 1)
             self.failUnlessIn("error:", err)
             self.assertEqual(out, "")
+
         d.addCallback(_check)
         return d
 
@@ -1149,20 +1497,24 @@ class Webopen(GridTestMixin, CLITestMixin, unittest.TestCase):
         self.basedir = "cli/Webopen/webopen_with_nonexistent_alias"
         self.set_up_grid(oneshare=True)
         d = self.do_cli("webopen", "fake:")
+
         def _check(args):
             (rc, out, err) = args
             self.failUnlessReallyEqual(rc, 1)
             self.failUnlessIn("error:", err)
             self.assertEqual(out, "")
+
         d.addCallback(_check)
         return d
 
     def test_webopen(self):
         # TODO: replace with @patch that supports Deferreds.
         import webbrowser
+
         def call_webbrowser_open(url):
-            self.failUnlessIn(str(self.alias_uri, "ascii").replace(':', '%3A'), url)
+            self.failUnlessIn(str(self.alias_uri, "ascii").replace(":", "%3A"), url)
             self.webbrowser_open_called = True
+
         def _cleanup(res):
             webbrowser.open = self.old_webbrowser_open
             return res
@@ -1174,26 +1526,31 @@ class Webopen(GridTestMixin, CLITestMixin, unittest.TestCase):
             self.basedir = "cli/Webopen/webopen"
             self.set_up_grid(oneshare=True)
             d = self.do_cli("create-alias", "alias:")
+
             def _check_alias(args):
                 (rc, out, err) = args
                 self.failUnlessReallyEqual(rc, 0, repr((rc, out, err)))
                 self.failUnlessIn("Alias 'alias' created", out)
                 self.assertEqual(err, "")
                 self.alias_uri = get_aliases(self.get_clientdir())["alias"]
+
             d.addCallback(_check_alias)
             d.addCallback(lambda res: self.do_cli("webopen", "alias:"))
+
             def _check_webopen(args):
                 (rc, out, err) = args
                 self.failUnlessReallyEqual(rc, 0, repr((rc, out, err)))
                 self.assertEqual(out, "")
                 self.assertEqual(err, "")
                 self.failUnless(self.webbrowser_open_called)
+
             d.addCallback(_check_webopen)
             d.addBoth(_cleanup)
         except:
             _cleanup(None)
             raise
         return d
+
 
 class Options(ReallyEqualMixin, unittest.TestCase):
     # this test case only looks at argument-processing and simple stuff.
@@ -1212,54 +1569,58 @@ class Options(ReallyEqualMixin, unittest.TestCase):
         fileutil.make_dirs("cli/test_options")
         fileutil.make_dirs("cli/test_options/private")
         fileutil.write("cli/test_options/node.url", "http://localhost:8080/\n")
-        filenode_uri = uri.WriteableSSKFileURI(writekey=b"\x00"*16,
-                                               fingerprint=b"\x00"*32)
+        filenode_uri = uri.WriteableSSKFileURI(
+            writekey=b"\x00" * 16, fingerprint=b"\x00" * 32
+        )
         private_uri = uri.DirectoryURI(filenode_uri).to_string()
         fileutil.write("cli/test_options/private/root_dir.cap", private_uri + b"\n")
-        def parse2(args): return parse_options("cli/test_options", "ls", args)
+
+        def parse2(args):
+            return parse_options("cli/test_options", "ls", args)
+
         o = parse2([])
-        self.failUnlessEqual(o['node-url'], "http://localhost:8080/")
+        self.failUnlessEqual(o["node-url"], "http://localhost:8080/")
         self.failUnlessEqual(o.aliases[DEFAULT_ALIAS].encode("ascii"), private_uri)
-        self.failUnlessEqual(o.where, u"")
+        self.failUnlessEqual(o.where, "")
 
         o = parse2(["--node-url", "http://example.org:8111/"])
-        self.failUnlessEqual(o['node-url'], "http://example.org:8111/")
+        self.failUnlessEqual(o["node-url"], "http://example.org:8111/")
         self.failUnlessEqual(o.aliases[DEFAULT_ALIAS].encode("ascii"), private_uri)
-        self.failUnlessEqual(o.where, u"")
+        self.failUnlessEqual(o.where, "")
 
         # -u for --node-url used to clash with -u for --uri (tickets #1949 and #2137).
         o = parse2(["-u", "http://example.org:8111/"])
-        self.failUnlessEqual(o['node-url'], "http://example.org:8111/")
+        self.failUnlessEqual(o["node-url"], "http://example.org:8111/")
         self.failUnlessEqual(o.aliases[DEFAULT_ALIAS].encode("ascii"), private_uri)
-        self.failUnlessEqual(o.where, u"")
+        self.failUnlessEqual(o.where, "")
         self.failIf(o["uri"])
 
         o = parse2(["-u", "http://example.org:8111/", "--uri"])
-        self.failUnlessEqual(o['node-url'], "http://example.org:8111/")
+        self.failUnlessEqual(o["node-url"], "http://example.org:8111/")
         self.failUnlessEqual(o.aliases[DEFAULT_ALIAS].encode("ascii"), private_uri)
-        self.failUnlessEqual(o.where, u"")
+        self.failUnlessEqual(o.where, "")
         self.failUnless(o["uri"])
 
         o = parse2(["--dir-cap", "root"])
-        self.failUnlessEqual(o['node-url'], "http://localhost:8080/")
+        self.failUnlessEqual(o["node-url"], "http://localhost:8080/")
         self.failUnlessEqual(o.aliases[DEFAULT_ALIAS], "root")
-        self.failUnlessEqual(o.where, u"")
+        self.failUnlessEqual(o.where, "")
 
-        other_filenode_uri = uri.WriteableSSKFileURI(writekey=b"\x11"*16,
-                                                     fingerprint=b"\x11"*32)
+        other_filenode_uri = uri.WriteableSSKFileURI(
+            writekey=b"\x11" * 16, fingerprint=b"\x11" * 32
+        )
         other_uri = uri.DirectoryURI(other_filenode_uri).to_string()
         o = parse2(["--dir-cap", other_uri])
-        self.failUnlessEqual(o['node-url'], "http://localhost:8080/")
+        self.failUnlessEqual(o["node-url"], "http://localhost:8080/")
         self.failUnlessEqual(o.aliases[DEFAULT_ALIAS].encode("ascii"), other_uri)
-        self.failUnlessEqual(o.where, u"")
+        self.failUnlessEqual(o.where, "")
 
         o = parse2(["--dir-cap", other_uri, "subdir"])
-        self.failUnlessEqual(o['node-url'], "http://localhost:8080/")
+        self.failUnlessEqual(o["node-url"], "http://localhost:8080/")
         self.failUnlessEqual(o.aliases[DEFAULT_ALIAS].encode("ascii"), other_uri)
-        self.failUnlessEqual(o.where, u"subdir")
+        self.failUnlessEqual(o.where, "subdir")
 
-        self.failUnlessRaises(usage.UsageError, parse2,
-                              ["--node-url", "NOT-A-URL"])
+        self.failUnlessRaises(usage.UsageError, parse2, ["--node-url", "NOT-A-URL"])
 
         o = parse2(["--node-url", "http://localhost:8080"])
         self.failUnlessEqual(o["node-url"], "http://localhost:8080/")
@@ -1273,17 +1634,16 @@ class Options(ReallyEqualMixin, unittest.TestCase):
         self.failUnlessRaises(SystemExit, self.parse, ["--version"], stdout)
         self.failUnlessIn(allmydata.__full_version__, stdout.getvalue())
         # but "tahoe SUBCOMMAND --version" should be rejected
-        self.failUnlessRaises(usage.UsageError, self.parse,
-                              ["run", "--version"])
-        self.failUnlessRaises(usage.UsageError, self.parse,
-                              ["run", "--version-and-path"])
+        self.failUnlessRaises(usage.UsageError, self.parse, ["run", "--version"])
+        self.failUnlessRaises(
+            usage.UsageError, self.parse, ["run", "--version-and-path"]
+        )
 
     def test_quiet(self):
         # accepted as an overall option, but not on subcommands
         o = self.parse(["--quiet", "run"])
         self.failUnless(o.parent["quiet"])
-        self.failUnlessRaises(usage.UsageError, self.parse,
-                              ["run", "--quiet"])
+        self.failUnlessRaises(usage.UsageError, self.parse, ["run", "--quiet"])
 
     def test_basedir(self):
         # accept a --node-directory option before the verb, or a --basedir
@@ -1298,45 +1658,65 @@ class Options(ReallyEqualMixin, unittest.TestCase):
         some_twistd_option = "--spew"
 
         o = self.parse(["run"])
-        self.failUnlessReallyEqual(o["basedir"], os.path.join(fileutil.abspath_expanduser_unicode(u"~"),
-                                                              u".tahoe"))
+        self.failUnlessReallyEqual(
+            o["basedir"],
+            os.path.join(fileutil.abspath_expanduser_unicode("~"), ".tahoe"),
+        )
         o = self.parse(["run", "here"])
-        self.failUnlessReallyEqual(o["basedir"], fileutil.abspath_expanduser_unicode(u"here"))
+        self.failUnlessReallyEqual(
+            o["basedir"], fileutil.abspath_expanduser_unicode("here")
+        )
         o = self.parse(["run", "--basedir", "there"])
-        self.failUnlessReallyEqual(o["basedir"], fileutil.abspath_expanduser_unicode(u"there"))
+        self.failUnlessReallyEqual(
+            o["basedir"], fileutil.abspath_expanduser_unicode("there")
+        )
         o = self.parse(["--node-directory", "there", "run"])
-        self.failUnlessReallyEqual(o["basedir"], fileutil.abspath_expanduser_unicode(u"there"))
+        self.failUnlessReallyEqual(
+            o["basedir"], fileutil.abspath_expanduser_unicode("there")
+        )
 
         o = self.parse(["run", "here", some_twistd_option])
-        self.failUnlessReallyEqual(o["basedir"], fileutil.abspath_expanduser_unicode(u"here"))
+        self.failUnlessReallyEqual(
+            o["basedir"], fileutil.abspath_expanduser_unicode("here")
+        )
 
-        self.failUnlessRaises(usage.UsageError, self.parse,
-                              ["--basedir", "there", "run"])
-        self.failUnlessRaises(usage.UsageError, self.parse,
-                              ["run", "--node-directory", "there"])
+        self.failUnlessRaises(
+            usage.UsageError, self.parse, ["--basedir", "there", "run"]
+        )
+        self.failUnlessRaises(
+            usage.UsageError, self.parse, ["run", "--node-directory", "there"]
+        )
 
-        self.failUnlessRaises(usage.UsageError, self.parse,
-                              ["--node-directory=there",
-                               "run", "--basedir=here"])
-        self.failUnlessRaises(usage.UsageError, self.parse,
-                              ["run", "--basedir=here", "anywhere"])
-        self.failUnlessRaises(usage.UsageError, self.parse,
-                              ["--node-directory=there",
-                               "run", "anywhere"])
-        self.failUnlessRaises(usage.UsageError, self.parse,
-                              ["--node-directory=there",
-                               "run", "--basedir=here", "anywhere"])
+        self.failUnlessRaises(
+            usage.UsageError,
+            self.parse,
+            ["--node-directory=there", "run", "--basedir=here"],
+        )
+        self.failUnlessRaises(
+            usage.UsageError, self.parse, ["run", "--basedir=here", "anywhere"]
+        )
+        self.failUnlessRaises(
+            usage.UsageError, self.parse, ["--node-directory=there", "run", "anywhere"]
+        )
+        self.failUnlessRaises(
+            usage.UsageError,
+            self.parse,
+            ["--node-directory=there", "run", "--basedir=here", "anywhere"],
+        )
 
-        self.failUnlessRaises(usage.UsageError, self.parse,
-                              ["--node-directory=there", "run", some_twistd_option])
-        self.failUnlessRaises(usage.UsageError, self.parse,
-                              ["run", "--basedir=here", some_twistd_option])
+        self.failUnlessRaises(
+            usage.UsageError,
+            self.parse,
+            ["--node-directory=there", "run", some_twistd_option],
+        )
+        self.failUnlessRaises(
+            usage.UsageError, self.parse, ["run", "--basedir=here", some_twistd_option]
+        )
 
 
 class Run(unittest.TestCase):
-
-    @patch('allmydata.scripts.tahoe_run.os.chdir')
-    @patch('allmydata.scripts.tahoe_run.twistd')
+    @patch("allmydata.scripts.tahoe_run.os.chdir")
+    @patch("allmydata.scripts.tahoe_run.twistd")
     def test_non_numeric_pid(self, mock_twistd, chdir):
         """
         If the pidfile exists but does not contain a numeric value, a complaint to
@@ -1344,17 +1724,17 @@ class Run(unittest.TestCase):
         """
         basedir = FilePath(ensure_str(self.mktemp()))
         basedir.makedirs()
-        basedir.child(u"twistd.pid").setContent(b"foo")
-        basedir.child(u"tahoe-client.tac").setContent(b"")
+        basedir.child("twistd.pid").setContent(b"foo")
+        basedir.child("tahoe-client.tac").setContent(b"")
 
         config = tahoe_run.RunOptions()
         config.stdout = StringIO()
         config.stderr = StringIO()
-        config['basedir'] = ensure_text(basedir.path)
+        config["basedir"] = ensure_text(basedir.path)
         config.twistd_args = []
 
         result_code = tahoe_run.run(config)
         self.assertIn("invalid PID file", config.stderr.getvalue())
         self.assertTrue(len(mock_twistd.mock_calls), 1)
-        self.assertEqual(mock_twistd.mock_calls[0][0], 'runApp')
+        self.assertEqual(mock_twistd.mock_calls[0][0], "runApp")
         self.assertEqual(0, result_code)

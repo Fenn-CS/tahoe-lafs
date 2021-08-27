@@ -8,14 +8,37 @@ from __future__ import unicode_literals
 
 from future.utils import PY2, PY3, bchr, binary_type
 from future.builtins import str as future_str
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import os
 import sys
 import time
 import signal
 from random import randrange
+
 if PY2:
     from StringIO import StringIO
 from io import (
@@ -29,7 +52,12 @@ from twisted.trial import unittest
 
 from ..util.assertutil import precondition
 from ..scripts import runner
-from allmydata.util.encodingutil import unicode_platform, get_filesystem_encoding, argv_type, unicode_to_argv
+from allmydata.util.encodingutil import (
+    unicode_platform,
+    get_filesystem_encoding,
+    argv_type,
+    unicode_to_argv,
+)
 
 
 def skip_if_cannot_represent_filename(u):
@@ -40,7 +68,9 @@ def skip_if_cannot_represent_filename(u):
         try:
             u.encode(enc)
         except UnicodeEncodeError:
-            raise unittest.SkipTest("A non-ASCII filename could not be encoded on this platform.")
+            raise unittest.SkipTest(
+                "A non-ASCII filename could not be encoded on this platform."
+            )
 
 
 def _getvalue(io):
@@ -86,14 +116,18 @@ def run_cli_native(verb, *args, **kwargs):
         bytes.
     """
     nodeargs = kwargs.pop("nodeargs", [])
-    encoding = kwargs.pop("encoding", None) or getattr(sys.stdout, "encoding") or "utf-8"
+    encoding = (
+        kwargs.pop("encoding", None) or getattr(sys.stdout, "encoding") or "utf-8"
+    )
     return_bytes = kwargs.pop("return_bytes", False)
     verb = maybe_unicode_to_argv(verb)
     args = [maybe_unicode_to_argv(a) for a in args]
     nodeargs = [maybe_unicode_to_argv(a) for a in nodeargs]
     precondition(
         all(isinstance(arg, argv_type) for arg in [verb] + nodeargs + list(args)),
-        "arguments to run_cli must be {argv_type} -- convert using unicode_to_argv".format(argv_type=argv_type),
+        "arguments to run_cli must be {argv_type} -- convert using unicode_to_argv".format(
+            argv_type=argv_type
+        ),
         verb=verb,
         args=args,
         nodeargs=nodeargs,
@@ -129,20 +163,21 @@ def run_cli_native(verb, *args, **kwargs):
         stderr = TextIOWrapper(BytesIO(), encoding)
     d = defer.succeed(argv)
     d.addCallback(runner.parse_or_exit_with_explanation, stdout=stdout)
-    d.addCallback(runner.dispatch,
-                  stdin=stdin,
-                  stdout=stdout, stderr=stderr)
+    d.addCallback(runner.dispatch, stdin=stdin, stdout=stdout, stderr=stderr)
+
     def _done(rc, stdout=stdout, stderr=stderr):
         if return_bytes and PY3:
             stdout = stdout.buffer
             stderr = stderr.buffer
         return 0, _getvalue(stdout), _getvalue(stderr)
+
     def _err(f, stdout=stdout, stderr=stderr):
         f.trap(SystemExit)
         if return_bytes and PY3:
             stdout = stdout.buffer
             stderr = stderr.buffer
         return f.value.code, _getvalue(stdout), _getvalue(stderr)
+
     d.addCallbacks(_done, _err)
     return d
 
@@ -188,6 +223,7 @@ def run_cli_unicode(verb, argv, nodeargs=None, stdin=None, encoding=None):
         encoding=encoding,
         *list(encode(arg) for arg in argv)
     )
+
     def maybe_decode(result):
         code, stdout, stderr = result
         if isinstance(stdout, bytes):
@@ -195,6 +231,7 @@ def run_cli_unicode(verb, argv, nodeargs=None, stdin=None, encoding=None):
         if isinstance(stderr, bytes):
             stderr = stderr.decode(codec)
         return code, stdout, stderr
+
     d.addCallback(maybe_decode)
     return d
 
@@ -207,30 +244,37 @@ def parse_cli(*argv):
     # argument, or throws usage.UsageError if something went wrong.
     return runner.parse_options(argv)
 
+
 class DevNullDictionary(dict):
     def __setitem__(self, key, value):
         return
 
+
 def insecurerandstr(n):
-    return b''.join(map(bchr, list(map(randrange, [0]*n, [256]*n))))
+    return b"".join(map(bchr, list(map(randrange, [0] * n, [256] * n))))
+
 
 def flip_bit(good, which):
     """Flip the low-order bit of good[which]."""
     if which == -1:
         pieces = good[:which], good[-1:], b""
     else:
-        pieces = good[:which], good[which:which+1], good[which+1:]
+        pieces = good[:which], good[which : which + 1], good[which + 1 :]
     return pieces[0] + bchr(ord(pieces[1]) ^ 0x01) + pieces[2]
 
+
 def flip_one_bit(s, offset=0, size=None):
-    """ flip one random bit of the string s, in a byte greater than or equal to offset and less
-    than offset+size. """
+    """flip one random bit of the string s, in a byte greater than or equal to offset and less
+    than offset+size."""
     precondition(isinstance(s, binary_type))
     if size is None:
-        size=len(s)-offset
-    i = randrange(offset, offset+size)
-    result = s[:i] + bchr(ord(s[i:i+1])^(0x01<<randrange(0, 8))) + s[i+1:]
-    assert result != s, "Internal error -- flip_one_bit() produced the same string as its input: %s == %s" % (result, s)
+        size = len(s) - offset
+    i = randrange(offset, offset + size)
+    result = s[:i] + bchr(ord(s[i : i + 1]) ^ (0x01 << randrange(0, 8))) + s[i + 1 :]
+    assert result != s, (
+        "Internal error -- flip_one_bit() produced the same string as its input: %s == %s"
+        % (result, s)
+    )
     return result
 
 
@@ -245,7 +289,11 @@ class ReallyEqualMixin(object):
             a = str(a)
         if b.__class__ == future_str:
             b = str(b)
-        self.assertEqual(type(a), type(b), "a :: %r (%s), b :: %r (%s), %r" % (a, type(a), b, type(b), msg))
+        self.assertEqual(
+            type(a),
+            type(b),
+            "a :: %r (%s), b :: %r (%s), %r" % (a, type(a), b, type(b), msg),
+        )
 
 
 class SignalMixin(object):
@@ -260,8 +308,7 @@ class SignalMixin(object):
         # reactor.run(). problem is reactor may not have been run when this
         # test runs.
         if hasattr(reactor, "_handleSigchld") and hasattr(signal, "SIGCHLD"):
-            self.sigchldHandler = signal.signal(signal.SIGCHLD,
-                                                reactor._handleSigchld)
+            self.sigchldHandler = signal.signal(signal.SIGCHLD, reactor._handleSigchld)
         return super(SignalMixin, self).setUp()
 
     def tearDown(self):
@@ -280,32 +327,35 @@ class StallMixin(object):
 class Marker(object):
     pass
 
+
 class FakeCanary(object):
-    """For use in storage tests.
-    """
+    """For use in storage tests."""
+
     def __init__(self, ignore_disconnectors=False):
         self.ignore = ignore_disconnectors
         self.disconnectors = {}
+
     def notifyOnDisconnect(self, f, *args, **kwargs):
         if self.ignore:
             return
         m = Marker()
         self.disconnectors[m] = (f, args, kwargs)
         return m
+
     def dontNotifyOnDisconnect(self, marker):
         if self.ignore:
             return
         del self.disconnectors[marker]
+
     def getRemoteTubID(self):
         return None
+
     def getPeer(self):
         return "<fake>"
 
 
 class ShouldFailMixin(object):
-
-    def shouldFail(self, expected_failure, which, substring,
-                   callable, *args, **kwargs):
+    def shouldFail(self, expected_failure, which, substring, callable, *args, **kwargs):
         """Assert that a function call raises some exception. This is a
         Deferred-friendly version of TestCase.assertRaises() .
 
@@ -330,19 +380,24 @@ class ShouldFailMixin(object):
 
         assert substring is None or isinstance(substring, (bytes, str))
         d = defer.maybeDeferred(callable, *args, **kwargs)
+
         def done(res):
             if isinstance(res, failure.Failure):
                 res.trap(expected_failure)
                 if substring:
-                    self.failUnless(substring in str(res),
-                                    "%s: substring '%s' not in '%s'"
-                                    % (which, substring, str(res)))
+                    self.failUnless(
+                        substring in str(res),
+                        "%s: substring '%s' not in '%s'" % (which, substring, str(res)),
+                    )
                 # return the Failure for further analysis, but in a form that
                 # doesn't make the Deferred chain think that we failed.
                 return [res]
             else:
-                self.fail("%s was supposed to raise %s, not get '%s'" %
-                          (which, expected_failure, res))
+                self.fail(
+                    "%s was supposed to raise %s, not get '%s'"
+                    % (which, expected_failure, res)
+                )
+
         d.addBoth(done)
         return d
 
@@ -395,32 +450,41 @@ class TestMixin(SignalMixin):
 
 
 class TimezoneMixin(object):
-
     def setTimezone(self, timezone):
         def tzset_if_possible():
             # Windows doesn't have time.tzset().
-            if hasattr(time, 'tzset'):
+            if hasattr(time, "tzset"):
                 time.tzset()
 
         unset = object()
-        originalTimezone = os.environ.get('TZ', unset)
+        originalTimezone = os.environ.get("TZ", unset)
+
         def restoreTimezone():
             if originalTimezone is unset:
-                del os.environ['TZ']
+                del os.environ["TZ"]
             else:
-                os.environ['TZ'] = originalTimezone
+                os.environ["TZ"] = originalTimezone
             tzset_if_possible()
 
-        os.environ['TZ'] = timezone
+        os.environ["TZ"] = timezone
         self.addCleanup(restoreTimezone)
         tzset_if_possible()
 
     def have_working_tzset(self):
-        return hasattr(time, 'tzset')
+        return hasattr(time, "tzset")
 
 
 __all__ = [
-    "TestMixin", "ShouldFailMixin", "StallMixin", "run_cli", "parse_cli",
-    "DevNullDictionary", "insecurerandstr", "flip_bit", "flip_one_bit",
-    "SignalMixin", "skip_if_cannot_represent_filename", "ReallyEqualMixin"
+    "TestMixin",
+    "ShouldFailMixin",
+    "StallMixin",
+    "run_cli",
+    "parse_cli",
+    "DevNullDictionary",
+    "insecurerandstr",
+    "flip_bit",
+    "flip_one_bit",
+    "SignalMixin",
+    "skip_if_cannot_represent_filename",
+    "ReallyEqualMixin",
 ]

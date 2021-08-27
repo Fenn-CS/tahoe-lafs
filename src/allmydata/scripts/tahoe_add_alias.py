@@ -7,8 +7,31 @@ from __future__ import division
 from __future__ import print_function
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import os.path
 import codecs
@@ -36,23 +59,24 @@ def add_line_to_aliasfile(aliasfile, alias, cap):
     else:
         aliases = ""
     aliases += "%s: %s\n" % (alias, cap)
-    f = codecs.open(aliasfile+".tmp", "w", "utf-8")
+    f = codecs.open(aliasfile + ".tmp", "w", "utf-8")
     f.write(aliases)
     f.close()
-    move_into_place(aliasfile+".tmp", aliasfile)
+    move_into_place(aliasfile + ".tmp", aliasfile)
+
 
 def add_alias(options):
-    nodedir = options['node-directory']
+    nodedir = options["node-directory"]
     alias = options.alias
     precondition(isinstance(alias, str), alias=alias)
     cap = options.cap
     stdout = options.stdout
     stderr = options.stderr
-    if u":" in alias:
+    if ":" in alias:
         # a single trailing colon will already have been stripped if present
         print("Alias names cannot contain colons.", file=stderr)
         return 1
-    if u" " in alias:
+    if " " in alias:
         print("Alias names cannot contain spaces.", file=stderr)
         return 1
 
@@ -61,24 +85,25 @@ def add_alias(options):
         show_output(stderr, "Alias {alias} already exists!", alias=alias)
         return 1
     aliasfile = os.path.join(nodedir, "private", "aliases")
-    cap = str(uri.from_string_dirnode(cap).to_string(), 'utf-8')
+    cap = str(uri.from_string_dirnode(cap).to_string(), "utf-8")
 
     add_line_to_aliasfile(aliasfile, alias, cap)
     show_output(stdout, "Alias {alias} added", alias=alias)
     return 0
 
+
 def create_alias(options):
     # mkdir+add_alias
-    nodedir = options['node-directory']
+    nodedir = options["node-directory"]
     alias = options.alias
     precondition(isinstance(alias, str), alias=alias)
     stdout = options.stdout
     stderr = options.stderr
-    if u":" in alias:
+    if ":" in alias:
         # a single trailing colon will already have been stripped if present
         print("Alias names cannot contain colons.", file=stderr)
         return 1
-    if u" " in alias:
+    if " " in alias:
         print("Alias names cannot contain spaces.", file=stderr)
         return 1
 
@@ -89,7 +114,7 @@ def create_alias(options):
 
     aliasfile = os.path.join(nodedir, "private", "aliases")
 
-    nodeurl = options['node-url']
+    nodeurl = options["node-url"]
     if not nodeurl.endswith("/"):
         nodeurl += "/"
     url = nodeurl + "uri?t=mkdir"
@@ -136,11 +161,9 @@ def show_output(fp, template, **kwargs):
     else:
         has_encoding = True
 
-    output = template.format(**{
-        k: quote_output_u(v, encoding=encoding)
-        for (k, v)
-        in kwargs.items()
-    })
+    output = template.format(
+        **{k: quote_output_u(v, encoding=encoding) for (k, v) in kwargs.items()}
+    )
     safe_output = output.encode(encoding, "namereplace")
     if has_encoding:
         safe_output = safe_output.decode(encoding)
@@ -173,19 +196,18 @@ def list_aliases(options):
     """
     Show aliases that exist.
     """
-    data = _get_alias_details(options['node-directory'])
+    data = _get_alias_details(options["node-directory"])
 
-    if options['json']:
+    if options["json"]:
         dumped = json.dumps(data, indent=4)
         if isinstance(dumped, bytes):
             dumped = dumped.decode("utf-8")
         output = _escape_format(dumped)
     else:
+
         def dircap(details):
             return (
-                details['readonly']
-                if options['readonly-uri']
-                else details['readwrite']
+                details["readonly"] if options["readonly-uri"] else details["readwrite"]
             ).decode("utf-8")
 
         def format_dircap(name, details):
@@ -193,11 +215,9 @@ def list_aliases(options):
 
         max_width = max([len(quote_output(name)) for name in data.keys()] + [0])
         fmt = "%" + str(max_width) + "s: %s"
-        output = "\n".join(list(
-            format_dircap(name, details)
-            for name, details
-            in data.items()
-        ))
+        output = "\n".join(
+            list(format_dircap(name, details) for name, details in data.items())
+        )
 
     if output:
         # Show whatever we computed.  Skip this if there is no output to avoid

@@ -7,8 +7,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import os
 from struct import (
@@ -67,49 +90,60 @@ from testtools.twistedsupport import (
     succeeded,
 )
 
-MiB = 1024*1024
+MiB = 1024 * 1024
 
 DATA = b"I need help\n" * 1000
+
 
 class CHKUploadHelper_fake(offloaded.CHKUploadHelper):
     def start_encrypted(self, eu):
         d = eu.get_size()
+
         def _got_size(size):
             d2 = eu.get_all_encoding_parameters()
+
             def _got_parms(parms):
                 # just pretend we did the upload
                 needed_shares, happy, total_shares, segsize = parms
-                ueb_data = {"needed_shares": needed_shares,
-                            "total_shares": total_shares,
-                            "segment_size": segsize,
-                            "size": size,
-                            }
+                ueb_data = {
+                    "needed_shares": needed_shares,
+                    "total_shares": total_shares,
+                    "segment_size": segsize,
+                    "size": size,
+                }
                 ueb_hash = b"fake"
-                v = uri.CHKFileVerifierURI(self._storage_index, b"x"*32,
-                                           needed_shares, total_shares, size)
+                v = uri.CHKFileVerifierURI(
+                    self._storage_index, b"x" * 32, needed_shares, total_shares, size
+                )
                 _UR = upload.UploadResults
-                ur = _UR(file_size=size,
-                         ciphertext_fetched=0,
-                         preexisting_shares=0,
-                         pushed_shares=total_shares,
-                         sharemap={},
-                         servermap={},
-                         timings={},
-                         uri_extension_data=ueb_data,
-                         uri_extension_hash=ueb_hash,
-                         verifycapstr=v.to_string())
+                ur = _UR(
+                    file_size=size,
+                    ciphertext_fetched=0,
+                    preexisting_shares=0,
+                    pushed_shares=total_shares,
+                    sharemap={},
+                    servermap={},
+                    timings={},
+                    uri_extension_data=ueb_data,
+                    uri_extension_hash=ueb_hash,
+                    verifycapstr=v.to_string(),
+                )
                 self._upload_status.set_results(ur)
                 return ur
+
             d2.addCallback(_got_parms)
             return d2
+
         d.addCallback(_got_size)
         return d
+
 
 @attr.s
 class FakeCHKCheckerAndUEBFetcher(object):
     """
     A fake of ``CHKCheckerAndUEBFetcher`` which hard-codes some check result.
     """
+
     peer_getter = attr.ib()
     storage_index = attr.ib()
     logparent = attr.ib()
@@ -124,31 +158,40 @@ class FakeCHKCheckerAndUEBFetcher(object):
         )
 
     def check(self):
-        return defer.succeed((
-            self._sharemap,
-            self._ueb_data,
-            self._ueb_hash,
-        ))
+        return defer.succeed(
+            (
+                self._sharemap,
+                self._ueb_data,
+                self._ueb_hash,
+            )
+        )
+
 
 class FakeClient(service.MultiService):
     introducer_clients = []  # type: List[IntroducerClient]
-    DEFAULT_ENCODING_PARAMETERS = {"k":25,
-                                   "happy": 75,
-                                   "n": 100,
-                                   "max_segment_size": 1*MiB,
-                                   }
+    DEFAULT_ENCODING_PARAMETERS = {
+        "k": 25,
+        "happy": 75,
+        "n": 100,
+        "max_segment_size": 1 * MiB,
+    }
 
     def get_encoding_parameters(self):
         return self.DEFAULT_ENCODING_PARAMETERS
+
     def get_storage_broker(self):
         return self.storage_broker
 
+
 def flush_but_dont_ignore(res):
     d = flushEventualQueue()
+
     def _done(ignored):
         return res
+
     d.addCallback(_done)
     return d
+
 
 def wait_a_few_turns(ignored=None):
     d = fireEventually()
@@ -158,6 +201,7 @@ def wait_a_few_turns(ignored=None):
     d.addCallback(fireEventually)
     d.addCallback(fireEventually)
     return d
+
 
 def upload_data(uploader, data, convergence):
     u = upload.Data(data, convergence=convergence)
@@ -242,6 +286,7 @@ class AssistedUpload(unittest.TestCase):
                 ),
             )
             return upload_data(u, DATA, convergence=b"some convergence string")
+
         d.addCallback(_ready)
 
         def _uploaded(results):
@@ -251,6 +296,7 @@ class AssistedUpload(unittest.TestCase):
                 results.get_pushed_shares(),
                 0,
             )
+
         d.addCallback(_uploaded)
 
         def _check_empty(res):
@@ -259,6 +305,7 @@ class AssistedUpload(unittest.TestCase):
             self.assertEqual(files, [])
             files = os.listdir(os.path.join(self.basedir, "CHK_incoming"))
             self.assertEqual(files, [])
+
         d.addCallback(_check_empty)
 
         return d
@@ -285,8 +332,7 @@ class AssistedUpload(unittest.TestCase):
 
         uploads = list(
             upload_data(u, DATA, convergence=b"some convergence string")
-            for u
-            in [u1, u2]
+            for u in [u1, u2]
         )
 
         result1, result2 = yield defer.gatherResults(uploads)
@@ -335,10 +381,13 @@ class AssistedUpload(unittest.TestCase):
         def _ready(res):
             assert u._helper
             return upload_data(u, DATA, convergence=b"test convergence string")
+
         d.addCallback(_ready)
+
         def _uploaded(results):
             the_uri = results.get_uri()
             assert b"CHK" in the_uri
+
         d.addCallback(_uploaded)
 
         def _check_empty(res):
@@ -346,6 +395,7 @@ class AssistedUpload(unittest.TestCase):
             self.failUnlessEqual(files, [])
             files = os.listdir(os.path.join(self.basedir, "CHK_incoming"))
             self.failUnlessEqual(files, [])
+
         d.addCallback(_check_empty)
 
         return d
@@ -359,10 +409,12 @@ class AssistedUpload(unittest.TestCase):
         params = FakeClient.DEFAULT_ENCODING_PARAMETERS
         chk_checker = partial(
             FakeCHKCheckerAndUEBFetcher,
-            sharemap=dictutil.DictOfSets({
-                0: {b"server0"},
-                1: {b"server1"},
-            }),
+            sharemap=dictutil.DictOfSets(
+                {
+                    0: {b"server0"},
+                    1: {b"server1"},
+                }
+            ),
             ueb_data={
                 "size": len(DATA),
                 "segment_size": min(params["max_segment_size"], len(DATA)),
@@ -400,6 +452,7 @@ class CHKCheckerAndUEBFetcherTests(SyncTestCase):
     """
     Tests for ``CHKCheckerAndUEBFetcher``.
     """
+
     def test_check_no_peers(self):
         """
         If the supplied "peer getter" returns no peers then
@@ -481,21 +534,11 @@ class CHKCheckerAndUEBFetcherTests(SyncTestCase):
         with share and share placement information.
         """
         storage_index = b"a" * 16
-        serverids = list(
-            ch * 20
-            for ch
-            in [b"b", b"c"]
-        )
+        serverids = list(ch * 20 for ch in [b"b", b"c"])
         storages = list(
-            StorageServer(self.mktemp(), serverid)
-            for serverid
-            in serverids
+            StorageServer(self.mktemp(), serverid) for serverid in serverids
         )
-        rrefs_with_ueb = list(
-            LocalWrapper(storage, fireNow)
-            for storage
-            in storages
-        )
+        rrefs_with_ueb = list(LocalWrapper(storage, fireNow) for storage in storages)
         ueb = {
             "needed_shares": len(serverids),
             "total_shares": len(serverids),
@@ -507,8 +550,7 @@ class CHKCheckerAndUEBFetcherTests(SyncTestCase):
 
         servers_with_ueb = list(
             NoNetworkServer(serverid, rref_with_ueb)
-            for (serverid, rref_with_ueb)
-            in zip(serverids, rrefs_with_ueb)
+            for (serverid, rref_with_ueb) in zip(serverids, rrefs_with_ueb)
         )
         peers = {storage_index: servers_with_ueb}
         caf = offloaded.CHKCheckerAndUEBFetcher(
@@ -518,15 +560,17 @@ class CHKCheckerAndUEBFetcherTests(SyncTestCase):
         )
         self.assertThat(
             caf.check(),
-            succeeded(MatchesListwise([
-                Equals({
-                    n: {serverid}
-                    for (n, serverid)
-                    in enumerate(serverids)
-                }),
-                Equals(ueb),
-                IsInstance(bytes),
-            ])),
+            succeeded(
+                MatchesListwise(
+                    [
+                        Equals(
+                            {n: {serverid} for (n, serverid) in enumerate(serverids)}
+                        ),
+                        Equals(ueb),
+                        IsInstance(bytes),
+                    ]
+                )
+            ),
         )
 
 
@@ -557,10 +601,10 @@ def write_good_share(storage_rref, storage_index, ueb, sharenums):
     filler = b"\0" * (offset - len(write_proxy._offset_data))
     ueb_data = uri.pack_extension(ueb)
     data = (
-        write_proxy._offset_data +
-        filler +
-        pack(write_proxy.fieldstruct, len(ueb_data)) +
-        ueb_data
+        write_proxy._offset_data
+        + filler
+        + pack(write_proxy.fieldstruct, len(ueb_data))
+        + ueb_data
     )
     return write_share(storage_rref, storage_index, sharenums, data)
 
@@ -589,7 +633,6 @@ def write_share(storage_rref, storage_index, sharenums, sharedata):
         sharenums,
         len(sharedata),
         LocalWrapper(None),
-
     )
     [writer] = writers.values()
     yield writer.callRemote("write", 0, sharedata)

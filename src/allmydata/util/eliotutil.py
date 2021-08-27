@@ -25,8 +25,31 @@ __all__ = [
 ]
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 from six import ensure_text
 
 from sys import (
@@ -94,19 +117,25 @@ def validateInstanceOf(t):
     """
     Return an Eliot validator that requires values to be instances of ``t``.
     """
+
     def validator(v):
         if not isinstance(v, t):
             raise ValidationError("{} not an instance of {}".format(v, t))
+
     return validator
+
 
 def validateSetMembership(s):
     """
     Return an Eliot validator that requires values to be elements of ``s``.
     """
+
     def validator(v):
         if v not in s:
             raise ValidationError("{} not in {}".format(v, s))
+
     return validator
+
 
 def eliot_logging_service(reactor, destinations):
     """
@@ -116,11 +145,9 @@ def eliot_logging_service(reactor, destinations):
     See ``--help-eliot-destinations`` for details about supported
     destinations.
     """
-    return _EliotLogging(destinations=list(
-        get_destination(reactor)
-        for get_destination
-        in destinations
-    ))
+    return _EliotLogging(
+        destinations=list(get_destination(reactor) for get_destination in destinations)
+    )
 
 
 # An Options-based argument parser for configuring Eliot logging.  Set this as
@@ -158,6 +185,7 @@ class _EliotLogging(Service):
     """
     A service which adds stdout as an Eliot destination while it is running.
     """
+
     def __init__(self, destinations):
         """
         :param list destinations: The Eliot destinations which will is added by this
@@ -165,14 +193,12 @@ class _EliotLogging(Service):
         """
         self.destinations = destinations
 
-
     def startService(self):
         self.stdlib_cleanup = _stdlib_logging_to_eliot_configuration(getLogger())
         self.twisted_observer = _TwistedLoggerToEliotObserver()
         globalLogPublisher.addObserver(self.twisted_observer)
         add_destinations(*self.destinations)
         return Service.startService(self)
-
 
     def stopService(self):
         for dest in self.destinations:
@@ -188,21 +214,18 @@ class _TwistedLoggerToEliotObserver(object):
     """
     An ``ILogObserver`` which re-publishes events as Eliot messages.
     """
+
     logger = attr.ib(default=None, validator=optional(provides(ILogger)))
 
     def _observe(self, event):
         flattened = loads(eventAsJSON(event))
         # We get a timestamp from Eliot.
-        flattened.pop(u"log_time")
+        flattened.pop("log_time")
         # This is never serializable anyway.  "Legacy" log events (from
         # twisted.python.log) don't have this so make it optional.
-        flattened.pop(u"log_logger", None)
+        flattened.pop("log_logger", None)
 
-        Message.new(
-            message_type=u"eliot:twisted",
-            **flattened
-        ).write(self.logger)
-
+        Message.new(message_type="eliot:twisted", **flattened).write(self.logger)
 
     # The actual ILogObserver interface uses this.
     __call__ = _observe
@@ -215,10 +238,10 @@ class _StdlibLoggingToEliotHandler(Handler):
 
     def emit(self, record):
         Message.new(
-            message_type=u"eliot:stdlib",
+            message_type="eliot:stdlib",
             log_level=record.levelname,
             logger=record.name,
-            message=record.getMessage()
+            message=record.getMessage(),
         ).write(self.logger)
 
         if record.exc_info:
@@ -235,7 +258,7 @@ def _stdlib_logging_to_eliot_configuration(stdlib_logger, eliot_logger=None):
     ``None``).
     """
     handler = _StdlibLoggingToEliotHandler(eliot_logger)
-    handler.set_name(u"eliot")
+    handler.set_name("eliot")
     handler.setLevel(INFO)
     stdlib_logger.addHandler(handler)
     return lambda: stdlib_logger.removeHandler(handler)
@@ -246,27 +269,20 @@ class _DestinationParser(object):
         description = ensure_text(description)
 
         try:
-            kind, args = description.split(u":", 1)
+            kind, args = description.split(":", 1)
         except ValueError:
             raise ValueError(
-                u"Eliot destination description must be formatted like "
-                u"<kind>:<args>."
+                "Eliot destination description must be formatted like " "<kind>:<args>."
             )
         try:
-            parser = getattr(self, u"_parse_{}".format(kind))
+            parser = getattr(self, "_parse_{}".format(kind))
         except AttributeError:
-            raise ValueError(
-                u"Unknown destination description: {}".format(description)
-            )
+            raise ValueError("Unknown destination description: {}".format(description))
         else:
             return parser(kind, args)
 
     def _get_arg(self, arg_name, default, arg_list):
-        return dict(
-            arg.split(u"=", 1)
-            for arg
-            in arg_list
-        ).get(
+        return dict(arg.split("=", 1) for arg in arg_list).get(
             arg_name,
             default,
         )
@@ -278,26 +294,33 @@ class _DestinationParser(object):
         # have some shell-assigned meaning which makes them treacherous to use
         # in a CLI interface.  Eliminating all such dangerous symbols leaves
         # approximately @.
-        if u"@" in arg_text:
+        if "@" in arg_text:
             raise ValueError(
-                u"Unsupported escape character (@) in destination text ({!r}).".format(arg_text),
+                "Unsupported escape character (@) in destination text ({!r}).".format(
+                    arg_text
+                ),
             )
-        arg_list = arg_text.split(u",")
+        arg_list = arg_text.split(",")
         path_name = arg_list.pop(0)
         if path_name == "-":
             get_file = lambda: stdout
         else:
             path = FilePath(path_name)
-            rotate_length = int(self._get_arg(
-                u"rotate_length",
-                1024 * 1024 * 1024,
-                arg_list,
-            ))
-            max_rotated_files = int(self._get_arg(
-                u"max_rotated_files",
-                10,
-                arg_list,
-            ))
+            rotate_length = int(
+                self._get_arg(
+                    "rotate_length",
+                    1024 * 1024 * 1024,
+                    arg_list,
+                )
+            )
+            max_rotated_files = int(
+                self._get_arg(
+                    "max_rotated_files",
+                    10,
+                    arg_list,
+                )
+            )
+
             def get_file():
                 path.parent().makedirs(ignoreExistingDirectory=True)
                 return LogFile(
@@ -306,15 +329,18 @@ class _DestinationParser(object):
                     rotateLength=rotate_length,
                     maxRotatedFiles=max_rotated_files,
                 )
+
         return lambda reactor: FileDestination(get_file(), AnyBytesJSONEncoder)
 
 
 _parse_destination_description = _DestinationParser().parse
 
+
 def log_call_deferred(action_type):
     """
     Like ``eliot.log_call`` but for functions which return ``Deferred``.
     """
+
     def decorate_log_call_deferred(f):
         @wraps(f)
         def logged_f(*a, **kw):
@@ -325,8 +351,11 @@ def log_call_deferred(action_type):
                 # Deferred fires.
                 d = maybeDeferred(f, *a, **kw)
                 return DeferredContext(d).addActionFinish()
+
         return logged_f
+
     return decorate_log_call_deferred
+
 
 # On Python 3, encoding bytes to JSON doesn't work, so we have a custom JSON
 # encoder we want to use when validating messages.

@@ -7,8 +7,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import yaml
 
@@ -32,11 +55,13 @@ if PY2:
     # Reference: https://yaml.org/type/str.html
     def construct_unicode(loader, node):
         return node.value
-    yaml.SafeLoader.add_constructor("tag:yaml.org,2002:str",
-                                    construct_unicode)
+
+    yaml.SafeLoader.add_constructor("tag:yaml.org,2002:str", construct_unicode)
+
 
 def safe_load(f):
     return yaml.safe_load(f)
+
 
 def safe_dump(obj):
     return yaml.safe_dump(obj)

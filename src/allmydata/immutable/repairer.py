@@ -7,8 +7,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 from zope.interface import implementer
 from twisted.internet import defer
@@ -18,6 +41,7 @@ from allmydata.util.assertutil import precondition
 from allmydata.interfaces import IEncryptedUploadable
 
 from allmydata.immutable import upload
+
 
 @implementer(IEncryptedUploadable)
 class Repairer(log.PrefixingLogMixin):
@@ -54,8 +78,9 @@ class Repairer(log.PrefixingLogMixin):
 
     def __init__(self, filenode, storage_broker, secret_holder, monitor):
         logprefix = si_b2a(filenode.get_storage_index())[:5]
-        log.PrefixingLogMixin.__init__(self, "allmydata.immutable.repairer",
-                                       prefix=logprefix)
+        log.PrefixingLogMixin.__init__(
+            self, "allmydata.immutable.repairer", prefix=logprefix
+        )
         self._filenode = filenode
         self._storage_broker = storage_broker
         self._secret_holder = secret_holder
@@ -65,6 +90,7 @@ class Repairer(log.PrefixingLogMixin):
     def start(self):
         self.log("starting repair")
         d = self._filenode.get_segment_size()
+
         def _got_segsize(segsize):
             vcap = self._filenode.get_verify_cap()
             k = vcap.needed_shares
@@ -75,31 +101,36 @@ class Repairer(log.PrefixingLogMixin):
             self._encodingparams = (k, happy, N, segsize)
             # XXX should pass a reactor to this
             ul = upload.CHKUploader(self._storage_broker, self._secret_holder)
-            return ul.start(self) # I am the IEncryptedUploadable
+            return ul.start(self)  # I am the IEncryptedUploadable
+
         d.addCallback(_got_segsize)
         return d
-
 
     # methods to satisfy the IEncryptedUploader interface
     # (From the perspective of an uploader I am an IEncryptedUploadable.)
     def set_upload_status(self, upload_status):
         self.upload_status = upload_status
+
     def get_size(self):
         size = self._filenode.get_size()
         assert size is not None
         return defer.succeed(size)
+
     def get_all_encoding_parameters(self):
         return defer.succeed(self._encodingparams)
+
     def read_encrypted(self, length, hash_only):
         """Returns a deferred which eventually fires with the requested
         ciphertext, as a list of strings."""
-        precondition(length) # please don't ask to read 0 bytes
+        precondition(length)  # please don't ask to read 0 bytes
         mc = consumer.MemoryConsumer()
         d = self._filenode.read(mc, self._offset, length)
         self._offset += length
         d.addCallback(lambda ign: mc.chunks)
         return d
+
     def get_storage_index(self):
         return self._filenode.get_storage_index()
+
     def close(self):
         pass

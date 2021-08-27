@@ -8,8 +8,31 @@ from __future__ import division
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 from allmydata.test import common
 from allmydata.monitor import Monitor
@@ -25,30 +48,31 @@ from allmydata.test.no_network import GridTestMixin
 # We'll allow you to pass this test even if you trigger eighteen times as
 # many disk reads and block fetches as would be optimal.
 READ_LEEWAY = 18
-MAX_DELTA_READS = 10 * READ_LEEWAY # N = 10
+MAX_DELTA_READS = 10 * READ_LEEWAY  # N = 10
 
-timeout=240 # François's ARM box timed out after 120 seconds of Verifier.test_corrupt_crypttext_hashtree
+timeout = 240  # François's ARM box timed out after 120 seconds of Verifier.test_corrupt_crypttext_hashtree
+
 
 class RepairTestMixin(object):
     def _count_reads(self):
         sum_of_read_counts = 0
         for (i, ss, storedir) in self.iterate_servers():
-            counters = ss.stats_provider.get_stats()['counters']
-            sum_of_read_counts += counters.get('storage_server.read', 0)
+            counters = ss.stats_provider.get_stats()["counters"]
+            sum_of_read_counts += counters.get("storage_server.read", 0)
         return sum_of_read_counts
 
     def _count_allocates(self):
         sum_of_allocate_counts = 0
         for (i, ss, storedir) in self.iterate_servers():
-            counters = ss.stats_provider.get_stats()['counters']
-            sum_of_allocate_counts += counters.get('storage_server.allocate', 0)
+            counters = ss.stats_provider.get_stats()["counters"]
+            sum_of_allocate_counts += counters.get("storage_server.allocate", 0)
         return sum_of_allocate_counts
 
     def _count_writes(self):
         sum_of_write_counts = 0
         for (i, ss, storedir) in self.iterate_servers():
-            counters = ss.stats_provider.get_stats()['counters']
-            sum_of_write_counts += counters.get('storage_server.write', 0)
+            counters = ss.stats_provider.get_stats()["counters"]
+            sum_of_write_counts += counters.get("storage_server.write", 0)
         return sum_of_write_counts
 
     def _stash_counts(self):
@@ -68,14 +92,17 @@ class RepairTestMixin(object):
     def upload_and_stash(self):
         c0 = self.g.clients[0]
         c1 = self.g.clients[1]
-        c0.encoding_params['max_segment_size'] = 12
+        c0.encoding_params["max_segment_size"] = 12
         d = c0.upload(upload.Data(common.TEST_DATA, convergence=b""))
+
         def _stash_uri(ur):
             self.uri = ur.get_uri()
             self.c0_filenode = c0.create_node_from_uri(ur.get_uri())
             self.c1_filenode = c1.create_node_from_uri(ur.get_uri())
+
         d.addCallback(_stash_uri)
         return d
+
 
 class Verifier(GridTestMixin, unittest.TestCase, RepairTestMixin):
     def test_check_without_verify(self):
@@ -87,26 +114,29 @@ class Verifier(GridTestMixin, unittest.TestCase, RepairTestMixin):
         self.set_up_grid(num_clients=2)
         d = self.upload_and_stash()
         d.addCallback(lambda ignored: self._stash_counts())
-        d.addCallback(lambda ignored:
-                      self.c0_filenode.check(Monitor(), verify=False))
+        d.addCallback(lambda ignored: self.c0_filenode.check(Monitor(), verify=False))
+
         def _check(cr):
             self.failUnless(cr.is_healthy())
             delta_reads, delta_allocates, delta_writes = self._get_delta_counts()
             self.failIfBigger(delta_reads, 0)
+
         d.addCallback(_check)
 
         def _remove_all(ignored):
             for sh in self.find_uri_shares(self.uri):
                 self.delete_share(sh)
+
         d.addCallback(_remove_all)
 
         d.addCallback(lambda ignored: self._stash_counts())
-        d.addCallback(lambda ignored:
-                      self.c0_filenode.check(Monitor(), verify=False))
+        d.addCallback(lambda ignored: self.c0_filenode.check(Monitor(), verify=False))
+
         def _check2(cr):
             self.failIf(cr.is_healthy())
             delta_reads, delta_allocates, delta_writes = self._get_delta_counts()
             self.failIfBigger(delta_reads, 0)
+
         d.addCallback(_check2)
         return d
 
@@ -115,10 +145,13 @@ class Verifier(GridTestMixin, unittest.TestCase, RepairTestMixin):
         d = self.upload_and_stash()
         d.addCallback(lambda ignored: self._stash_counts())
 
-        d.addCallback(lambda ignored:
-                      self.corrupt_shares_numbered(self.uri, [shnum],corruptor,debug=debug))
-        d.addCallback(lambda ignored:
-                      self.c1_filenode.check(Monitor(), verify=True))
+        d.addCallback(
+            lambda ignored: self.corrupt_shares_numbered(
+                self.uri, [shnum], corruptor, debug=debug
+            )
+        )
+        d.addCallback(lambda ignored: self.c1_filenode.check(Monitor(), verify=True))
+
         def _check(vr):
             delta_reads, delta_allocates, delta_writes = self._get_delta_counts()
             self.failIfBigger(delta_reads, MAX_DELTA_READS)
@@ -129,11 +162,12 @@ class Verifier(GridTestMixin, unittest.TestCase, RepairTestMixin):
                 new_arg = str(e.args[0]) + "\nvr.data is: " + str(vr.as_dict())
                 e.args = (new_arg,)
                 raise
+
         d.addCallback(_check)
         return d
 
     def judge_no_problem(self, vr):
-        """ Verify says the file is healthy when none of the shares have been
+        """Verify says the file is healthy when none of the shares have been
         touched in a way that matters. It doesn't use more than seven times
         as many reads as it needs."""
         self.failUnless(vr.is_healthy(), (vr, vr.is_healthy(), vr.as_dict()))
@@ -147,23 +181,25 @@ class Verifier(GridTestMixin, unittest.TestCase, RepairTestMixin):
 
     def test_ok_no_corruption(self):
         self.basedir = "repairer/Verifier/ok_no_corruption"
-        return self._help_test_verify(common._corrupt_nothing,
-                                      self.judge_no_problem)
+        return self._help_test_verify(common._corrupt_nothing, self.judge_no_problem)
 
     def test_ok_filedata_size(self):
         self.basedir = "repairer/Verifier/ok_filedatasize"
-        return self._help_test_verify(common._corrupt_size_of_file_data,
-                                      self.judge_no_problem)
+        return self._help_test_verify(
+            common._corrupt_size_of_file_data, self.judge_no_problem
+        )
 
     def test_ok_sharedata_size(self):
         self.basedir = "repairer/Verifier/ok_sharedata_size"
-        return self._help_test_verify(common._corrupt_size_of_sharedata,
-                                      self.judge_no_problem)
+        return self._help_test_verify(
+            common._corrupt_size_of_sharedata, self.judge_no_problem
+        )
 
     def test_ok_segment_size(self):
         self.basedir = "repairer/Verifier/test_ok_segment_size"
-        return self._help_test_verify(common._corrupt_segment_size,
-                                      self.judge_no_problem)
+        return self._help_test_verify(
+            common._corrupt_segment_size, self.judge_no_problem
+        )
 
     def judge_visible_corruption(self, vr):
         """Corruption which is detected by the server means that the server
@@ -182,8 +218,9 @@ class Verifier(GridTestMixin, unittest.TestCase, RepairTestMixin):
 
     def test_corrupt_file_verno(self):
         self.basedir = "repairer/Verifier/corrupt_file_verno"
-        return self._help_test_verify(common._corrupt_file_version_number,
-                                      self.judge_visible_corruption)
+        return self._help_test_verify(
+            common._corrupt_file_version_number, self.judge_visible_corruption
+        )
 
     def judge_share_version_incompatibility(self, vr):
         # corruption of the share version (inside the container, the 1/2
@@ -203,8 +240,10 @@ class Verifier(GridTestMixin, unittest.TestCase, RepairTestMixin):
 
     def test_corrupt_share_verno(self):
         self.basedir = "repairer/Verifier/corrupt_share_verno"
-        return self._help_test_verify(common._corrupt_sharedata_version_number,
-                                      self.judge_share_version_incompatibility)
+        return self._help_test_verify(
+            common._corrupt_sharedata_version_number,
+            self.judge_share_version_incompatibility,
+        )
 
     def judge_invisible_corruption(self, vr):
         # corruption of fields that the server does not check (which is most
@@ -222,85 +261,107 @@ class Verifier(GridTestMixin, unittest.TestCase, RepairTestMixin):
 
     def test_corrupt_sharedata_offset(self):
         self.basedir = "repairer/Verifier/corrupt_sharedata_offset"
-        return self._help_test_verify(common._corrupt_offset_of_sharedata,
-                                      self.judge_invisible_corruption)
+        return self._help_test_verify(
+            common._corrupt_offset_of_sharedata, self.judge_invisible_corruption
+        )
 
     def test_corrupt_ueb_offset(self):
         self.basedir = "repairer/Verifier/corrupt_ueb_offset"
-        return self._help_test_verify(common._corrupt_offset_of_uri_extension,
-                                      self.judge_invisible_corruption)
+        return self._help_test_verify(
+            common._corrupt_offset_of_uri_extension, self.judge_invisible_corruption
+        )
 
     def test_corrupt_ueb_offset_shortread(self):
         self.basedir = "repairer/Verifier/corrupt_ueb_offset_shortread"
-        return self._help_test_verify(common._corrupt_offset_of_uri_extension_to_force_short_read,
-                                      self.judge_invisible_corruption)
+        return self._help_test_verify(
+            common._corrupt_offset_of_uri_extension_to_force_short_read,
+            self.judge_invisible_corruption,
+        )
 
     def test_corrupt_sharedata(self):
         self.basedir = "repairer/Verifier/corrupt_sharedata"
-        return self._help_test_verify(common._corrupt_share_data,
-                                      self.judge_invisible_corruption)
+        return self._help_test_verify(
+            common._corrupt_share_data, self.judge_invisible_corruption
+        )
 
     def test_corrupt_sharedata_last_byte(self):
         self.basedir = "repairer/Verifier/corrupt_sharedata_last_byte"
-        return self._help_test_verify(common._corrupt_share_data_last_byte,
-                                      self.judge_invisible_corruption)
+        return self._help_test_verify(
+            common._corrupt_share_data_last_byte, self.judge_invisible_corruption
+        )
 
     def test_corrupt_ueb_length(self):
         self.basedir = "repairer/Verifier/corrupt_ueb_length"
-        return self._help_test_verify(common._corrupt_length_of_uri_extension,
-                                      self.judge_invisible_corruption)
+        return self._help_test_verify(
+            common._corrupt_length_of_uri_extension, self.judge_invisible_corruption
+        )
 
     def test_corrupt_ueb(self):
         self.basedir = "repairer/Verifier/corrupt_ueb"
-        return self._help_test_verify(common._corrupt_uri_extension,
-                                      self.judge_invisible_corruption)
+        return self._help_test_verify(
+            common._corrupt_uri_extension, self.judge_invisible_corruption
+        )
 
     def test_truncate_crypttext_hashtree(self):
         # change the start of the block hashtree, to truncate the preceding
         # crypttext hashtree
         self.basedir = "repairer/Verifier/truncate_crypttext_hashtree"
-        return self._help_test_verify(common._corrupt_offset_of_block_hashes_to_truncate_crypttext_hashes,
-                                      self.judge_invisible_corruption)
+        return self._help_test_verify(
+            common._corrupt_offset_of_block_hashes_to_truncate_crypttext_hashes,
+            self.judge_invisible_corruption,
+        )
 
     def test_corrupt_block_hashtree_offset(self):
         self.basedir = "repairer/Verifier/corrupt_block_hashtree_offset"
-        return self._help_test_verify(common._corrupt_offset_of_block_hashes,
-                                      self.judge_invisible_corruption)
+        return self._help_test_verify(
+            common._corrupt_offset_of_block_hashes, self.judge_invisible_corruption
+        )
 
     def test_wrong_share_verno(self):
         self.basedir = "repairer/Verifier/wrong_share_verno"
-        return self._help_test_verify(common._corrupt_sharedata_version_number_to_plausible_version,
-                                      self.judge_invisible_corruption)
+        return self._help_test_verify(
+            common._corrupt_sharedata_version_number_to_plausible_version,
+            self.judge_invisible_corruption,
+        )
 
     def test_corrupt_share_hashtree_offset(self):
         self.basedir = "repairer/Verifier/corrupt_share_hashtree_offset"
-        return self._help_test_verify(common._corrupt_offset_of_share_hashes,
-                                      self.judge_invisible_corruption)
+        return self._help_test_verify(
+            common._corrupt_offset_of_share_hashes, self.judge_invisible_corruption
+        )
 
     def test_corrupt_crypttext_hashtree_offset(self):
         self.basedir = "repairer/Verifier/corrupt_crypttext_hashtree_offset"
-        return self._help_test_verify(common._corrupt_offset_of_ciphertext_hash_tree,
-                                      self.judge_invisible_corruption)
+        return self._help_test_verify(
+            common._corrupt_offset_of_ciphertext_hash_tree,
+            self.judge_invisible_corruption,
+        )
 
     def test_corrupt_crypttext_hashtree(self):
         self.basedir = "repairer/Verifier/corrupt_crypttext_hashtree"
-        return self._help_test_verify(common._corrupt_crypttext_hash_tree,
-                                      self.judge_invisible_corruption)
+        return self._help_test_verify(
+            common._corrupt_crypttext_hash_tree, self.judge_invisible_corruption
+        )
 
     def test_corrupt_crypttext_hashtree_byte_x221(self):
         self.basedir = "repairer/Verifier/corrupt_crypttext_hashtree_byte_9_bit_7"
-        return self._help_test_verify(common._corrupt_crypttext_hash_tree_byte_x221,
-                                      self.judge_invisible_corruption, debug=True)
+        return self._help_test_verify(
+            common._corrupt_crypttext_hash_tree_byte_x221,
+            self.judge_invisible_corruption,
+            debug=True,
+        )
 
     def test_corrupt_block_hashtree(self):
         self.basedir = "repairer/Verifier/corrupt_block_hashtree"
-        return self._help_test_verify(common._corrupt_block_hashes,
-                                      self.judge_invisible_corruption)
+        return self._help_test_verify(
+            common._corrupt_block_hashes, self.judge_invisible_corruption
+        )
 
     def test_corrupt_share_hashtree(self):
         self.basedir = "repairer/Verifier/corrupt_share_hashtree"
-        return self._help_test_verify(common._corrupt_share_hashes,
-                                      self.judge_invisible_corruption)
+        return self._help_test_verify(
+            common._corrupt_share_hashes, self.judge_invisible_corruption
+        )
 
     # TODO: the Verifier should decode to ciphertext and check it against the
     # crypttext-hash-tree. Check this by constructing a bogus file, in which
@@ -325,43 +386,57 @@ class Verifier(GridTestMixin, unittest.TestCase, RepairTestMixin):
         self.basedir = "repairer/Verifier/each_byte"
         self.set_up_grid(num_clients=2)
         d = self.upload_and_stash()
+
         def _grab_sh0(res):
-            self.sh0_file = [sharefile
-                             for (shnum, serverid, sharefile)
-                             in self.find_uri_shares(self.uri)
-                             if shnum == 0][0]
+            self.sh0_file = [
+                sharefile
+                for (shnum, serverid, sharefile) in self.find_uri_shares(self.uri)
+                if shnum == 0
+            ][0]
             self.sh0_orig = open(self.sh0_file, "rb").read()
+
         d.addCallback(_grab_sh0)
+
         def _fix_sh0(res):
             f = open(self.sh0_file, "wb")
             f.write(self.sh0_orig)
             f.close()
+
         def _corrupt(ign, which):
             def _corruptor(s, debug=False):
-                return s[:which] + chr(ord(s[which])^0x01) + s[which+1:]
+                return s[:which] + chr(ord(s[which]) ^ 0x01) + s[which + 1 :]
+
             self.corrupt_shares_numbered(self.uri, [0], _corruptor)
+
         results = {}
+
         def _did_check(vr, i):
-            #print("corrupt %d: healthy=%s" % (i, vr.is_healthy()))
+            # print("corrupt %d: healthy=%s" % (i, vr.is_healthy()))
             results[i] = vr.is_healthy()
+
         def _start(ign):
             d = defer.succeed(None)
             for i in range(len(self.sh0_orig)):
                 d.addCallback(_corrupt, i)
-                d.addCallback(lambda ign:
-                              self.c1_filenode.check(Monitor(), verify=True))
+                d.addCallback(
+                    lambda ign: self.c1_filenode.check(Monitor(), verify=True)
+                )
                 d.addCallback(_did_check, i)
                 d.addCallback(_fix_sh0)
             return d
+
         d.addCallback(_start)
+
         def _show_results(ign):
             f = open("test_each_byte_output", "w")
             for i in sorted(results.keys()):
                 print("%d: %s" % (i, results[i]), file=f)
             f.close()
             print("Please look in _trial_temp/test_each_byte_output for results")
+
         d.addCallback(_show_results)
         return d
+
 
 # We'll allow you to pass this test even if you trigger thirty-five times as
 # many block sends and disk writes as would be optimal.
@@ -369,9 +444,10 @@ WRITE_LEEWAY = 35
 # Optimally, you could repair one of these (small) files in a single write.
 DELTA_WRITES_PER_SHARE = 1 * WRITE_LEEWAY
 
-class Repairer(GridTestMixin, unittest.TestCase, RepairTestMixin,
-               common.ShouldFailMixin):
 
+class Repairer(
+    GridTestMixin, unittest.TestCase, RepairTestMixin, common.ShouldFailMixin
+):
     def test_harness(self):
         # This test is actually to make sure our test harness works, rather
         # than testing anything about Tahoe code itself.
@@ -381,12 +457,16 @@ class Repairer(GridTestMixin, unittest.TestCase, RepairTestMixin,
         d = self.upload_and_stash()
 
         d.addCallback(lambda ignored: self.find_uri_shares(self.uri))
+
         def _stash_shares(oldshares):
             self.oldshares = oldshares
+
         d.addCallback(_stash_shares)
         d.addCallback(lambda ignored: self.find_uri_shares(self.uri))
+
         def _compare(newshares):
             self.failUnlessEqual(newshares, self.oldshares)
+
         d.addCallback(_compare)
 
         def _delete_8(ignored):
@@ -394,37 +474,50 @@ class Repairer(GridTestMixin, unittest.TestCase, RepairTestMixin,
             self.delete_shares_numbered(self.uri, [shnum])
             for sh in self.oldshares[1:8]:
                 self.delete_share(sh)
+
         d.addCallback(_delete_8)
         d.addCallback(lambda ignored: self.find_uri_shares(self.uri))
         d.addCallback(lambda shares: self.failUnlessEqual(len(shares), 2))
 
-        d.addCallback(lambda ignored:
-                      self.shouldFail(NotEnoughSharesError, "then_download",
-                                      None,
-                                      download_to_data, self.c1_filenode))
+        d.addCallback(
+            lambda ignored: self.shouldFail(
+                NotEnoughSharesError,
+                "then_download",
+                None,
+                download_to_data,
+                self.c1_filenode,
+            )
+        )
 
-        d.addCallback(lambda ignored:
-                      self.shouldFail(NotEnoughSharesError, "then_repair",
-                                      None,
-                                      self.c1_filenode.check_and_repair,
-                                      Monitor(), verify=False))
+        d.addCallback(
+            lambda ignored: self.shouldFail(
+                NotEnoughSharesError,
+                "then_repair",
+                None,
+                self.c1_filenode.check_and_repair,
+                Monitor(),
+                verify=False,
+            )
+        )
 
         # test share corruption
         def _test_corrupt(ignored):
             olddata = {}
             shares = self.find_uri_shares(self.uri)
             for (shnum, serverid, sharefile) in shares:
-                olddata[ (shnum, serverid) ] = open(sharefile, "rb").read()
+                olddata[(shnum, serverid)] = open(sharefile, "rb").read()
             for sh in shares:
                 self.corrupt_share(sh, common._corrupt_uri_extension)
             for (shnum, serverid, sharefile) in shares:
                 newdata = open(sharefile, "rb").read()
-                self.failIfEqual(olddata[ (shnum, serverid) ], newdata)
+                self.failIfEqual(olddata[(shnum, serverid)], newdata)
+
         d.addCallback(_test_corrupt)
 
         def _remove_all(ignored):
             for sh in self.find_uri_shares(self.uri):
                 self.delete_share(sh)
+
         d.addCallback(_remove_all)
         d.addCallback(lambda ignored: self.find_uri_shares(self.uri))
         d.addCallback(lambda shares: self.failUnlessEqual(shares, []))
@@ -432,17 +525,17 @@ class Repairer(GridTestMixin, unittest.TestCase, RepairTestMixin,
         return d
 
     def test_repair_from_deletion_of_1(self):
-        """ Repair replaces a share that got deleted. """
+        """Repair replaces a share that got deleted."""
         self.basedir = "repairer/Repairer/repair_from_deletion_of_1"
         self.set_up_grid(num_clients=2)
         d = self.upload_and_stash()
 
-        d.addCallback(lambda ignored:
-                      self.delete_shares_numbered(self.uri, [2]))
+        d.addCallback(lambda ignored: self.delete_shares_numbered(self.uri, [2]))
         d.addCallback(lambda ignored: self._stash_counts())
-        d.addCallback(lambda ignored:
-                      self.c0_filenode.check_and_repair(Monitor(),
-                                                        verify=False))
+        d.addCallback(
+            lambda ignored: self.c0_filenode.check_and_repair(Monitor(), verify=False)
+        )
+
         def _check_results(crr):
             self.failUnlessIsInstance(crr, check_results.CheckAndRepairResults)
             pre = crr.get_pre_repair_results()
@@ -459,10 +552,10 @@ class Repairer(GridTestMixin, unittest.TestCase, RepairTestMixin,
             # shares.
             shares = self.find_uri_shares(self.uri)
             self.failIf(len(shares) < 10)
+
         d.addCallback(_check_results)
 
-        d.addCallback(lambda ignored:
-                      self.c0_filenode.check(Monitor(), verify=True))
+        d.addCallback(lambda ignored: self.c0_filenode.check(Monitor(), verify=True))
         d.addCallback(lambda vr: self.failUnless(vr.is_healthy()))
 
         # Now we delete seven of the other shares, then try to download the
@@ -470,24 +563,28 @@ class Repairer(GridTestMixin, unittest.TestCase, RepairTestMixin,
         # contents. This can't work unless it has already repaired the
         # previously-deleted share #2.
 
-        d.addCallback(lambda ignored:
-                      self.delete_shares_numbered(self.uri, list(range(3, 10+1))))
+        d.addCallback(
+            lambda ignored: self.delete_shares_numbered(
+                self.uri, list(range(3, 10 + 1))
+            )
+        )
         d.addCallback(lambda ignored: download_to_data(self.c1_filenode))
-        d.addCallback(lambda newdata:
-                      self.failUnlessEqual(newdata, common.TEST_DATA))
+        d.addCallback(lambda newdata: self.failUnlessEqual(newdata, common.TEST_DATA))
         return d
 
     def test_repair_from_deletion_of_7(self):
-        """ Repair replaces seven shares that got deleted. """
+        """Repair replaces seven shares that got deleted."""
         self.basedir = "repairer/Repairer/repair_from_deletion_of_7"
         self.set_up_grid(num_clients=2)
         d = self.upload_and_stash()
-        d.addCallback(lambda ignored:
-                      self.delete_shares_numbered(self.uri, list(range(7))))
+        d.addCallback(
+            lambda ignored: self.delete_shares_numbered(self.uri, list(range(7)))
+        )
         d.addCallback(lambda ignored: self._stash_counts())
-        d.addCallback(lambda ignored:
-                      self.c0_filenode.check_and_repair(Monitor(),
-                                                        verify=False))
+        d.addCallback(
+            lambda ignored: self.c0_filenode.check_and_repair(Monitor(), verify=False)
+        )
+
         def _check_results(crr):
             self.failUnlessIsInstance(crr, check_results.CheckAndRepairResults)
             pre = crr.get_pre_repair_results()
@@ -504,10 +601,10 @@ class Repairer(GridTestMixin, unittest.TestCase, RepairTestMixin,
             # Make sure we really have 10 shares.
             shares = self.find_uri_shares(self.uri)
             self.failIf(len(shares) < 10)
+
         d.addCallback(_check_results)
 
-        d.addCallback(lambda ignored:
-                      self.c0_filenode.check(Monitor(), verify=True))
+        d.addCallback(lambda ignored: self.c0_filenode.check(Monitor(), verify=True))
         d.addCallback(lambda vr: self.failUnless(vr.is_healthy()))
 
         # Now we delete seven of the other shares, then try to download the
@@ -515,11 +612,13 @@ class Repairer(GridTestMixin, unittest.TestCase, RepairTestMixin,
         # contents. This can't work unless it has already repaired the
         # previously-deleted share #2.
 
-        d.addCallback(lambda ignored:
-                      self.delete_shares_numbered(self.uri, list(range(3, 10+1))))
+        d.addCallback(
+            lambda ignored: self.delete_shares_numbered(
+                self.uri, list(range(3, 10 + 1))
+            )
+        )
         d.addCallback(lambda ignored: download_to_data(self.c1_filenode))
-        d.addCallback(lambda newdata:
-                      self.failUnlessEqual(newdata, common.TEST_DATA))
+        d.addCallback(lambda newdata: self.failUnlessEqual(newdata, common.TEST_DATA))
         return d
 
     def test_repairer_servers_of_happiness(self):
@@ -541,11 +640,12 @@ class Repairer(GridTestMixin, unittest.TestCase, RepairTestMixin,
 
         d.addCallback(_delete_some_servers)
         # Now try to repair the file.
-        d.addCallback(lambda ignored:
-            self.c0_filenode.check_and_repair(Monitor(), verify=False))
+        d.addCallback(
+            lambda ignored: self.c0_filenode.check_and_repair(Monitor(), verify=False)
+        )
+
         def _check_results(crr):
-            self.failUnlessIsInstance(crr,
-                                      check_results.CheckAndRepairResults)
+            self.failUnlessIsInstance(crr, check_results.CheckAndRepairResults)
             pre = crr.get_pre_repair_results()
             post = crr.get_post_repair_results()
             for p in (pre, post):
@@ -600,10 +700,13 @@ class Repairer(GridTestMixin, unittest.TestCase, RepairTestMixin,
 
         d.addCallback(self.find_all_shares)
         stash = [None]
+
         def _stash_it(res):
             stash[0] = res
             return res
+
         d.addCallback(_stash_it)
+
         def _put_it_all_back(ignored):
             self.replace_shares(stash[0], storage_index=self.uri.get_storage_index())
             return ignored
@@ -613,6 +716,7 @@ class Repairer(GridTestMixin, unittest.TestCase, RepairTestMixin,
             before_repair_allocates = self._count_writes()
 
             d2 = self.filenode.check_and_repair(Monitor(), verify=True)
+
             def _after_repair(checkandrepairresults):
                 prerepairres = checkandrepairresults.get_pre_repair_results()
                 postrepairres = checkandrepairresults.get_post_repair_results()
@@ -622,14 +726,25 @@ class Repairer(GridTestMixin, unittest.TestCase, RepairTestMixin,
                 # The "* 2" in reads is because you might read a whole share
                 # before figuring out that it is corrupted. It might be
                 # possible to make this delta reads number a little tighter.
-                self.failIf(after_repair_reads - before_repair_reads > (MAX_DELTA_READS * 2), (after_repair_reads, before_repair_reads))
+                self.failIf(
+                    after_repair_reads - before_repair_reads > (MAX_DELTA_READS * 2),
+                    (after_repair_reads, before_repair_reads),
+                )
                 # The "* 2" in writes is because each server has two shares,
                 # and it is reasonable for repairer to conclude that there
                 # are two shares that it should upload, if the server fails
                 # to serve the first share.
-                self.failIf(after_repair_allocates - before_repair_allocates > (DELTA_WRITES_PER_SHARE * 2), (after_repair_allocates, before_repair_allocates))
-                self.failIf(prerepairres.is_healthy(), (prerepairres.data, corruptor_func))
-                self.failUnless(postrepairres.is_healthy(), (postrepairres.data, corruptor_func))
+                self.failIf(
+                    after_repair_allocates - before_repair_allocates
+                    > (DELTA_WRITES_PER_SHARE * 2),
+                    (after_repair_allocates, before_repair_allocates),
+                )
+                self.failIf(
+                    prerepairres.is_healthy(), (prerepairres.data, corruptor_func)
+                )
+                self.failUnless(
+                    postrepairres.is_healthy(), (postrepairres.data, corruptor_func)
+                )
 
                 # Now we inspect the filesystem to make sure that it has 10
                 # shares.
@@ -638,8 +753,10 @@ class Repairer(GridTestMixin, unittest.TestCase, RepairTestMixin,
 
                 # Now we assert that the verifier reports the file as healthy.
                 d3 = self.filenode.check(Monitor(), verify=True)
+
                 def _after_verify(verifyresults):
                     self.failUnless(verifyresults.is_healthy())
+
                 d3.addCallback(_after_verify)
 
                 # Now we delete seven of the other shares, then try to
@@ -654,6 +771,7 @@ class Repairer(GridTestMixin, unittest.TestCase, RepairTestMixin,
                         self._delete_a_share(sharenum=sharenum)
 
                     return self._download_and_check_plaintext()
+
                 d3.addCallback(_then_delete_7_and_try_a_download)
                 return d3
 
@@ -669,14 +787,15 @@ class Repairer(GridTestMixin, unittest.TestCase, RepairTestMixin,
             common._corrupt_share_data,
             common._corrupt_length_of_uri_extension,
             common._corrupt_uri_extension,
-            ):
+        ):
             # Now we corrupt a share...
             d.addCallback(self._corrupt_a_random_share, corruptor_func)
             # And repair...
             d.addCallback(_repair_from_corruption, corruptor_func)
 
         return d
-    #test_repair_from_corruption_of_1.todo = "Repairer doesn't properly replace corrupted shares yet."
+
+    # test_repair_from_corruption_of_1.todo = "Repairer doesn't properly replace corrupted shares yet."
 
     def test_tiny_reads(self):
         # ticket #1223 points out three problems:
@@ -686,24 +805,28 @@ class Repairer(GridTestMixin, unittest.TestCase, RepairTestMixin,
         self.basedir = "repairer/Repairer/test_tiny_reads"
         self.set_up_grid()
         c0 = self.g.clients[0]
-        DATA = b"a"*135
-        c0.encoding_params['k'] = 22
-        c0.encoding_params['n'] = 66
+        DATA = b"a" * 135
+        c0.encoding_params["k"] = 22
+        c0.encoding_params["n"] = 66
         d = c0.upload(upload.Data(DATA, convergence=b""))
+
         def _then(ur):
             self.uri = ur.get_uri()
             self.delete_shares_numbered(self.uri, [0])
             self.c0_filenode = c0.create_node_from_uri(ur.get_uri())
             self._stash_counts()
             return self.c0_filenode.check_and_repair(Monitor())
+
         d.addCallback(_then)
+
         def _check(ign):
-            (r,a,w) = self._get_delta_counts()
+            (r, a, w) = self._get_delta_counts()
             # when the uploader (driven by the repairer) does full-segment
             # reads, this makes 44 server read calls (2*k). Before, when it
             # was doing input_chunk_size reads (7 bytes), it was doing over
             # 400.
             self.failIf(r > 100, "too many reads: %d>100" % r)
+
         d.addCallback(_check)
         return d
 
@@ -720,21 +843,27 @@ class Repairer(GridTestMixin, unittest.TestCase, RepairTestMixin,
             share = next(ss._get_bucket_shares(self.c0_filenode.get_storage_index()))[0]
             self.delete_shares_numbered(self.uri, [share])
             return self.c0_filenode.check_and_repair(Monitor())
+
         d.addCallback(_then)
+
         def _check(rr):
             # this exercises a bug in which the servers-responding list did
             # not include servers that responded to the Repair, but which did
             # not respond to the pre-repair filecheck
             prr = rr.get_post_repair_results()
             expected = set(self.g.get_all_serverids())
-            responding_set = frozenset([s.get_serverid() for s in prr.get_servers_responding()])
+            responding_set = frozenset(
+                [s.get_serverid() for s in prr.get_servers_responding()]
+            )
             self.failIf(expected - responding_set, expected - responding_set)
             self.failIf(responding_set - expected, responding_set - expected)
-            self.failUnlessEqual(expected,
-                                 set([s.get_serverid()
-                                      for s in prr.get_servers_responding()]))
+            self.failUnlessEqual(
+                expected, set([s.get_serverid() for s in prr.get_servers_responding()])
+            )
+
         d.addCallback(_check)
         return d
+
 
 # XXX extend these tests to show that the checker detects which specific
 # share on which specific server is broken -- this is necessary so that the

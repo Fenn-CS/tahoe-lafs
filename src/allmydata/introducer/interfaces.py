@@ -8,13 +8,39 @@ from __future__ import division
 from __future__ import print_function
 
 from future.utils import PY2, native_str
+
 if PY2:
     # Omitted types (bytes etc.) so future variants don't confuse Foolscap.
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, object, range, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        object,
+        range,
+        max,
+        min,
+    )  # noqa: F401
 
 from zope.interface import Interface
-from foolscap.api import StringConstraint, SetOf, DictOf, Any, \
-    RemoteInterface, Referenceable
+from foolscap.api import (
+    StringConstraint,
+    SetOf,
+    DictOf,
+    Any,
+    RemoteInterface,
+    Referenceable,
+)
+
 FURL = StringConstraint(1000)
 
 # v2 protocol over foolscap: Announcements are 3-tuples of (msg, sig_vs,
@@ -40,6 +66,7 @@ FURL = StringConstraint(1000)
 
 Announcement_v2 = Any()
 
+
 class RIIntroducerSubscriberClient_v2(RemoteInterface):
     __remote_name__ = native_str("RIIntroducerSubscriberClient_v2.tahoe.allmydata.com")
 
@@ -47,26 +74,38 @@ class RIIntroducerSubscriberClient_v2(RemoteInterface):
         """I accept announcements from the publisher."""
         return None
 
+
 SubscriberInfo = DictOf(bytes, Any())
+
 
 class RIIntroducerPublisherAndSubscriberService_v2(RemoteInterface):
     """To publish a service to the world, connect to me and give me your
     announcement message. I will deliver a copy to all connected subscribers.
     To hear about services, connect to me and subscribe to a specific
     service_name."""
-    __remote_name__ = native_str("RIIntroducerPublisherAndSubscriberService_v2.tahoe.allmydata.com")
+
+    __remote_name__ = native_str(
+        "RIIntroducerPublisherAndSubscriberService_v2.tahoe.allmydata.com"
+    )
+
     def get_version():
         return DictOf(bytes, Any())
+
     def publish_v2(announcement=Announcement_v2, canary=Referenceable):
         return None
-    def subscribe_v2(subscriber=RIIntroducerSubscriberClient_v2,
-                     service_name=bytes, subscriber_info=SubscriberInfo):
+
+    def subscribe_v2(
+        subscriber=RIIntroducerSubscriberClient_v2,
+        service_name=bytes,
+        subscriber_info=SubscriberInfo,
+    ):
         """Give me a subscriber reference, and I will call its announce_v2()
         method with any announcements that match the desired service name. I
         will ignore duplicate subscriptions. The subscriber_info dictionary
         tells me about the subscriber, and is used for diagnostic/status
         displays."""
         return None
+
 
 class IIntroducerClient(Interface):
     """I provide service introduction facilities for a node. I help nodes
@@ -123,4 +162,3 @@ class IIntroducerClient(Interface):
     def connected_to_introducer():
         """Returns a boolean, True if we are currently connected to the
         introducer, False if not."""
-

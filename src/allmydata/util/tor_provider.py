@@ -7,8 +7,31 @@ from __future__ import division
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import os
 
@@ -27,19 +50,24 @@ from ..interfaces import (
     IAddressFamily,
 )
 
+
 def _import_tor():
     try:
         from foolscap.connections import tor
+
         return tor
-    except ImportError: # pragma: no cover
+    except ImportError:  # pragma: no cover
         return None
+
 
 def _import_txtorcon():
     try:
         import txtorcon
+
         return txtorcon
-    except ImportError: # pragma: no cover
+    except ImportError:  # pragma: no cover
         return None
+
 
 def create(reactor, config, import_tor=None, import_txtorcon=None):
     """
@@ -63,16 +91,19 @@ def create(reactor, config, import_tor=None, import_txtorcon=None):
 def data_directory(private_dir):
     return os.path.join(private_dir, "tor-statedir")
 
+
 # different ways we might approach this:
 
 # 1: get an ITorControlProtocol, make a
 # txtorcon.EphemeralHiddenService(ports), yield ehs.add_to_tor(tcp), store
 # ehs.hostname and ehs.private_key, yield ehs.remove_from_tor(tcp)
 
+
 def _try_to_connect(reactor, endpoint_desc, stdout, txtorcon):
     # yields a TorState, or None
     ep = clientFromString(reactor, endpoint_desc)
     d = txtorcon.build_tor_connection(ep)
+
     def _failed(f):
         # depending upon what's listening at that endpoint, we might get
         # various errors. If this list is too short, we might expose an
@@ -80,21 +111,23 @@ def _try_to_connect(reactor, endpoint_desc, stdout, txtorcon):
         # when we're supposed to just try the next potential port instead.
         # But I don't want to catch everything, because that may hide actual
         # coding errrors.
-        f.trap(ConnectionRefusedError, # nothing listening on TCP
-               ConnectError, # missing unix socket, or permission denied
-               #ValueError,
-               # connecting to e.g. an HTTP server causes an
-               # UnhandledException (around a ValueError) when the handshake
-               # fails to parse, but that's not something we can catch. The
-               # attempt hangs, so don't do that.
-               RuntimeError, # authentication failure
-               )
+        f.trap(
+            ConnectionRefusedError,  # nothing listening on TCP
+            ConnectError,  # missing unix socket, or permission denied
+            # ValueError,
+            # connecting to e.g. an HTTP server causes an
+            # UnhandledException (around a ValueError) when the handshake
+            # fails to parse, but that's not something we can catch. The
+            # attempt hangs, so don't do that.
+            RuntimeError,  # authentication failure
+        )
         if stdout:
-            stdout.write("Unable to reach Tor at '%s': %s\n" %
-                         (endpoint_desc, f.value))
+            stdout.write("Unable to reach Tor at '%s': %s\n" % (endpoint_desc, f.value))
         return None
+
     d.addErrback(_failed)
     return d
+
 
 @inlineCallbacks
 def _launch_tor(reactor, tor_executable, private_dir, txtorcon):
@@ -114,7 +147,8 @@ def _launch_tor(reactor, tor_executable, private_dir, txtorcon):
     tor_config.SOCKSPort = allocate_tcp_port()
 
     tpp = yield txtorcon.launch_tor(
-        tor_config, reactor,
+        tor_config,
+        reactor,
         tor_binary=tor_executable,
         # can be useful when debugging; mirror Tor's output to ours
         # stdout=sys.stdout,
@@ -136,31 +170,36 @@ def _launch_tor(reactor, tor_executable, private_dir, txtorcon):
 
     returnValue((tor_control_endpoint_desc, tor_control_proto))
 
+
 @inlineCallbacks
 def _connect_to_tor(reactor, cli_config, txtorcon):
     # we assume tor is already running
-    ports_to_try = ["unix:/var/run/tor/control",
-                    "tcp:127.0.0.1:9051",
-                    "tcp:127.0.0.1:9151", # TorBrowserBundle
-                    ]
+    ports_to_try = [
+        "unix:/var/run/tor/control",
+        "tcp:127.0.0.1:9051",
+        "tcp:127.0.0.1:9151",  # TorBrowserBundle
+    ]
     if cli_config["tor-control-port"]:
         ports_to_try = [cli_config["tor-control-port"]]
     for port in ports_to_try:
-        tor_state = yield _try_to_connect(reactor, port, cli_config.stdout,
-                                          txtorcon)
+        tor_state = yield _try_to_connect(reactor, port, cli_config.stdout, txtorcon)
         if tor_state:
             tor_control_proto = tor_state.protocol
-            returnValue((port, tor_control_proto)) ; break # helps editor
+            returnValue((port, tor_control_proto))
+            break  # helps editor
     else:
         raise ValueError("unable to reach any default Tor control port")
+
 
 @inlineCallbacks
 def create_config(reactor, cli_config):
     txtorcon = _import_txtorcon()
     if not txtorcon:
-        raise ValueError("Cannot create onion without txtorcon. "
-                         "Please 'pip install tahoe-lafs[tor]' to fix this.")
-    tahoe_config_tor = {} # written into tahoe.cfg:[tor]
+        raise ValueError(
+            "Cannot create onion without txtorcon. "
+            "Please 'pip install tahoe-lafs[tor]' to fix this."
+        )
+    tahoe_config_tor = {}  # written into tahoe.cfg:[tor]
     private_dir = os.path.abspath(os.path.join(cli_config["basedir"], "private"))
     stdout = cli_config.stdout
     if cli_config["tor-launch"]:
@@ -170,16 +209,16 @@ def create_config(reactor, cli_config):
             tahoe_config_tor["tor.executable"] = tor_executable
         print("launching Tor (to allocate .onion address)..", file=stdout)
         (_, tor_control_proto) = yield _launch_tor(
-            reactor, tor_executable, private_dir, txtorcon)
+            reactor, tor_executable, private_dir, txtorcon
+        )
         print("Tor launched", file=stdout)
     else:
         print("connecting to Tor (to allocate .onion address)..", file=stdout)
-        (port, tor_control_proto) = yield _connect_to_tor(
-            reactor, cli_config, txtorcon)
+        (port, tor_control_proto) = yield _connect_to_tor(reactor, cli_config, txtorcon)
         print("Tor connection established", file=stdout)
         tahoe_config_tor["control.port"] = port
 
-    external_port = 3457 # TODO: pick this randomly? there's no contention.
+    external_port = 3457  # TODO: pick this randomly? there's no contention.
 
     local_port = allocate_tcp_port()
     ehs = txtorcon.EphemeralHiddenService(
@@ -207,8 +246,9 @@ def create_config(reactor, cli_config):
     tahoe_config_tor["onion.local_port"] = str(local_port)
     tahoe_config_tor["onion.external_port"] = str(external_port)
     assert privkey
-    tahoe_config_tor["onion.private_key_file"] = os.path.join("private",
-                                                              "tor_onion.privkey")
+    tahoe_config_tor["onion.private_key_file"] = os.path.join(
+        "private", "tor_onion.privkey"
+    )
     privkeyfile = os.path.join(private_dir, "tor_onion.privkey")
     with open(privkeyfile, "wb") as f:
         if isinstance(privkey, str):
@@ -266,8 +306,9 @@ class _Provider(service.MultiService):
         if self._get_tor_config("launch", False, boolean=True):
             if not self._txtorcon:
                 return None
-            return self._tor.control_endpoint_maker(self._make_control_endpoint,
-                                                    takes_status=True)
+            return self._tor.control_endpoint_maker(
+                self._make_control_endpoint, takes_status=True
+            )
 
         socks_endpoint_desc = self._get_tor_config("socks.port", None)
         if socks_endpoint_desc:
@@ -306,21 +347,27 @@ class _Provider(service.MultiService):
     def check_onion_config(self):
         if self._get_tor_config("onion", False, boolean=True):
             if not self._txtorcon:
-                raise ValueError("Cannot create onion without txtorcon. "
-                                 "Please 'pip install tahoe-lafs[tor]' to fix.")
+                raise ValueError(
+                    "Cannot create onion without txtorcon. "
+                    "Please 'pip install tahoe-lafs[tor]' to fix."
+                )
 
             # to start an onion server, we either need a Tor control port, or
             # we need to launch tor
             launch = self._get_tor_config("launch", False, boolean=True)
             controlport = self._get_tor_config("control.port", None)
             if not launch and not controlport:
-                raise ValueError("[tor] onion = true, but we have neither "
-                                 "launch=true nor control.port=")
+                raise ValueError(
+                    "[tor] onion = true, but we have neither "
+                    "launch=true nor control.port="
+                )
             # check that all the expected onion-specific keys are present
             def require(name):
                 if not self._get_tor_config("onion.%s" % name, None):
-                    raise ValueError("[tor] onion = true,"
-                                     " but onion.%s= is missing" % name)
+                    raise ValueError(
+                        "[tor] onion = true," " but onion.%s= is missing" % name
+                    )
+
             require("local_port")
             require("external_port")
             require("private_key_file")
@@ -344,17 +391,17 @@ class _Provider(service.MultiService):
         with open(privkeyfile, "rb") as f:
             privkey = f.read()
         ehs = self._txtorcon.EphemeralHiddenService(
-            "%d 127.0.0.1:%d" % (external_port, local_port), privkey)
+            "%d 127.0.0.1:%d" % (external_port, local_port), privkey
+        )
         yield ehs.add_to_tor(tor_control_proto)
         self._onion_ehs = ehs
         self._onion_tor_control_proto = tor_control_proto
-
 
     def startService(self):
         service.MultiService.startService(self)
         # if we need to start an onion service, now is the time
         if self._get_tor_config("onion", False, boolean=True):
-            return self._start_onion(self._reactor) # so tests can synchronize
+            return self._start_onion(self._reactor)  # so tests can synchronize
 
     @inlineCallbacks
     def stopService(self):

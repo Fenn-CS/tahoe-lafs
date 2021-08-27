@@ -10,8 +10,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 from future.utils import native_str, native_str_to_bytes
 from six import ensure_str
 
@@ -65,13 +88,13 @@ class DummyStorage(object):
 
     @property
     def _client_section_name(self):
-        return u"storageclient.plugins.{}".format(self.name)
+        return "storageclient.plugins.{}".format(self.name)
 
     def get_storage_server(self, configuration, get_anonymous_storage_server):
-        if u"invalid" in configuration:
+        if "invalid" in configuration:
             raise Exception("The plugin is unhappy.")
 
-        announcement = {u"value": configuration.get(u"some", u"default-value")}
+        announcement = {"value": configuration.get("some", "default-value")}
         storage_server = DummyStorageServer(get_anonymous_storage_server)
         return succeed(
             AnnounceableStorageServer(
@@ -109,7 +132,9 @@ class GetCounter(Resource, object):
 
     :ivar int value: The number of ``GET`` requests rendered so far.
     """
+
     value = 0
+
     def render_GET(self, request):
         self.value += 1
         return native_str_to_bytes(dumps({"value": self.value}))

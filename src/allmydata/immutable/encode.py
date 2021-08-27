@@ -10,8 +10,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import time
 from zope.interface import implementer
@@ -23,8 +46,13 @@ from allmydata.hashtree import HashTree
 from allmydata.util import mathutil, hashutil, base32, log, happinessutil
 from allmydata.util.assertutil import _assert, precondition
 from allmydata.codec import CRSEncoder
-from allmydata.interfaces import IEncoder, IStorageBucketWriter, \
-     IEncryptedUploadable, IUploadStatus, UploadUnhappinessError
+from allmydata.interfaces import (
+    IEncoder,
+    IStorageBucketWriter,
+    IEncryptedUploadable,
+    IUploadStatus,
+    UploadUnhappinessError,
+)
 
 from ..util.eliotutil import (
     log_call_deferred,
@@ -78,18 +106,20 @@ hash tree is put into the URI.
 
 """
 
+
 class UploadAborted(Exception):
     pass
 
-KiB=1024
-MiB=1024*KiB
-GiB=1024*MiB
-TiB=1024*GiB
-PiB=1024*TiB
+
+KiB = 1024
+MiB = 1024 * KiB
+GiB = 1024 * MiB
+TiB = 1024 * GiB
+PiB = 1024 * TiB
+
 
 @implementer(IEncoder)
 class Encoder(object):
-
     def __init__(self, log_parent=None, upload_status=None):
         object.__init__(self)
         self.uri_extension_data = {}
@@ -97,10 +127,10 @@ class Encoder(object):
         self._status = None
         if upload_status:
             self._status = IUploadStatus(upload_status)
-        precondition(log_parent is None or isinstance(log_parent, int),
-                     log_parent)
-        self._log_number = log.msg("creating Encoder %s" % self,
-                                   facility="tahoe.encoder", parent=log_parent)
+        precondition(log_parent is None or isinstance(log_parent, int), log_parent)
+        self._log_number = log.msg(
+            "creating Encoder %s" % self, facility="tahoe.encoder", parent=log_parent
+        )
         self._aborted = False
 
     def __repr__(self):
@@ -115,20 +145,24 @@ class Encoder(object):
             kwargs["facility"] = "tahoe.encoder"
         return log.msg(*args, **kwargs)
 
-    @log_call_deferred(action_type=u"immutable:encode:set-encrypted-uploadable")
+    @log_call_deferred(action_type="immutable:encode:set-encrypted-uploadable")
     def set_encrypted_uploadable(self, uploadable):
         eu = self._uploadable = IEncryptedUploadable(uploadable)
         d = eu.get_size()
+
         def _got_size(size):
             self.log(format="file size: %(size)d", size=size)
             self.file_size = size
+
         d.addCallback(_got_size)
         d.addCallback(lambda res: eu.get_all_encoding_parameters())
         d.addCallback(self._got_all_encoding_parameters)
         d.addCallback(lambda res: eu.get_storage_index())
+
         def _done(storage_index):
             self._storage_index = storage_index
             return self
+
         d.addCallback(_done)
         return d
 
@@ -139,29 +173,26 @@ class Encoder(object):
         self.min_happiness = happy
         self.num_shares = n
         self.segment_size = segsize
-        self.log("got encoding parameters: %d/%d/%d %d" % (k,happy,n, segsize))
+        self.log("got encoding parameters: %d/%d/%d %d" % (k, happy, n, segsize))
         self.log("now setting up codec")
 
         assert self.segment_size % self.required_shares == 0
 
-        self.num_segments = mathutil.div_ceil(self.file_size,
-                                              self.segment_size)
+        self.num_segments = mathutil.div_ceil(self.file_size, self.segment_size)
 
         self._codec = CRSEncoder()
-        self._codec.set_params(self.segment_size,
-                               self.required_shares, self.num_shares)
+        self._codec.set_params(self.segment_size, self.required_shares, self.num_shares)
 
         data = self.uri_extension_data
-        data['codec_name'] = self._codec.get_encoder_type()
-        data['codec_params'] = self._codec.get_serialized_params()
+        data["codec_name"] = self._codec.get_encoder_type()
+        data["codec_params"] = self._codec.get_serialized_params()
 
-        data['size'] = self.file_size
-        data['segment_size'] = self.segment_size
-        self.share_size = mathutil.div_ceil(self.file_size,
-                                            self.required_shares)
-        data['num_segments'] = self.num_segments
-        data['needed_shares'] = self.required_shares
-        data['total_shares'] = self.num_shares
+        data["size"] = self.file_size
+        data["segment_size"] = self.segment_size
+        self.share_size = mathutil.div_ceil(self.file_size, self.required_shares)
+        data["num_segments"] = self.num_segments
+        data["needed_shares"] = self.required_shares
+        data["total_shares"] = self.num_shares
 
         # the "tail" is the last segment. This segment may or may not be
         # shorter than all other segments. We use the "tail codec" to handle
@@ -173,12 +204,12 @@ class Encoder(object):
             tail_size = self.segment_size
 
         # the tail codec is responsible for encoding tail_size bytes
-        padded_tail_size = mathutil.next_multiple(tail_size,
-                                                  self.required_shares)
+        padded_tail_size = mathutil.next_multiple(tail_size, self.required_shares)
         self._tail_codec = CRSEncoder()
-        self._tail_codec.set_params(padded_tail_size,
-                                    self.required_shares, self.num_shares)
-        data['tail_codec_params'] = self._tail_codec.get_serialized_params()
+        self._tail_codec.set_params(
+            padded_tail_size, self.required_shares, self.num_shares
+        )
+        data["tail_codec_params"] = self._tail_codec.get_serialized_params()
 
     def _get_share_size(self):
         share_size = mathutil.div_ceil(self.file_size, self.required_shares)
@@ -194,8 +225,7 @@ class Encoder(object):
         if name == "storage_index":
             return self._storage_index
         elif name == "share_counts":
-            return (self.required_shares, self.min_happiness,
-                    self.num_shares)
+            return (self.required_shares, self.min_happiness, self.num_shares)
         elif name == "num_segments":
             return self.num_segments
         elif name == "segment_size":
@@ -219,12 +249,12 @@ class Encoder(object):
             assert isinstance(v, set)
         self.servermap = servermap.copy()
 
-    @log_call_deferred(action_type=u"immutable:encode:start")
+    @log_call_deferred(action_type="immutable:encode:start")
     def start(self):
-        """ Returns a Deferred that will fire with the verify cap (an instance of
+        """Returns a Deferred that will fire with the verify cap (an instance of
         uri.CHKFileVerifierURI)."""
         self.log("%s starting" % (self,))
-        #paddedsize = self._size + mathutil.pad_size(self._size, self.needed_shares)
+        # paddedsize = self._size + mathutil.pad_size(self._size, self.needed_shares)
         assert self._codec
         self._crypttext_hasher = hashutil.crypttext_hasher()
         self._crypttext_hashes = []
@@ -240,17 +270,17 @@ class Encoder(object):
             "cumulative_sending": 0.0,
             "hashes_and_close": 0.0,
             "total_encode_and_push": 0.0,
-            }
+        }
         self._start_total_timestamp = time.time()
 
         d = fireEventually()
 
         d.addCallback(lambda res: self.start_all_shareholders())
 
-        for i in range(self.num_segments-1):
+        for i in range(self.num_segments - 1):
             # note to self: this form doesn't work, because lambda only
             # captures the slot, not the value
-            #d.addCallback(lambda res: self.do_segment(i))
+            # d.addCallback(lambda res: self.do_segment(i))
             # use this form instead:
             d.addCallback(lambda res, i=i: self._encode_segment(i, is_tail=False))
             d.addCallback(self._send_segment, i)
@@ -262,8 +292,7 @@ class Encoder(object):
 
         d.addCallback(lambda res: self.finish_hashing())
 
-        d.addCallback(lambda res:
-                      self.send_crypttext_hash_tree_to_all_shareholders())
+        d.addCallback(lambda res: self.send_crypttext_hash_tree_to_all_shareholders())
         d.addCallback(lambda res: self.send_all_block_hash_trees())
         d.addCallback(lambda res: self.send_all_share_hash_trees())
         d.addCallback(lambda res: self.send_uri_extension_to_all_shareholders())
@@ -302,7 +331,6 @@ class Encoder(object):
         # normally expect.
 
         return fireEventually(res)
-
 
     def start_all_shareholders(self):
         self.log("starting shareholders", level=log.NOISY)
@@ -362,8 +390,13 @@ class Encoder(object):
         # 4.3MiB. Lowering max_segment_size to, say, 100KiB would drop the
         # footprint to 430KiB at the expense of more hash-tree overhead.
 
-        d = self._gather_data(self.required_shares, input_piece_size,
-                              crypttext_segment_hasher, allow_short=is_tail)
+        d = self._gather_data(
+            self.required_shares,
+            input_piece_size,
+            crypttext_segment_hasher,
+            allow_short=is_tail,
+        )
+
         def _done_gathering(chunks):
             for c in chunks:
                 # If is_tail then a short trailing chunk will have been padded
@@ -372,17 +405,20 @@ class Encoder(object):
             self._crypttext_hashes.append(crypttext_segment_hasher.digest())
             # during this call, we hit 5*segsize memory
             return codec.encode(chunks)
+
         d.addCallback(_done_gathering)
+
         def _done(res):
             elapsed = time.time() - start
             self._times["cumulative_encoding"] += elapsed
             return res
+
         d.addCallback(_done)
         return d
 
-    def _gather_data(self, num_chunks, input_chunk_size,
-                     crypttext_segment_hasher,
-                     allow_short=False):
+    def _gather_data(
+        self, num_chunks, input_chunk_size, crypttext_segment_hasher, allow_short=False
+    ):
         """Return a Deferred that will fire when the required number of
         chunks have been read (and hashed and encrypted). The Deferred fires
         with a list of chunks, each of size input_chunk_size."""
@@ -409,8 +445,9 @@ class Encoder(object):
 
         read_size = num_chunks * input_chunk_size
         d = self._uploadable.read_encrypted(read_size, hash_only=False)
+
         def _got(data):
-            assert isinstance(data, (list,tuple))
+            assert isinstance(data, (list, tuple))
             if self._aborted:
                 raise UploadAborted()
             data = b"".join(data)
@@ -422,9 +459,12 @@ class Encoder(object):
             if allow_short and len(data) < read_size:
                 # padding
                 data += b"\x00" * (read_size - len(data))
-            encrypted_pieces = [data[i:i+input_chunk_size]
-                                for i in range(0, len(data), input_chunk_size)]
+            encrypted_pieces = [
+                data[i : i + input_chunk_size]
+                for i in range(0, len(data), input_chunk_size)
+            ]
             return encrypted_pieces
+
         d.addCallback(_got)
         return d
 
@@ -435,12 +475,14 @@ class Encoder(object):
         # to or larger than the set of landlords. If we have any landlord who
         # *doesn't* have a share, that's an error.
         (shares, shareids) = shares_and_shareids
-        _assert(set(self.landlords.keys()).issubset(set(shareids)),
-                shareids=shareids, landlords=self.landlords)
+        _assert(
+            set(self.landlords.keys()).issubset(set(shareids)),
+            shareids=shareids,
+            landlords=self.landlords,
+        )
         start = time.time()
         dl = []
-        self.set_status("Sending segment %d of %d" % (segnum+1,
-                                                      self.num_segments))
+        self.set_status("Sending segment %d of %d" % (segnum + 1, self.num_segments))
         self.set_encode_and_push_progress(segnum)
         lognum = self.log("send_segment(%d)" % segnum, level=log.NOISY)
         for i in range(len(shares)):
@@ -450,8 +492,8 @@ class Encoder(object):
             dl.append(d)
 
             block_hash = hashutil.block_hash(block)
-            #from allmydata.util import base32
-            #log.msg("creating block (shareid=%d, blocknum=%d) "
+            # from allmydata.util import base32
+            # log.msg("creating block (shareid=%d, blocknum=%d) "
             #        "len=%d %r .. %r: %s" %
             #        (shareid, segnum, len(block),
             #         block[:50], block[-50:], base32.b2a(block_hash)))
@@ -460,16 +502,20 @@ class Encoder(object):
         dl = self._gather_responses(dl)
 
         def _logit(res):
-            self.log("%s uploaded %s / %s bytes (%d%%) of your file." %
-                     (self,
-                      self.segment_size*(segnum+1),
-                      self.segment_size*self.num_segments,
-                      100 * (segnum+1) // self.num_segments,
-                      ),
-                     level=log.OPERATIONAL)
+            self.log(
+                "%s uploaded %s / %s bytes (%d%%) of your file."
+                % (
+                    self,
+                    self.segment_size * (segnum + 1),
+                    self.segment_size * self.num_segments,
+                    100 * (segnum + 1) // self.num_segments,
+                ),
+                level=log.OPERATIONAL,
+            )
             elapsed = time.time() - start
             self._times["cumulative_sending"] += elapsed
             return res
+
         dl.addCallback(_logit)
         return dl
 
@@ -477,21 +523,27 @@ class Encoder(object):
         if shareid not in self.landlords:
             return defer.succeed(None)
         sh = self.landlords[shareid]
-        lognum2 = self.log("put_block to %s" % self.landlords[shareid],
-                           parent=lognum, level=log.NOISY)
+        lognum2 = self.log(
+            "put_block to %s" % self.landlords[shareid], parent=lognum, level=log.NOISY
+        )
         d = sh.put_block(segment_num, block)
+
         def _done(res):
             self.log("put_block done", parent=lognum2, level=log.NOISY)
             return res
+
         d.addCallback(_done)
-        d.addErrback(self._remove_shareholder, shareid,
-                     "segnum=%d" % segment_num)
+        d.addErrback(self._remove_shareholder, shareid, "segnum=%d" % segment_num)
         return d
 
     def _remove_shareholder(self, why, shareid, where):
-        ln = self.log(format="error while sending %(method)s to shareholder=%(shnum)d",
-                      method=where, shnum=shareid,
-                      level=log.UNUSUAL, failure=why)
+        ln = self.log(
+            format="error while sending %(method)s to shareholder=%(shnum)d",
+            method=where,
+            shnum=shareid,
+            level=log.UNUSUAL,
+            failure=why,
+        )
         if shareid in self.landlords:
             self.landlords[shareid].abort()
             peerid = self.landlords[shareid].get_peerid()
@@ -502,24 +554,29 @@ class Encoder(object):
                 del self.servermap[shareid]
         else:
             # even more UNUSUAL
-            self.log("they weren't in our list of landlords", parent=ln,
-                     level=log.WEIRD, umid="TQGFRw")
+            self.log(
+                "they weren't in our list of landlords",
+                parent=ln,
+                level=log.WEIRD,
+                umid="TQGFRw",
+            )
         happiness = happinessutil.servers_of_happiness(self.servermap)
         if happiness < self.min_happiness:
             peerids = set(happinessutil.shares_by_server(self.servermap).keys())
-            msg = happinessutil.failure_message(len(peerids),
-                                                self.required_shares,
-                                                self.min_happiness,
-                                                happiness)
+            msg = happinessutil.failure_message(
+                len(peerids), self.required_shares, self.min_happiness, happiness
+            )
             msg = "%s: %s" % (msg, why)
             raise UploadUnhappinessError(msg)
-        self.log("but we can still continue with %s shares, we'll be happy "
-                 "with at least %s" % (happiness,
-                                       self.min_happiness),
-                 parent=ln)
+        self.log(
+            "but we can still continue with %s shares, we'll be happy "
+            "with at least %s" % (happiness, self.min_happiness),
+            parent=ln,
+        )
 
     def _gather_responses(self, dl):
         d = defer.DeferredList(dl, fireOnOneErrback=True)
+
         def _eatUploadUnhappinessError(f):
             # all exceptions that occur while talking to a peer are handled
             # in _remove_shareholder. That might raise UploadUnhappinessError,
@@ -529,6 +586,7 @@ class Encoder(object):
             # consumeErrors=True to allow coding errors to be logged.
             f.trap(UploadUnhappinessError)
             return None
+
         for d0 in dl:
             d0.addErrback(_eatUploadUnhappinessError)
         return d
@@ -566,7 +624,7 @@ class Encoder(object):
         self.set_status("Sending Subshare Hash Trees")
         self.set_encode_and_push_progress(extra=0.4)
         dl = []
-        for shareid,hashes in enumerate(self.block_hashes):
+        for shareid, hashes in enumerate(self.block_hashes):
             # hashes is a list of the hashes of all blocks that were sent
             # to shareholder[shareid].
             dl.append(self.send_one_block_hash_tree(shareid, hashes))
@@ -599,7 +657,7 @@ class Encoder(object):
         # create the share hash tree
         t = HashTree(self.share_root_hashes)
         # the root of this hash tree goes into our URI
-        self.uri_extension_data['share_root_hash'] = t[0]
+        self.uri_extension_data["share_root_hash"] = t[0]
         # now send just the necessary pieces out to each shareholder
         for i in range(self.num_shares):
             # the HashTree is given a list of leaves: 0,1,2,3..n .
@@ -621,12 +679,14 @@ class Encoder(object):
         lp = self.log("sending uri_extension", level=log.NOISY)
         self.set_status("Sending URI Extensions")
         self.set_encode_and_push_progress(extra=0.8)
-        for k in ('crypttext_root_hash', 'crypttext_hash',
-                  ):
+        for k in (
+            "crypttext_root_hash",
+            "crypttext_hash",
+        ):
             assert k in self.uri_extension_data
         uri_extension = uri.pack_extension(self.uri_extension_data)
         ed = {}
-        for k,v in self.uri_extension_data.items():
+        for k, v in self.uri_extension_data.items():
             if k.endswith("hash"):
                 ed[k] = base32.b2a(v)
             else:
@@ -658,7 +718,7 @@ class Encoder(object):
     def done(self, res):
         self.log("upload done", level=log.OPERATIONAL)
         self.set_status("Finished")
-        self.set_encode_and_push_progress(extra=1.0) # done
+        self.set_encode_and_push_progress(extra=1.0)  # done
         now = time.time()
         h_and_c_elapsed = now - self._start_hashing_and_close_timestamp
         self._times["hashes_and_close"] = h_and_c_elapsed
@@ -667,8 +727,13 @@ class Encoder(object):
 
         # update our sharemap
         self._shares_placed = set(self.landlords.keys())
-        return uri.CHKFileVerifierURI(self._storage_index, self.uri_extension_hash,
-                                      self.required_shares, self.num_shares, self.file_size)
+        return uri.CHKFileVerifierURI(
+            self._storage_index,
+            self.uri_extension_hash,
+            self.required_shares,
+            self.num_shares,
+            self.file_size,
+        )
 
     def err(self, f):
         self.log("upload failed", failure=f, level=log.UNUSUAL)
@@ -692,5 +757,6 @@ class Encoder(object):
 
     def get_uri_extension_data(self):
         return self.uri_extension_data
+
     def get_uri_extension_hash(self):
         return self.uri_extension_hash

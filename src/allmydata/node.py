@@ -10,8 +10,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 from six import ensure_str, ensure_text
 
 import datetime
@@ -56,48 +79,52 @@ from . import (
     __full_version__,
 )
 
+
 def _common_valid_config():
-    return configutil.ValidConfiguration({
-        "connections": (
-            "tcp",
-        ),
-        "node": (
-            "log_gatherer.furl",
-            "nickname",
-            "reveal-ip-address",
-            "tempdir",
-            "timeout.disconnect",
-            "timeout.keepalive",
-            "tub.location",
-            "tub.port",
-            "web.port",
-            "web.static",
-        ),
-        "i2p": (
-            "enabled",
-            "i2p.configdir",
-            "i2p.executable",
-            "launch",
-            "sam.port",
-            "dest",
-            "dest.port",
-            "dest.private_key_file",
-        ),
-        "tor": (
-            "control.port",
-            "enabled",
-            "launch",
-            "socks.port",
-            "tor.executable",
-            "onion",
-            "onion.local_port",
-            "onion.external_port",
-            "onion.private_key_file",
-        ),
-    })
+    return configutil.ValidConfiguration(
+        {
+            "connections": ("tcp",),
+            "node": (
+                "log_gatherer.furl",
+                "nickname",
+                "reveal-ip-address",
+                "tempdir",
+                "timeout.disconnect",
+                "timeout.keepalive",
+                "tub.location",
+                "tub.port",
+                "web.port",
+                "web.static",
+            ),
+            "i2p": (
+                "enabled",
+                "i2p.configdir",
+                "i2p.executable",
+                "launch",
+                "sam.port",
+                "dest",
+                "dest.port",
+                "dest.private_key_file",
+            ),
+            "tor": (
+                "control.port",
+                "enabled",
+                "launch",
+                "socks.port",
+                "tor.executable",
+                "onion",
+                "onion.local_port",
+                "onion.external_port",
+                "onion.private_key_file",
+            ),
+        }
+    )
+
 
 # group 1 will be addr (dotted quad string), group 3 if any will be portnum (string)
-ADDR_RE = re.compile("^([1-9][0-9]*\.[1-9][0-9]*\.[1-9][0-9]*\.[1-9][0-9]*)(:([1-9][0-9]*))?$")
+ADDR_RE = re.compile(
+    "^([1-9][0-9]*\.[1-9][0-9]*\.[1-9][0-9]*\.[1-9][0-9]*)(:([1-9][0-9]*))?$"
+)
 
 # this is put into README in new node-directories (for client and introducers)
 PRIV_README = """
@@ -119,8 +146,9 @@ def formatTimeTahoeStyle(self, when):
     """
     d = datetime.datetime.utcfromtimestamp(when)
     if d.microsecond:
-        return d.isoformat(ensure_str(" "))[:-3]+"Z"
+        return d.isoformat(ensure_str(" "))[:-3] + "Z"
     return d.isoformat(ensure_str(" ")) + ".000Z"
+
 
 PRIV_README = """
 This directory contains files which contain private data for the Tahoe node,
@@ -128,33 +156,47 @@ such as private keys.  On Unix-like systems, the permissions on this directory
 are set to disallow users other than its owner from reading the contents of
 the files.   See the 'configuration.rst' documentation file for details."""
 
+
 class _None(object):
     """
     This class is to be used as a marker in get_config()
     """
+
     pass
 
+
 class MissingConfigEntry(Exception):
-    """ A required config entry was not found. """
+    """A required config entry was not found."""
+
 
 class OldConfigError(Exception):
-    """ An obsolete config file was found. See
-    docs/historical/configuration.rst. """
+    """An obsolete config file was found. See
+    docs/historical/configuration.rst."""
+
     def __str__(self):
-        return ("Found pre-Tahoe-LAFS-v1.3 configuration file(s):\n"
-                "%s\n"
-                "See docs/historical/configuration.rst."
-                % "\n".join([quote_output(fname) for fname in self.args[0]]))
+        return (
+            "Found pre-Tahoe-LAFS-v1.3 configuration file(s):\n"
+            "%s\n"
+            "See docs/historical/configuration.rst."
+            % "\n".join([quote_output(fname) for fname in self.args[0]])
+        )
+
 
 class OldConfigOptionError(Exception):
     """Indicate that outdated configuration options are being used."""
+
     pass
+
 
 class UnescapedHashError(Exception):
     """Indicate that a configuration entry contains an unescaped '#' character."""
+
     def __str__(self):
-        return ("The configuration entry %s contained an unescaped '#' character."
-                % quote_output("[%s]%s = %s" % self.args))
+        return (
+            "The configuration entry %s contained an unescaped '#' character."
+            % quote_output("[%s]%s = %s" % self.args)
+        )
+
 
 class PrivacyError(Exception):
     """reveal-IP-address = false, but the node is configured in such a way
@@ -175,7 +217,7 @@ def create_node_dir(basedir, readme_text):
     if not os.path.exists(privdir):
         fileutil.make_dirs(privdir, 0o700)
         readme_text = ensure_text(readme_text)
-        with open(os.path.join(privdir, 'README'), 'w') as f:
+        with open(os.path.join(privdir, "README"), "w") as f:
             f.write(readme_text)
 
 
@@ -212,7 +254,7 @@ def read_config(basedir, portnumfile, generated_files=[], _valid_config=None):
         if e.errno != errno.ENOENT:
             raise
         # The file is missing, just create empty ConfigParser.
-        config_str = u""
+        config_str = ""
     else:
         config_str = config_str.decode("utf-8-sig")
 
@@ -225,7 +267,9 @@ def read_config(basedir, portnumfile, generated_files=[], _valid_config=None):
     )
 
 
-def config_from_string(basedir, portnumfile, config_str, _valid_config=None, fpath=None):
+def config_from_string(
+    basedir, portnumfile, config_str, _valid_config=None, fpath=None
+):
     """
     load and validate configuration from in-memory string
     """
@@ -260,11 +304,21 @@ def _error_about_old_config_files(basedir, generated_files):
     """
     oldfnames = set()
     old_names = [
-        'nickname', 'webport', 'keepalive_timeout', 'log_gatherer.furl',
-        'disconnect_timeout', 'advertised_ip_addresses', 'introducer.furl',
-        'helper.furl', 'key_generator.furl', 'stats_gatherer.furl',
-        'no_storage', 'readonly_storage', 'sizelimit',
-        'debug_discard_storage', 'run_helper'
+        "nickname",
+        "webport",
+        "keepalive_timeout",
+        "log_gatherer.furl",
+        "disconnect_timeout",
+        "advertised_ip_addresses",
+        "introducer.furl",
+        "helper.furl",
+        "key_generator.furl",
+        "stats_gatherer.furl",
+        "no_storage",
+        "readonly_storage",
+        "sizelimit",
+        "debug_discard_storage",
+        "run_helper",
     ]
     for fn in generated_files:
         old_names.remove(fn)
@@ -307,6 +361,7 @@ class _Config(object):
     :ivar ValidConfiguration valid_config_sections: The validator for the
         values in this configuration.
     """
+
     config = attr.ib(validator=attr.validators.instance_of(configparser.ConfigParser))
     portnum_fname = attr.ib()
     _basedir = attr.ib(
@@ -324,7 +379,7 @@ class _Config(object):
 
     @property
     def nickname(self):
-        nickname = self.get_config("node", "nickname", u"<unspecified>")
+        nickname = self.get_config("node", "nickname", "<unspecified>")
         assert isinstance(nickname, str)
         return nickname
 
@@ -362,7 +417,7 @@ class _Config(object):
                 return self.config.getboolean(section, option)
 
             item = self.config.get(section, option)
-            if option.endswith(".furl") and '#' in item:
+            if option.endswith(".furl") and "#" in item:
                 raise UnescapedHashError(section, option, item)
 
             return item
@@ -439,8 +494,10 @@ class _Config(object):
             if e.errno != errno.ENOENT:
                 raise  # we only care about "file doesn't exist"
             if default is _None:
-                raise MissingConfigEntry("The required configuration file %s is missing."
-                                         % (quote_output(privname),))
+                raise MissingConfigEntry(
+                    "The required configuration file %s is missing."
+                    % (quote_output(privname),)
+                )
             if isinstance(default, bytes):
                 default = str(default, "utf-8")
             if isinstance(default, str):
@@ -474,8 +531,10 @@ class _Config(object):
             if e.errno != errno.ENOENT:
                 raise  # we only care about "file doesn't exist"
             if default is _None:
-                raise MissingConfigEntry("The required configuration file %s is missing."
-                                         % (quote_output(privname),))
+                raise MissingConfigEntry(
+                    "The required configuration file %s is missing."
+                    % (quote_output(privname),)
+                )
             return default
 
     def get_private_path(self, *args):
@@ -493,9 +552,7 @@ class _Config(object):
         # note: we re-expand here (_basedir already went through this
         # expanduser function) in case the path we're being asked for
         # has embedded ".."'s in it
-        return abspath_expanduser_unicode(
-            os.path.join(self._basedir, *args)
-        )
+        return abspath_expanduser_unicode(os.path.join(self._basedir, *args))
 
     def get_introducer_configuration(self):
         """
@@ -523,15 +580,11 @@ class _Config(object):
                     )
                 introducers = {
                     petname: config["furl"]
-                    for petname, config
-                    in introducers_yaml.get("introducers", {}).items()
+                    for petname, config in introducers_yaml.get(
+                        "introducers", {}
+                    ).items()
                 }
-                non_strs = list(
-                    k
-                    for k
-                    in introducers.keys()
-                    if not isinstance(k, str)
-                )
+                non_strs = list(k for k in introducers.keys() if not isinstance(k, str))
                 if non_strs:
                     raise TypeError(
                         "Introducer petnames {!r} should have been str".format(
@@ -539,10 +592,7 @@ class _Config(object):
                         ),
                     )
                 non_strs = list(
-                    v
-                    for v
-                    in introducers.values()
-                    if not isinstance(v, str)
+                    v for v in introducers.values() if not isinstance(v, str)
                 )
                 if non_strs:
                     raise TypeError(
@@ -580,12 +630,11 @@ class _Config(object):
                     "'default' introducer furl cannot be specified in tahoe.cfg and introducers.yaml;"
                     " please fix impossible configuration."
                 )
-            introducers['default'] = tahoe_cfg_introducer_furl
+            introducers["default"] = tahoe_cfg_introducer_furl
 
         return {
             petname: (furl, get_cache_filepath(petname))
-            for (petname, furl)
-            in introducers.items()
+            for (petname, furl) in introducers.items()
         }
 
 
@@ -623,6 +672,7 @@ def _make_tcp_handler():
     """
     # this is always available
     from foolscap.connections.tcp import default
+
     return default()
 
 
@@ -635,11 +685,7 @@ def create_default_connection_handlers(config, handlers):
     reveal_ip = config.get_config("node", "reveal-IP-address", True, boolean=True)
 
     # Remember the default mappings from tahoe.cfg
-    default_connection_handlers = {
-        name: name
-        for name
-        in handlers
-    }
+    default_connection_handlers = {name: name for name in handlers}
     tcp_handler_name = config.get_config("connections", "tcp", "tcp").lower()
     if tcp_handler_name == "disabled":
         default_connection_handlers["tcp"] = None
@@ -647,9 +693,7 @@ def create_default_connection_handlers(config, handlers):
         if tcp_handler_name not in handlers:
             raise ValueError(
                 "'tahoe.cfg [connections] tcp=' uses "
-                "unknown handler type '{}'".format(
-                    tcp_handler_name
-                )
+                "unknown handler type '{}'".format(tcp_handler_name)
             )
         if not handlers[tcp_handler_name]:
             raise ValueError(
@@ -684,18 +728,26 @@ def create_connection_handlers(config, i2p_provider, tor_provider):
     }
     log.msg(
         format="built Foolscap connection handlers for: %(known_handlers)s",
-        known_handlers=sorted([k for k,v in handlers.items() if v]),
+        known_handlers=sorted([k for k, v in handlers.items() if v]),
         facility="tahoe.node",
         umid="PuLh8g",
     )
-    return create_default_connection_handlers(
-        config,
+    return (
+        create_default_connection_handlers(
+            config,
+            handlers,
+        ),
         handlers,
-    ), handlers
+    )
 
 
-def create_tub(tub_options, default_connection_handlers, foolscap_connection_handlers,
-               handler_overrides={}, **kwargs):
+def create_tub(
+    tub_options,
+    default_connection_handlers,
+    foolscap_connection_handlers,
+    handler_overrides={},
+    **kwargs
+):
     """
     Create a Tub with the right options and handlers. It will be
     ephemeral unless the caller provides certFile= in kwargs
@@ -727,7 +779,7 @@ def _convert_tub_port(s):
     us = s
     if isinstance(s, bytes):
         us = s.decode("utf-8")
-    if re.search(r'^\d+$', us):
+    if re.search(r"^\d+$", us):
         return "tcp:{}".format(int(us))
     return us
 
@@ -787,8 +839,7 @@ def _tub_portlocation(config, get_local_addresses_sync, allocate_tcp_port):
             tubport = _convert_tub_port(file_tubport)
         else:
             tubport = "tcp:%d" % (allocate_tcp_port(),)
-            fileutil.write_atomically(config.portnum_fname, tubport + "\n",
-                                      mode="")
+            fileutil.write_atomically(config.portnum_fname, tubport + "\n", mode="")
     else:
         tubport = _convert_tub_port(cfg_tubport)
 
@@ -799,7 +850,7 @@ def _tub_portlocation(config, get_local_addresses_sync, allocate_tcp_port):
     if cfg_location is None:
         cfg_location = "AUTO"
 
-    local_portnum = None # needed to hush lgtm.com static analyzer
+    local_portnum = None  # needed to hush lgtm.com static analyzer
     # Replace the location "AUTO", if present, with the detected local
     # addresses. Don't probe for local addresses unless necessary.
     split_location = cfg_location.split(",")
@@ -812,8 +863,9 @@ def _tub_portlocation(config, get_local_addresses_sync, allocate_tcp_port):
     new_locations = []
     for loc in split_location:
         if loc == "AUTO":
-            new_locations.extend(["tcp:%s:%d" % (ip, local_portnum)
-                                  for ip in local_addresses])
+            new_locations.extend(
+                ["tcp:%s:%d" % (ip, local_portnum) for ip in local_addresses]
+            )
         else:
             if not reveal_ip:
                 # Legacy hints are "host:port". We use Foolscap's utility
@@ -823,6 +875,7 @@ def _tub_portlocation(config, get_local_addresses_sync, allocate_tcp_port):
                 # TCP-ness, but publish the original hint because that
                 # was the user's intent.
                 from foolscap.connections.tcp import convert_legacy_hint
+
                 converted_hint = convert_legacy_hint(loc)
                 hint_type = converted_hint.split(":")[0]
                 if hint_type == "tcp":
@@ -864,10 +917,16 @@ def tub_listen_on(i2p_provider, tor_provider, tub, tubport, location):
     tub.setLocation(location)
 
 
-def create_main_tub(config, tub_options,
-                    default_connection_handlers, foolscap_connection_handlers,
-                    i2p_provider, tor_provider,
-                    handler_overrides={}, cert_filename="node.pem"):
+def create_main_tub(
+    config,
+    tub_options,
+    default_connection_handlers,
+    foolscap_connection_handlers,
+    i2p_provider,
+    tor_provider,
+    handler_overrides={},
+    cert_filename="node.pem",
+):
     """
     Creates a 'main' Foolscap Tub, typically for use as the top-level
     access point for a running Node.
@@ -935,6 +994,7 @@ class Node(service.MultiService):
     """
     This class implements common functionality of both Client nodes and Introducer nodes.
     """
+
     NODETYPE = "unknown NODETYPE"
     CERTFILE = "node.pem"
 
@@ -946,8 +1006,8 @@ class Node(service.MultiService):
         service.MultiService.__init__(self)
 
         self.config = config
-        self.get_config = config.get_config # XXX stopgap
-        self.nickname = config.nickname # XXX stopgap
+        self.get_config = config.get_config  # XXX stopgap
+        self.nickname = config.nickname  # XXX stopgap
 
         # this can go away once Client.init_client_storage_broker is moved into create_client()
         # (tests sometimes have None here)
@@ -962,7 +1022,9 @@ class Node(service.MultiService):
         if self.tub is not None:
             self.nodeid = b32decode(self.tub.tubID.upper())  # binary format
             self.short_nodeid = b32encode(self.nodeid).lower()[:8]  # for printing
-            self.config.write_config_file("my_nodeid", b32encode(self.nodeid).lower() + b"\n", mode="wb")
+            self.config.write_config_file(
+                "my_nodeid", b32encode(self.nodeid).lower() + b"\n", mode="wb"
+            )
             self.tub.setServiceParent(self)
         else:
             self.nodeid = self.short_nodeid = None
@@ -1026,14 +1088,16 @@ class Node(service.MultiService):
         # timestamp format.
         for o in twlog.theLogPublisher.observers:
             # o might be a FileLogObserver's .emit method
-            if type(o) is type(self.setup_logging): # bound method
+            if type(o) is type(self.setup_logging):  # bound method
                 ob = o.__self__
                 if isinstance(ob, twlog.FileLogObserver):
                     newmeth = types.MethodType(formatTimeTahoeStyle, ob)
                     ob.formatTime = newmeth
         # TODO: twisted >2.5.0 offers maxRotatedFiles=50
 
-        lgfurl_file = self.config.get_private_path("logport.furl").encode(get_filesystem_encoding())
+        lgfurl_file = self.config.get_private_path("logport.furl").encode(
+            get_filesystem_encoding()
+        )
         if os.path.exists(lgfurl_file):
             os.remove(lgfurl_file)
         self.log_tub.setOption("logport-furlfile", lgfurl_file)
@@ -1042,8 +1106,9 @@ class Node(service.MultiService):
             # this is in addition to the contents of log-gatherer-furlfile
             lgfurl = lgfurl.encode("utf-8")
             self.log_tub.setOption("log-gatherer-furl", lgfurl)
-        self.log_tub.setOption("log-gatherer-furlfile",
-                               self.config.get_config_path("log_gatherer.furl"))
+        self.log_tub.setOption(
+            "log-gatherer-furlfile", self.config.get_config_path("log_gatherer.furl")
+        )
 
         incident_dir = self.config.get_config_path("logs", "incidents")
         foolscap.logging.log.setLogDir(incident_dir)

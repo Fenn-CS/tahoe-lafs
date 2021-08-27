@@ -10,18 +10,43 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 from twisted.web.resource import (
     Resource,
     NoResource,
 )
 
+
 class StoragePlugins(Resource, object):
     """
     The parent resource of all enabled storage client plugins' web resources.
     """
+
     def __init__(self, client):
         """
         :param _Client client: The Tahoe-LAFS client node object which will be

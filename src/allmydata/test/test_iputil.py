@@ -10,8 +10,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2, native_str
+
 if PY2:
-    from builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import os, socket
 import gc
@@ -38,6 +61,7 @@ from ..util.iputil import (
 from .common import (
     SyncTestCase,
 )
+
 
 class ListenOnUsed(unittest.TestCase):
     """Tests for listenOnUnused."""
@@ -116,6 +140,7 @@ class GetLocalAddressesSyncTests(SyncTestCase):
     """
     Tests for ``get_local_addresses_sync``.
     """
+
     def test_some_ipv4_addresses(self):
         """
         ``get_local_addresses_sync`` returns a list of IPv4 addresses as native

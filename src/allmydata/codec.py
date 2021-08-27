@@ -9,8 +9,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 from zope.interface import implementer
 from twisted.internet import defer
@@ -18,6 +41,7 @@ from allmydata.util import mathutil
 from allmydata.util.assertutil import precondition
 from allmydata.interfaces import ICodecEncoder, ICodecDecoder
 import zfec
+
 
 @implementer(ICodecEncoder)
 class CRSEncoder(object):
@@ -39,20 +63,28 @@ class CRSEncoder(object):
         return (self.data_size, self.required_shares, self.max_shares)
 
     def get_serialized_params(self):
-        return b"%d-%d-%d" % (self.data_size, self.required_shares,
-                              self.max_shares)
+        return b"%d-%d-%d" % (self.data_size, self.required_shares, self.max_shares)
 
     def get_block_size(self):
         return self.share_size
 
     def encode(self, inshares, desired_share_ids=None):
-        precondition(desired_share_ids is None or len(desired_share_ids) <= self.max_shares, desired_share_ids, self.max_shares)
+        precondition(
+            desired_share_ids is None or len(desired_share_ids) <= self.max_shares,
+            desired_share_ids,
+            self.max_shares,
+        )
 
         if desired_share_ids is None:
             desired_share_ids = list(range(self.max_shares))
 
         for inshare in inshares:
-            assert len(inshare) == self.share_size, (len(inshare), self.share_size, self.data_size, self.required_shares)
+            assert len(inshare) == self.share_size, (
+                len(inshare),
+                self.share_size,
+                self.data_size,
+                self.required_shares,
+            )
         shares = self.encoder.encode(inshares, desired_share_ids)
 
         return defer.succeed((shares, desired_share_ids))
@@ -63,7 +95,6 @@ class CRSEncoder(object):
 
 @implementer(ICodecDecoder)
 class CRSDecoder(object):
-
     def set_params(self, data_size, required_shares, max_shares):
         self.data_size = data_size
         self.required_shares = required_shares
@@ -78,13 +109,19 @@ class CRSDecoder(object):
         return self.required_shares
 
     def decode(self, some_shares, their_shareids):
-        precondition(len(some_shares) == len(their_shareids),
-                     len(some_shares), len(their_shareids))
-        precondition(len(some_shares) == self.required_shares,
-                     len(some_shares), self.required_shares)
-        data = self.decoder.decode(some_shares,
-                                   [int(s) for s in their_shareids])
+        precondition(
+            len(some_shares) == len(their_shareids),
+            len(some_shares),
+            len(their_shareids),
+        )
+        precondition(
+            len(some_shares) == self.required_shares,
+            len(some_shares),
+            self.required_shares,
+        )
+        data = self.decoder.decode(some_shares, [int(s) for s in their_shareids])
         return defer.succeed(data)
+
 
 def parse_params(serializedparams):
     pieces = serializedparams.split(b"-")

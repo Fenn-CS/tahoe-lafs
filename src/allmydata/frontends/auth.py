@@ -7,8 +7,31 @@ from __future__ import division
 from __future__ import print_function
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 from zope.interface import implementer
 from twisted.internet import defer
@@ -25,16 +48,21 @@ class NeedRootcapLookupScheme(Exception):
     mechanism to translate name+passwd pairs into a rootcap, either a file of
     name/passwd/rootcap tuples, or a server to do the translation."""
 
+
 class FTPAvatarID(object):
     def __init__(self, username, rootcap):
         self.username = username
         self.rootcap = rootcap
 
+
 @implementer(checkers.ICredentialsChecker)
 class AccountFileChecker(object):
-    credentialInterfaces = (credentials.IUsernamePassword,
-                            credentials.IUsernameHashedPassword,
-                            credentials.ISSHPrivateKey)
+    credentialInterfaces = (
+        credentials.IUsernamePassword,
+        credentials.IUsernameHashedPassword,
+        credentials.ISSHPrivateKey,
+    )
+
     def __init__(self, client, accountfile):
         self.client = client
         self.passwords = BytesKeyDict()

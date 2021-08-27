@@ -9,9 +9,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
     # Omitted dict, cause worried about interactions.
-    from builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, list, object, range, str, max, min  # noqa: F401
+    from builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import os.path
 from configparser import (
@@ -39,12 +61,12 @@ from allmydata.util import configutil
 
 
 def arbitrary_config_dicts(
-        min_sections=0,
-        max_sections=3,
-        max_section_name_size=8,
-        max_items_per_section=3,
-        max_item_length=8,
-        max_value_length=8,
+    min_sections=0,
+    max_sections=3,
+    max_section_name_size=8,
+    max_items_per_section=3,
+    max_item_length=8,
+    max_value_length=8,
 ):
     """
     Build ``dict[str, dict[str, str]]`` instances populated with arbitrary
@@ -54,7 +76,7 @@ def arbitrary_config_dicts(
         text,
         # Don't allow most control characters or spaces
         alphabet=characters(
-            blacklist_categories=('Cc', 'Cs', 'Zs'),
+            blacklist_categories=("Cc", "Cs", "Zs"),
         ),
     )
     return dictionaries(
@@ -101,30 +123,33 @@ class ConfigUtilTests(unittest.TestCase):
     def setUp(self):
         super(ConfigUtilTests, self).setUp()
         self.static_valid_config = configutil.ValidConfiguration(
-            dict(node=['valid']),
+            dict(node=["valid"]),
         )
         self.dynamic_valid_config = configutil.ValidConfiguration(
             dict(),
             lambda section_name: section_name == "node",
-            lambda section_name, item_name: (section_name, item_name) == ("node", "valid"),
+            lambda section_name, item_name: (section_name, item_name)
+            == ("node", "valid"),
         )
 
     def create_tahoe_cfg(self, cfg):
         d = self.mktemp()
         os.mkdir(d)
-        fname = os.path.join(d, 'tahoe.cfg')
+        fname = os.path.join(d, "tahoe.cfg")
         with open(fname, "w") as f:
             f.write(cfg)
         return fname
 
     def test_config_utils(self):
-        tahoe_cfg = self.create_tahoe_cfg("""\
+        tahoe_cfg = self.create_tahoe_cfg(
+            """\
 [node]
 nickname = client-0
 web.port = adopt-socket:fd=5
 [storage]
 enabled = false
-""")
+"""
+        )
 
         # test that at least one option was read correctly
         config = configutil.get_config(tahoe_cfg)
@@ -138,7 +163,9 @@ enabled = false
         self.failUnlessEqual(config.get("node", "nickname"), "Alice!")
 
         # test that set_config can set a new option
-        descriptor = "Twas brillig, and the slithy toves Did gyre and gimble in the wabe"
+        descriptor = (
+            "Twas brillig, and the slithy toves Did gyre and gimble in the wabe"
+        )
         configutil.set_config(config, "node", "descriptor", descriptor)
         configutil.write_config(FilePath(tahoe_cfg), config)
 
@@ -231,7 +258,7 @@ enabled = false
         """
         Duplicate section names are merged.
         """
-        fname = self.create_tahoe_cfg('[node]\na = foo\n[node]\n b = bar\n')
+        fname = self.create_tahoe_cfg("[node]\na = foo\n[node]\n b = bar\n")
         config = configutil.get_config(fname)
         self.assertEqual(config.get("node", "a"), "foo")
         self.assertEqual(config.get("node", "b"), "bar")

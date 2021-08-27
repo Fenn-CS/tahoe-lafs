@@ -7,8 +7,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import time
 
@@ -44,6 +67,7 @@ from ..common import (
     EMPTY_CLIENT_CONFIG,
 )
 
+
 class RenderSlashUri(unittest.TestCase):
     """
     Ensure that URIs starting with /uri?uri= only accept valid
@@ -67,16 +91,16 @@ class RenderSlashUri(unittest.TestCase):
         response_body = self.successResultOf(
             render(self.res, query_args),
         )
-        soup = BeautifulSoup(response_body, 'html5lib')
+        soup = BeautifulSoup(response_body, "html5lib")
         tag = assert_soup_has_tag_with_attributes(
             self,
             soup,
-            u"meta",
-            {u"http-equiv": "refresh"},
+            "meta",
+            {"http-equiv": "refresh"},
         )
         self.assertIn(
             quote(cap, safe=""),
-            tag.attrs.get(u"content"),
+            tag.attrs.get("content"),
         )
 
     def test_invalid(self):
@@ -101,9 +125,10 @@ class RenderServiceRow(unittest.TestCase):
         rendering servers that lacked nickname and version. This tests that
         we can render such minimal servers.
         """
-        ann = {"anonymous-storage-FURL": "pb://w2hqnbaa25yw4qgcvghl5psa3srpfgw3@tcp:127.0.0.1:51309/vucto2z4fxment3vfxbqecblbf6zyp6x",
-               "permutation-seed-base32": "w2hqnbaa25yw4qgcvghl5psa3srpfgw3",
-               }
+        ann = {
+            "anonymous-storage-FURL": "pb://w2hqnbaa25yw4qgcvghl5psa3srpfgw3@tcp:127.0.0.1:51309/vucto2z4fxment3vfxbqecblbf6zyp6x",
+            "permutation-seed-base32": "w2hqnbaa25yw4qgcvghl5psa3srpfgw3",
+        }
         srv = NativeStorageServer(b"server_id", ann, None, {}, EMPTY_CLIENT_CONFIG)
         srv.get_connection_status = lambda: ConnectionStatus(False, "summary", {}, 0, 0)
 

@@ -7,6 +7,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
     from future.builtins import str  # noqa: F401
 
@@ -20,7 +21,8 @@ from allmydata.frontends import auth
 from allmydata.util.fileutil import abspath_expanduser_unicode
 
 
-DUMMY_KEY = keys.Key.fromString("""\
+DUMMY_KEY = keys.Key.fromString(
+    """\
 -----BEGIN RSA PRIVATE KEY-----
 MIICXQIBAAKBgQDEP3DYiukOu+NrUlBZeLL9JoHkK5nSvINYfeOQWYVW9J5NG485
 pZFVUQKzvvht34Ihj4ucrrvj7vOp+FFvzxI+zHKBpDxyJwV96dvWDAZMjxTxL7iV
@@ -36,20 +38,27 @@ ywuaiuNhMRXY0uEaOHJYx1LLLLjSJKQ0zwiyOvMPnfAZtsojlAxoEtNGHSQ731HQ
 ogIlzzfxe7ga3mni6IUCQQCwNK9zwARovcQ8nByqotGQzohpl+1b568+iw8GXP2u
 dBSD8940XU3YW+oeq8e+p3yQ2GinHfeJ3BYQyNQLuMAJ
 -----END RSA PRIVATE KEY-----
-""")
+"""
+)
 
-DUMMY_ACCOUNTS = u"""\
+DUMMY_ACCOUNTS = """\
 alice herpassword URI:DIR2:aaaaaaaaaaaaaaaaaaaaaaaaaa:1111111111111111111111111111111111111111111111111111
 bob sekrit URI:DIR2:bbbbbbbbbbbbbbbbbbbbbbbbbb:2222222222222222222222222222222222222222222222222222
 
 # dennis password URI:DIR2:aaaaaaaaaaaaaaaaaaaaaaaaaa:1111111111111111111111111111111111111111111111111111
 carol {key} URI:DIR2:cccccccccccccccccccccccccc:3333333333333333333333333333333333333333333333333333
-""".format(key=str(DUMMY_KEY.public().toString("openssh"), "ascii")).encode("ascii")
+""".format(
+    key=str(DUMMY_KEY.public().toString("openssh"), "ascii")
+).encode(
+    "ascii"
+)
+
 
 class AccountFileCheckerKeyTests(unittest.TestCase):
     """
     Tests for key handling done by allmydata.frontends.auth.AccountFileChecker.
     """
+
     def setUp(self):
         self.account_file = filepath.FilePath(self.mktemp())
         self.account_file.setContent(DUMMY_ACCOUNTS)
@@ -62,8 +71,7 @@ class AccountFileCheckerKeyTests(unittest.TestCase):
         UnauthorizedLogin if called with an SSHPrivateKey object with a
         username not present in the account file.
         """
-        key_credentials = credentials.SSHPrivateKey(
-            b"dennis", b"md5", None, None, None)
+        key_credentials = credentials.SSHPrivateKey(b"dennis", b"md5", None, None, None)
         avatarId = self.checker.requestAvatarId(key_credentials)
         return self.assertFailure(avatarId, error.UnauthorizedLogin)
 
@@ -86,8 +94,7 @@ class AccountFileCheckerKeyTests(unittest.TestCase):
         UnauthorizedLogin if called with an SSHPrivateKey object for a username
         only associated with a password in the account file.
         """
-        key_credentials = credentials.SSHPrivateKey(
-            b"alice", b"md5", None, None, None)
+        key_credentials = credentials.SSHPrivateKey(b"alice", b"md5", None, None, None)
         avatarId = self.checker.requestAvatarId(key_credentials)
         return self.assertFailure(avatarId, error.UnauthorizedLogin)
 
@@ -98,11 +105,16 @@ class AccountFileCheckerKeyTests(unittest.TestCase):
         """
         key_credentials = credentials.UsernamePassword(b"alice", b"herpassword")
         d = self.checker.requestAvatarId(key_credentials)
+
         def authenticated(avatarId):
             self.assertEqual(
-                (b"alice",
-                 b"URI:DIR2:aaaaaaaaaaaaaaaaaaaaaaaaaa:1111111111111111111111111111111111111111111111111111"),
-                (avatarId.username, avatarId.rootcap))
+                (
+                    b"alice",
+                    b"URI:DIR2:aaaaaaaaaaaaaaaaaaaaaaaaaa:1111111111111111111111111111111111111111111111111111",
+                ),
+                (avatarId.username, avatarId.rootcap),
+            )
+
         return d
 
     def test_password_auth_user_with_correct_hashed_password(self):
@@ -112,11 +124,16 @@ class AccountFileCheckerKeyTests(unittest.TestCase):
         """
         key_credentials = credentials.UsernameHashedPassword(b"alice", b"herpassword")
         d = self.checker.requestAvatarId(key_credentials)
+
         def authenticated(avatarId):
             self.assertEqual(
-                (b"alice",
-                 b"URI:DIR2:aaaaaaaaaaaaaaaaaaaaaaaaaa:1111111111111111111111111111111111111111111111111111"),
-                (avatarId.username, avatarId.rootcap))
+                (
+                    b"alice",
+                    b"URI:DIR2:aaaaaaaaaaaaaaaaaaaaaaaaaa:1111111111111111111111111111111111111111111111111111",
+                ),
+                (avatarId.username, avatarId.rootcap),
+            )
+
         return d
 
     def test_password_auth_user_with_wrong_password(self):
@@ -139,7 +156,8 @@ class AccountFileCheckerKeyTests(unittest.TestCase):
 ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAAAYQDJGMWlPXh2M3pYzTiamjcBIMqctt4VvLVW2QZgEFc86XhGjPXq5QAiRTKv9yVZJR9HW70CfBI7GHun8+v4Wb6aicWBoxgI3OB5NN+OUywdme2HSaif5yenFdQr0ME71Xs=
 """
         key_credentials = credentials.SSHPrivateKey(
-            b"carol", b"md5", wrong_key_blob, None, None)
+            b"carol", b"md5", wrong_key_blob, None, None
+        )
         avatarId = self.checker.requestAvatarId(key_credentials)
         return self.assertFailure(avatarId, error.UnauthorizedLogin)
 
@@ -151,7 +169,8 @@ ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAAAYQDJGMWlPXh2M3pYzTiamjcBIMqctt4VvLVW2QZgEFc8
         """
         right_key_blob = DUMMY_KEY.public().toString("openssh")
         key_credentials = credentials.SSHPrivateKey(
-            b"carol", b"md5", right_key_blob, None, None)
+            b"carol", b"md5", right_key_blob, None, None
+        )
         avatarId = self.checker.requestAvatarId(key_credentials)
         return self.assertFailure(avatarId, conch_error.ValidPublicKey)
 
@@ -164,7 +183,8 @@ ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAAAYQDJGMWlPXh2M3pYzTiamjcBIMqctt4VvLVW2QZgEFc8
         """
         right_key_blob = DUMMY_KEY.public().toString("openssh")
         key_credentials = credentials.SSHPrivateKey(
-            b"carol", b"md5", right_key_blob, b"signed data", b"wrong sig")
+            b"carol", b"md5", right_key_blob, b"signed data", b"wrong sig"
+        )
         avatarId = self.checker.requestAvatarId(key_credentials)
         return self.assertFailure(avatarId, error.UnauthorizedLogin)
 
@@ -181,12 +201,18 @@ ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAAAYQDJGMWlPXh2M3pYzTiamjcBIMqctt4VvLVW2QZgEFc8
         signature = DUMMY_KEY.sign(signed_data)
         right_key_blob = DUMMY_KEY.public().toString("openssh")
         key_credentials = credentials.SSHPrivateKey(
-            username, b"md5", right_key_blob, signed_data, signature)
+            username, b"md5", right_key_blob, signed_data, signature
+        )
         avatarId = self.checker.requestAvatarId(key_credentials)
+
         def authenticated(avatarId):
             self.assertEqual(
-                (username,
-                 b"URI:DIR2:cccccccccccccccccccccccccc:3333333333333333333333333333333333333333333333333333"),
-                (avatarId.username, avatarId.rootcap))
+                (
+                    username,
+                    b"URI:DIR2:cccccccccccccccccccccccccc:3333333333333333333333333333333333333333333333333333",
+                ),
+                (avatarId.username, avatarId.rootcap),
+            )
+
         avatarId.addCallback(authenticated)
         return avatarId

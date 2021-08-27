@@ -8,8 +8,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 from functools import reduce
 import binascii
@@ -30,13 +53,15 @@ from allmydata.util.happinessutil import servers_of_happiness
 # local imports
 from allmydata.immutable.checker import Checker
 from allmydata.immutable.repairer import Repairer
-from allmydata.immutable.downloader.node import DownloadNode, \
-     IDownloadStatusHandlingConsumer
+from allmydata.immutable.downloader.node import (
+    DownloadNode,
+    IDownloadStatusHandlingConsumer,
+)
 from allmydata.immutable.downloader.status import DownloadStatus
 
+
 class CiphertextFileNode(object):
-    def __init__(self, verifycap, storage_broker, secret_holder,
-                 terminator, history):
+    def __init__(self, verifycap, storage_broker, secret_holder, terminator, history):
         assert isinstance(verifycap, uri.CHKFileVerifierURI)
         self._verifycap = verifycap
         self._storage_broker = storage_broker
@@ -44,20 +69,23 @@ class CiphertextFileNode(object):
         self._terminator = terminator
         self._history = history
         self._download_status = None
-        self._node = None # created lazily, on read()
+        self._node = None  # created lazily, on read()
 
     def _maybe_create_download_node(self):
         if not self._download_status:
-            ds = DownloadStatus(self._verifycap.storage_index,
-                                self._verifycap.size)
+            ds = DownloadStatus(self._verifycap.storage_index, self._verifycap.size)
             if self._history:
                 self._history.add_download(ds)
             self._download_status = ds
         if self._node is None:
-            self._node = DownloadNode(self._verifycap, self._storage_broker,
-                                      self._secret_holder,
-                                      self._terminator,
-                                      self._history, self._download_status)
+            self._node = DownloadNode(
+                self._verifycap,
+                self._storage_broker,
+                self._secret_holder,
+                self._terminator,
+                self._history,
+                self._download_status,
+            )
 
     def read(self, consumer, offset=0, size=None):
         """I am the main entry point, from which FileNode.read() can get
@@ -92,8 +120,10 @@ class CiphertextFileNode(object):
 
     def get_storage_index(self):
         return self._verifycap.storage_index
+
     def get_verify_cap(self):
         return self._verifycap
+
     def get_size(self):
         return self._verifycap.size
 
@@ -104,11 +134,14 @@ class CiphertextFileNode(object):
         return False
 
     def check_and_repair(self, monitor, verify=False, add_lease=False):
-        c = Checker(verifycap=self._verifycap,
-                    servers=self._storage_broker.get_connected_servers(),
-                    verify=verify, add_lease=add_lease,
-                    secret_holder=self._secret_holder,
-                    monitor=monitor)
+        c = Checker(
+            verifycap=self._verifycap,
+            servers=self._storage_broker.get_connected_servers(),
+            verify=verify,
+            add_lease=add_lease,
+            secret_holder=self._secret_holder,
+            monitor=monitor,
+        )
         d = c.start()
         d.addCallback(self._maybe_repair, monitor)
         return d
@@ -121,19 +154,30 @@ class CiphertextFileNode(object):
             return defer.succeed(crr)
 
         crr.repair_attempted = True
-        crr.repair_successful = False # until proven successful
+        crr.repair_successful = False  # until proven successful
+
         def _repair_error(f):
             # as with mutable repair, I'm not sure if I want to pass
             # through a failure or not. TODO
             crr.repair_successful = False
             crr.repair_failure = f
             return f
-        r = Repairer(self, storage_broker=self._storage_broker,
-                     secret_holder=self._secret_holder,
-                     monitor=monitor)
+
+        r = Repairer(
+            self,
+            storage_broker=self._storage_broker,
+            secret_holder=self._secret_holder,
+            monitor=monitor,
+        )
         d = r.start()
-        d.addCallbacks(self._gather_repair_results, _repair_error,
-                       callbackArgs=(cr, crr,))
+        d.addCallbacks(
+            self._gather_repair_results,
+            _repair_error,
+            callbackArgs=(
+                cr,
+                crr,
+            ),
+        )
         return d
 
     def _gather_repair_results(self, ur, cr, crr):
@@ -159,26 +203,30 @@ class CiphertextFileNode(object):
 
         count_happiness = servers_of_happiness(sm)
 
-        prr = CheckResults(cr.get_uri(), cr.get_storage_index(),
-                           healthy=is_healthy, recoverable=is_recoverable,
-                           count_happiness=count_happiness,
-                           count_shares_needed=verifycap.needed_shares,
-                           count_shares_expected=verifycap.total_shares,
-                           count_shares_good=len(sm),
-                           count_good_share_hosts=good_hosts,
-                           count_recoverable_versions=int(is_recoverable),
-                           count_unrecoverable_versions=int(not is_recoverable),
-                           servers_responding=list(servers_responding),
-                           sharemap=sm,
-                           count_wrong_shares=0, # no such thing as wrong, for immutable
-                           list_corrupt_shares=cr.get_corrupt_shares(),
-                           count_corrupt_shares=len(cr.get_corrupt_shares()),
-                           list_incompatible_shares=cr.get_incompatible_shares(),
-                           count_incompatible_shares=len(cr.get_incompatible_shares()),
-                           summary="",
-                           report=[],
-                           share_problems=[],
-                           servermap=None)
+        prr = CheckResults(
+            cr.get_uri(),
+            cr.get_storage_index(),
+            healthy=is_healthy,
+            recoverable=is_recoverable,
+            count_happiness=count_happiness,
+            count_shares_needed=verifycap.needed_shares,
+            count_shares_expected=verifycap.total_shares,
+            count_shares_good=len(sm),
+            count_good_share_hosts=good_hosts,
+            count_recoverable_versions=int(is_recoverable),
+            count_unrecoverable_versions=int(not is_recoverable),
+            servers_responding=list(servers_responding),
+            sharemap=sm,
+            count_wrong_shares=0,  # no such thing as wrong, for immutable
+            list_corrupt_shares=cr.get_corrupt_shares(),
+            count_corrupt_shares=len(cr.get_corrupt_shares()),
+            list_incompatible_shares=cr.get_incompatible_shares(),
+            count_incompatible_shares=len(cr.get_incompatible_shares()),
+            summary="",
+            report=[],
+            share_problems=[],
+            servermap=None,
+        )
         crr.repair_successful = is_healthy
         crr.post_repair_results = prr
         return crr
@@ -189,10 +237,16 @@ class CiphertextFileNode(object):
         servers = sb.get_connected_servers()
         sh = self._secret_holder
 
-        v = Checker(verifycap=verifycap, servers=servers,
-                    verify=verify, add_lease=add_lease, secret_holder=sh,
-                    monitor=monitor)
+        v = Checker(
+            verifycap=verifycap,
+            servers=servers,
+            verify=verify,
+            add_lease=add_lease,
+            secret_holder=sh,
+            monitor=monitor,
+        )
         return v.start()
+
 
 @implementer(IConsumer, IDownloadStatusHandlingConsumer)
 class DecryptingConsumer(object):
@@ -219,6 +273,7 @@ class DecryptingConsumer(object):
 
     def set_download_status_read_event(self, read_ev):
         self._read_ev = read_ev
+
     def set_download_status(self, ds):
         self._download_status = ds
 
@@ -228,8 +283,10 @@ class DecryptingConsumer(object):
         # methods. We implement all the IConsumer methods as pass-throughs,
         # and only intercept write() to perform decryption.
         self._consumer.registerProducer(producer, streaming)
+
     def unregisterProducer(self):
         self._consumer.unregisterProducer()
+
     def write(self, ciphertext):
         started = now()
         plaintext = aes.decrypt_data(self._decryptor, ciphertext)
@@ -240,16 +297,17 @@ class DecryptingConsumer(object):
             self._download_status.add_misc_event("AES", started, now())
         self._consumer.write(plaintext)
 
+
 @implementer(IImmutableFileNode)
 class ImmutableFileNode(object):
 
     # I wrap a CiphertextFileNode with a decryption key
-    def __init__(self, filecap, storage_broker, secret_holder, terminator,
-                 history):
+    def __init__(self, filecap, storage_broker, secret_holder, terminator, history):
         assert isinstance(filecap, uri.CHKFileURI)
         verifycap = filecap.get_verify_cap()
-        self._cnode = CiphertextFileNode(verifycap, storage_broker,
-                                         secret_holder, terminator, history)
+        self._cnode = CiphertextFileNode(
+            verifycap, storage_broker, secret_holder, terminator, history
+        )
         assert isinstance(filecap, uri.CHKFileURI)
         self.u = filecap
         self._readkey = filecap.key
@@ -351,7 +409,6 @@ class ImmutableFileNode(object):
     # mutable files, the difference is more meaningful, since they can
     # have multiple versions.
     download_to_data = download_best_version
-
 
     # get_size() (IReadable), get_current_size() (IFilesystemNode), and
     # get_size_of_best_version(IFileNode) are all the same for immutable

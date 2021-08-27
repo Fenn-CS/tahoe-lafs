@@ -7,11 +7,35 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import struct
 import time
+
 now = time.time
 
 from twisted.python.failure import Failure
@@ -19,8 +43,7 @@ from foolscap.api import eventually
 from allmydata.util import base32, log, hashutil, mathutil
 from allmydata.util.spans import Spans, DataSpans
 from allmydata.interfaces import HASH_SIZE
-from allmydata.hashtree import IncompleteHashTree, BadHashError, \
-     NotEnoughHashesError
+from allmydata.hashtree import IncompleteHashTree, BadHashError, NotEnoughHashesError
 
 from allmydata.immutable.layout import make_write_bucket_proxy
 from allmydata.util.observer import EventStreamObserver
@@ -43,22 +66,33 @@ class Share(object):
     associated with a CiphertextFileNode for e.g. SI=abcde (all shares, all
     servers).
     """
+
     # this is a specific implementation of IShare for tahoe's native storage
     # servers. A different backend would use a different class.
 
-    def __init__(self, rref, server, verifycap, commonshare, node,
-                 download_status, shnum, dyhb_rtt, logparent):
+    def __init__(
+        self,
+        rref,
+        server,
+        verifycap,
+        commonshare,
+        node,
+        download_status,
+        shnum,
+        dyhb_rtt,
+        logparent,
+    ):
         self._rref = rref
         self._server = server
-        self._node = node # holds share_hash_tree and UEB
-        self.actual_segment_size = node.segment_size # might still be None
+        self._node = node  # holds share_hash_tree and UEB
+        self.actual_segment_size = node.segment_size  # might still be None
         # XXX change node.guessed_segment_size to
         # node.best_guess_segment_size(), which should give us the real ones
         # if known, else its guess.
         self._guess_offsets(verifycap, node.guessed_segment_size)
         self.actual_offsets = None
         self._UEB_length = None
-        self._commonshare = commonshare # holds block_hash_tree
+        self._commonshare = commonshare  # holds block_hash_tree
         self._download_status = download_status
         self._storage_index = verifycap.storage_index
         self._si_prefix = base32.b2a(verifycap.storage_index)[:8]
@@ -67,12 +101,17 @@ class Share(object):
         # self._alive becomes False upon fatal corruption or server error
         self._alive = True
         self._loop_scheduled = False
-        self._lp = log.msg(format="%(share)s created", share=repr(self),
-                           level=log.NOISY, parent=logparent, umid="P7hv2w")
+        self._lp = log.msg(
+            format="%(share)s created",
+            share=repr(self),
+            level=log.NOISY,
+            parent=logparent,
+            umid="P7hv2w",
+        )
 
-        self._pending = Spans() # request sent but no response received yet
-        self._received = DataSpans() # ACK response received, with data
-        self._unavailable = Spans() # NAK response received, no data
+        self._pending = Spans()  # request sent but no response received yet
+        self._received = DataSpans()  # ACK response received, with data
+        self._unavailable = Spans()  # NAK response received, no data
 
         # any given byte of the share can be in one of four states:
         #  in: _wanted, _requested, _received
@@ -94,7 +133,7 @@ class Share(object):
         # consume a data block, we remove it from _requested, so a later
         # download can re-fetch it.
 
-        self._requested_blocks = [] # (segnum, set(observer2..))
+        self._requested_blocks = []  # (segnum, set(observer2..))
         v = server.get_version()
         ver = v[b"http://allmydata.org/tahoe/protocols/storage/v1"]
         self._overrun_ok = ver[b"tolerates-immutable-read-overrun"]
@@ -105,10 +144,13 @@ class Share(object):
         # 2=offset table, 3=UEB_length and everything else (hashes, block),
         # 4=UEB.
 
-        self.had_corruption = False # for unit tests
+        self.had_corruption = False  # for unit tests
 
     def __repr__(self):
-        return "Share(sh%d-on-%s)" % (self._shnum, str(self._server.get_name(), "utf-8"))
+        return "Share(sh%d-on-%s)" % (
+            self._shnum,
+            str(self._server.get_name(), "utf-8"),
+        )
 
     def is_alive(self):
         # XXX: reconsider. If the share sees a single error, should it remain
@@ -137,8 +179,15 @@ class Share(object):
         # use the upload-side code to get this as accurate as possible
         ht = IncompleteHashTree(N)
         num_share_hashes = len(ht.needed_hashes(0, include_leaf=True))
-        wbp = make_write_bucket_proxy(None, None, share_size, r["block_size"],
-                                      r["num_segments"], num_share_hashes, 0)
+        wbp = make_write_bucket_proxy(
+            None,
+            None,
+            share_size,
+            r["block_size"],
+            r["num_segments"],
+            num_share_hashes,
+            0,
+        )
         self._fieldsize = wbp.fieldsize
         self._fieldstruct = wbp.fieldstruct
         self.guessed_offsets = wbp._offsets
@@ -167,17 +216,21 @@ class Share(object):
          - state=DEAD, f=Failure: the server reported an error, this share
                                   is unusable
         """
-        log.msg("%s.get_block(%d)" % (repr(self), segnum),
-                level=log.NOISY, parent=self._lp, umid="RTo9MQ")
+        log.msg(
+            "%s.get_block(%d)" % (repr(self), segnum),
+            level=log.NOISY,
+            parent=self._lp,
+            umid="RTo9MQ",
+        )
         assert segnum >= 0
         o = EventStreamObserver()
         o.set_canceler(self, "_cancel_block_request")
-        for i,(segnum0,observers) in enumerate(self._requested_blocks):
+        for i, (segnum0, observers) in enumerate(self._requested_blocks):
             if segnum0 == segnum:
                 observers.add(o)
                 break
         else:
-            self._requested_blocks.append( (segnum, set([o])) )
+            self._requested_blocks.append((segnum, set([o])))
         self.schedule_loop()
         return o
 
@@ -210,13 +263,20 @@ class Share(object):
             return
         try:
             # if any exceptions occur here, kill the download
-            log.msg("%s.loop, reqs=[%s], pending=%s, received=%s,"
-                    " unavailable=%s" %
-                    (repr(self),
-                     ",".join([str(req[0]) for req in self._requested_blocks]),
-                     self._pending.dump(), self._received.dump(),
-                     self._unavailable.dump() ),
-                    level=log.NOISY, parent=self._lp, umid="BaL1zw")
+            log.msg(
+                "%s.loop, reqs=[%s], pending=%s, received=%s,"
+                " unavailable=%s"
+                % (
+                    repr(self),
+                    ",".join([str(req[0]) for req in self._requested_blocks]),
+                    self._pending.dump(),
+                    self._received.dump(),
+                    self._unavailable.dump(),
+                ),
+                level=log.NOISY,
+                parent=self._lp,
+                umid="BaL1zw",
+            )
             self._do_loop()
             # all exception cases call self._fail(), which clears self._alive
         except (BadHashError, NotEnoughHashesError, LayoutInvalid) as e:
@@ -232,29 +292,47 @@ class Share(object):
             #
             # _satisfy_*() code which detects corruption should first call
             # self._signal_corruption(), and then raise the exception.
-            log.msg(format="corruption detected in %(share)s",
-                    share=repr(self),
-                    level=log.UNUSUAL, parent=self._lp, umid="gWspVw")
+            log.msg(
+                format="corruption detected in %(share)s",
+                share=repr(self),
+                level=log.UNUSUAL,
+                parent=self._lp,
+                umid="gWspVw",
+            )
             self._fail(Failure(e), log.UNUSUAL)
         except DataUnavailable as e:
             # Abandon this share.
-            log.msg(format="need data that will never be available"
-                    " from %s: pending=%s, received=%s, unavailable=%s" %
-                    (repr(self),
-                     self._pending.dump(), self._received.dump(),
-                     self._unavailable.dump() ),
-                    level=log.UNUSUAL, parent=self._lp, umid="F7yJnQ")
+            log.msg(
+                format="need data that will never be available"
+                " from %s: pending=%s, received=%s, unavailable=%s"
+                % (
+                    repr(self),
+                    self._pending.dump(),
+                    self._received.dump(),
+                    self._unavailable.dump(),
+                ),
+                level=log.UNUSUAL,
+                parent=self._lp,
+                umid="F7yJnQ",
+            )
             self._fail(Failure(e), log.UNUSUAL)
         except BaseException:
             self._fail(Failure())
             raise
-        log.msg("%s.loop done, reqs=[%s], pending=%s, received=%s,"
-                " unavailable=%s" %
-                (repr(self),
-                 ",".join([str(req[0]) for req in self._requested_blocks]),
-                 self._pending.dump(), self._received.dump(),
-                 self._unavailable.dump() ),
-                level=log.NOISY, parent=self._lp, umid="9lRaRA")
+        log.msg(
+            "%s.loop done, reqs=[%s], pending=%s, received=%s,"
+            " unavailable=%s"
+            % (
+                repr(self),
+                ",".join([str(req[0]) for req in self._requested_blocks]),
+                self._pending.dump(),
+                self._received.dump(),
+                self._unavailable.dump(),
+            ),
+            level=log.NOISY,
+            parent=self._lp,
+            umid="9lRaRA",
+        )
 
     def _do_loop(self):
         # we are (eventually) called after all state transitions:
@@ -287,8 +365,9 @@ class Share(object):
         disappointment = needed & self._unavailable
         if disappointment.len():
             self.had_corruption = True
-            raise DataUnavailable("need %s but will never get it" %
-                                  disappointment.dump())
+            raise DataUnavailable(
+                "need %s but will never get it" % disappointment.dump()
+            )
         self._download_status.add_misc_event("checkdis", start, now())
 
     def _get_satisfaction(self):
@@ -310,7 +389,7 @@ class Share(object):
             # guessed wrong, we might stil be working on a bogus segnum
             # (beyond the real range). We catch this and signal BADSEGNUM
             # before invoking any further code that touches hashtrees.
-        self.actual_segment_size = self._node.segment_size # might be updated
+        self.actual_segment_size = self._node.segment_size  # might be updated
         assert self.actual_segment_size is not None
 
         # knowing the UEB means knowing num_segments
@@ -337,7 +416,7 @@ class Share(object):
             self._commonshare.set_block_hash_root(block_hash_root)
 
         if segnum is None:
-            return False # we don't want any particular segment right now
+            return False  # we don't want any particular segment right now
 
         # block_hash_tree
         needed_hashes = self._commonshare.get_needed_block_hashes(segnum)
@@ -362,7 +441,7 @@ class Share(object):
             return False
         (version,) = struct.unpack(">L", version_s)
         if version == 1:
-            table_start = 0x0c
+            table_start = 0x0C
             self._fieldsize = 0x4
             self._fieldstruct = "L"
         elif version == 2:
@@ -371,42 +450,51 @@ class Share(object):
             self._fieldstruct = "Q"
         else:
             self.had_corruption = True
-            raise LayoutInvalid("unknown version %d (I understand 1 and 2)"
-                                % version)
+            raise LayoutInvalid("unknown version %d (I understand 1 and 2)" % version)
         offset_table_size = 6 * self._fieldsize
         table_s = self._received.pop(table_start, offset_table_size)
         if table_s is None:
             return False
-        fields = struct.unpack(">"+6*self._fieldstruct, table_s)
+        fields = struct.unpack(">" + 6 * self._fieldstruct, table_s)
         offsets = {}
-        for i,field in enumerate(['data',
-                                  'plaintext_hash_tree', # UNUSED
-                                  'crypttext_hash_tree',
-                                  'block_hashes',
-                                  'share_hashes',
-                                  'uri_extension',
-                                  ] ):
+        for i, field in enumerate(
+            [
+                "data",
+                "plaintext_hash_tree",  # UNUSED
+                "crypttext_hash_tree",
+                "block_hashes",
+                "share_hashes",
+                "uri_extension",
+            ]
+        ):
             offsets[field] = fields[i]
         self.actual_offsets = offsets
-        log.msg("actual offsets: data=%d, plaintext_hash_tree=%d, crypttext_hash_tree=%d, block_hashes=%d, share_hashes=%d, uri_extension=%d" % tuple(fields),
-                level=log.NOISY, parent=self._lp, umid="jedQcw")
-        self._received.remove(0, 4) # don't need this anymore
+        log.msg(
+            "actual offsets: data=%d, plaintext_hash_tree=%d, crypttext_hash_tree=%d, block_hashes=%d, share_hashes=%d, uri_extension=%d"
+            % tuple(fields),
+            level=log.NOISY,
+            parent=self._lp,
+            umid="jedQcw",
+        )
+        self._received.remove(0, 4)  # don't need this anymore
 
         # validate the offsets a bit
         share_hashes_size = offsets["uri_extension"] - offsets["share_hashes"]
-        if share_hashes_size < 0 or share_hashes_size % (2+HASH_SIZE) != 0:
+        if share_hashes_size < 0 or share_hashes_size % (2 + HASH_SIZE) != 0:
             # the share hash chain is stored as (hashnum,hash) pairs
             self.had_corruption = True
-            raise LayoutInvalid("share hashes malformed -- should be a"
-                                " multiple of %d bytes -- not %d" %
-                                (2+HASH_SIZE, share_hashes_size))
+            raise LayoutInvalid(
+                "share hashes malformed -- should be a"
+                " multiple of %d bytes -- not %d" % (2 + HASH_SIZE, share_hashes_size)
+            )
         block_hashes_size = offsets["share_hashes"] - offsets["block_hashes"]
         if block_hashes_size < 0 or block_hashes_size % (HASH_SIZE) != 0:
             # the block hash tree is stored as a list of hashes
             self.had_corruption = True
-            raise LayoutInvalid("block hashes malformed -- should be a"
-                                " multiple of %d bytes -- not %d" %
-                                (HASH_SIZE, block_hashes_size))
+            raise LayoutInvalid(
+                "block hashes malformed -- should be a"
+                " multiple of %d bytes -- not %d" % (HASH_SIZE, block_hashes_size)
+            )
         # we only look at 'crypttext_hash_tree' if the UEB says we're
         # actually using it. Same with 'plaintext_hash_tree'. This gives us
         # some wiggle room: a place to stash data for later extensions.
@@ -419,8 +507,8 @@ class Share(object):
         UEB_length_s = self._received.get(o["uri_extension"], fsize)
         if not UEB_length_s:
             return False
-        (UEB_length,) = struct.unpack(">"+self._fieldstruct, UEB_length_s)
-        UEB_s = self._received.pop(o["uri_extension"]+fsize, UEB_length)
+        (UEB_length,) = struct.unpack(">" + self._fieldstruct, UEB_length_s)
+        UEB_s = self._received.pop(o["uri_extension"] + fsize, UEB_length)
         if not UEB_s:
             return False
         self._received.remove(o["uri_extension"], fsize)
@@ -432,7 +520,7 @@ class Share(object):
             # over and over again. Only log.err on the first one, or better
             # yet skip all but the first
             f = Failure(e)
-            self._signal_corruption(f, o["uri_extension"], fsize+UEB_length)
+            self._signal_corruption(f, o["uri_extension"], fsize + UEB_length)
             self.had_corruption = True
             raise
 
@@ -443,14 +531,14 @@ class Share(object):
         # later.
         o = self.actual_offsets
         hashlen = o["uri_extension"] - o["share_hashes"]
-        assert hashlen % (2+HASH_SIZE) == 0
+        assert hashlen % (2 + HASH_SIZE) == 0
         hashdata = self._received.get(o["share_hashes"], hashlen)
         if not hashdata:
             return False
         share_hashes = {}
-        for i in range(0, hashlen, 2+HASH_SIZE):
-            (hashnum,) = struct.unpack(">H", hashdata[i:i+2])
-            hashvalue = hashdata[i+2:i+2+HASH_SIZE]
+        for i in range(0, hashlen, 2 + HASH_SIZE):
+            (hashnum,) = struct.unpack(">H", hashdata[i : i + 2])
+            hashvalue = hashdata[i + 2 : i + 2 + HASH_SIZE]
             share_hashes[hashnum] = hashvalue
         # TODO: if they give us an empty set of hashes,
         # process_share_hashes() won't fail. We must ensure that this
@@ -473,19 +561,22 @@ class Share(object):
 
     def _signal_corruption(self, f, start, offset):
         # there was corruption somewhere in the given range
-        reason = "corruption in share[%d-%d): %s" % (start, start+offset,
-                                                     str(f.value))
+        reason = "corruption in share[%d-%d): %s" % (
+            start,
+            start + offset,
+            str(f.value),
+        )
         self._rref.callRemoteOnly("advise_corrupt_share", reason.encode("utf-8"))
 
     def _satisfy_block_hash_tree(self, needed_hashes):
         o_bh = self.actual_offsets["block_hashes"]
         block_hashes = {}
         for hashnum in needed_hashes:
-            hashdata = self._received.get(o_bh+hashnum*HASH_SIZE, HASH_SIZE)
+            hashdata = self._received.get(o_bh + hashnum * HASH_SIZE, HASH_SIZE)
             if hashdata:
                 block_hashes[hashnum] = hashdata
             else:
-                return False # missing some hashes
+                return False  # missing some hashes
         # note that we don't submit any hashes to the block_hash_tree until
         # we've gotten them all, because the hash tree will throw an
         # exception if we only give it a partial set (which it therefore
@@ -495,27 +586,33 @@ class Share(object):
         except (BadHashError, NotEnoughHashesError) as e:
             f = Failure(e)
             hashnums = ",".join([str(n) for n in sorted(block_hashes.keys())])
-            log.msg(format="hash failure in block_hashes=(%(hashnums)s),"
-                    " from %(share)s",
-                    hashnums=hashnums, shnum=self._shnum, share=repr(self),
-                    failure=f, level=log.WEIRD, parent=self._lp, umid="yNyFdA")
+            log.msg(
+                format="hash failure in block_hashes=(%(hashnums)s)," " from %(share)s",
+                hashnums=hashnums,
+                shnum=self._shnum,
+                share=repr(self),
+                failure=f,
+                level=log.WEIRD,
+                parent=self._lp,
+                umid="yNyFdA",
+            )
             hsize = max(0, max(needed_hashes)) * HASH_SIZE
             self._signal_corruption(f, o_bh, hsize)
             self.had_corruption = True
             raise
         for hashnum in needed_hashes:
-            self._received.remove(o_bh+hashnum*HASH_SIZE, HASH_SIZE)
+            self._received.remove(o_bh + hashnum * HASH_SIZE, HASH_SIZE)
         return True
 
     def _satisfy_ciphertext_hash_tree(self, needed_hashes):
         start = self.actual_offsets["crypttext_hash_tree"]
         hashes = {}
         for hashnum in needed_hashes:
-            hashdata = self._received.get(start+hashnum*HASH_SIZE, HASH_SIZE)
+            hashdata = self._received.get(start + hashnum * HASH_SIZE, HASH_SIZE)
             if hashdata:
                 hashes[hashnum] = hashdata
             else:
-                return False # missing some hashes
+                return False  # missing some hashes
         # we don't submit any hashes to the ciphertext_hash_tree until we've
         # gotten them all
         try:
@@ -523,20 +620,26 @@ class Share(object):
         except (BadHashError, NotEnoughHashesError) as e:
             f = Failure(e)
             hashnums = ",".join([str(n) for n in sorted(hashes.keys())])
-            log.msg(format="hash failure in ciphertext_hashes=(%(hashnums)s),"
-                    " from %(share)s",
-                    hashnums=hashnums, share=repr(self), failure=f,
-                    level=log.WEIRD, parent=self._lp, umid="iZI0TA")
-            hsize = max(0, max(needed_hashes))*HASH_SIZE
+            log.msg(
+                format="hash failure in ciphertext_hashes=(%(hashnums)s),"
+                " from %(share)s",
+                hashnums=hashnums,
+                share=repr(self),
+                failure=f,
+                level=log.WEIRD,
+                parent=self._lp,
+                umid="iZI0TA",
+            )
+            hsize = max(0, max(needed_hashes)) * HASH_SIZE
             self._signal_corruption(f, start, hsize)
             self.had_corruption = True
             raise
         for hashnum in needed_hashes:
-            self._received.remove(start+hashnum*HASH_SIZE, HASH_SIZE)
+            self._received.remove(start + hashnum * HASH_SIZE, HASH_SIZE)
         return True
 
     def _satisfy_data_block(self, segnum, observers):
-        tail = (segnum == self._node.num_segments-1)
+        tail = segnum == self._node.num_segments - 1
         datastart = self.actual_offsets["data"]
         blockstart = datastart + segnum * self._node.block_size
         blocklen = self._node.block_size
@@ -545,13 +648,23 @@ class Share(object):
 
         block = self._received.pop(blockstart, blocklen)
         if not block:
-            log.msg("no data for block %s (want [%d:+%d])" % (repr(self),
-                                                              blockstart, blocklen),
-                    level=log.NOISY, parent=self._lp, umid="aK0RFw")
+            log.msg(
+                "no data for block %s (want [%d:+%d])"
+                % (repr(self), blockstart, blocklen),
+                level=log.NOISY,
+                parent=self._lp,
+                umid="aK0RFw",
+            )
             return False
-        log.msg(format="%(share)s._satisfy_data_block [%(start)d:+%(length)d]",
-                share=repr(self), start=blockstart, length=blocklen,
-                level=log.NOISY, parent=self._lp, umid="uTDNZg")
+        log.msg(
+            format="%(share)s._satisfy_data_block [%(start)d:+%(length)d]",
+            share=repr(self),
+            start=blockstart,
+            length=blocklen,
+            level=log.NOISY,
+            parent=self._lp,
+            umid="uTDNZg",
+        )
         # this block is being retired, either as COMPLETE or CORRUPT, since
         # no further data reads will help
         assert self._requested_blocks[0][0] == segnum
@@ -570,9 +683,15 @@ class Share(object):
             # corruption in other parts of the share, this doesn't cause us
             # to abandon the whole share.
             f = Failure(e)
-            log.msg(format="hash failure in block %(segnum)d, from %(share)s",
-                    segnum=segnum, share=repr(self), failure=f,
-                    level=log.WEIRD, parent=self._lp, umid="mZjkqA")
+            log.msg(
+                format="hash failure in block %(segnum)d, from %(share)s",
+                segnum=segnum,
+                share=repr(self),
+                failure=f,
+                level=log.WEIRD,
+                parent=self._lp,
+                umid="mZjkqA",
+            )
             for o in observers:
                 o.notify(state=CORRUPT)
             self._signal_corruption(f, blockstart, blocklen)
@@ -581,10 +700,10 @@ class Share(object):
         self._requested_blocks.pop(0)
         # popping the request keeps us from turning around and wanting the
         # block again right away
-        return True # got satisfaction
+        return True  # got satisfaction
 
     def _desire(self):
-        segnum, observers = self._active_segnum_and_observers() # maybe None
+        segnum, observers = self._active_segnum_and_observers()  # maybe None
 
         # 'want_it' is for data we merely want: we know that we don't really
         # need it. This includes speculative reads, like the first 1KB of the
@@ -604,7 +723,7 @@ class Share(object):
         desire = Spans(), Spans(), Spans()
         (want_it, need_it, gotta_gotta_have_it) = desire
 
-        self.actual_segment_size = self._node.segment_size # might be updated
+        self.actual_segment_size = self._node.segment_size  # might be updated
         o = self.actual_offsets or self.guessed_offsets
         segsize = self.actual_segment_size or self.guessed_segment_size
         r = self._node._calculate_sizes(segsize)
@@ -627,13 +746,17 @@ class Share(object):
                 self._desire_block_hashes(desire, o, segnum)
                 self._desire_data(desire, o, r, segnum, segsize)
 
-        log.msg("end _desire: want_it=%s need_it=%s gotta=%s"
-                % (want_it.dump(), need_it.dump(), gotta_gotta_have_it.dump()),
-                level=log.NOISY, parent=self._lp, umid="IG7CgA")
+        log.msg(
+            "end _desire: want_it=%s need_it=%s gotta=%s"
+            % (want_it.dump(), need_it.dump(), gotta_gotta_have_it.dump()),
+            level=log.NOISY,
+            parent=self._lp,
+            umid="IG7CgA",
+        )
         if self.actual_offsets:
-            return (want_it, need_it+gotta_gotta_have_it)
+            return (want_it, need_it + gotta_gotta_have_it)
         else:
-            return (want_it+need_it, gotta_gotta_have_it)
+            return (want_it + need_it, gotta_gotta_have_it)
 
     def _desire_offsets(self, desire):
         (want_it, need_it, gotta_gotta_have_it) = desire
@@ -655,7 +778,7 @@ class Share(object):
         # already. There is no code path to get this far with version>2.
         assert 1 <= version <= 2, "can't get here, version=%d" % version
         if version == 1:
-            table_start = 0x0c
+            table_start = 0x0C
             fieldsize = 0x4
         elif version == 2:
             table_start = 0x14
@@ -684,9 +807,9 @@ class Share(object):
             return
         UEB_length_s = self._received.get(o["uri_extension"], self._fieldsize)
         if UEB_length_s:
-            (UEB_length,) = struct.unpack(">"+self._fieldstruct, UEB_length_s)
+            (UEB_length,) = struct.unpack(">" + self._fieldstruct, UEB_length_s)
             # we know the length, so make sure we grab everything
-            need_it.add(o["uri_extension"]+self._fieldsize, UEB_length)
+            need_it.add(o["uri_extension"] + self._fieldsize, UEB_length)
 
     def _desire_share_hashes(self, desire, o):
         (want_it, need_it, gotta_gotta_have_it) = desire
@@ -700,11 +823,11 @@ class Share(object):
 
         # block hash chain
         for hashnum in self._commonshare.get_desired_block_hashes(segnum):
-            need_it.add(o["block_hashes"]+hashnum*HASH_SIZE, HASH_SIZE)
+            need_it.add(o["block_hashes"] + hashnum * HASH_SIZE, HASH_SIZE)
 
         # ciphertext hash chain
         for hashnum in self._node.get_desired_ciphertext_hashes(segnum):
-            need_it.add(o["crypttext_hash_tree"]+hashnum*HASH_SIZE, HASH_SIZE)
+            need_it.add(o["crypttext_hash_tree"] + hashnum * HASH_SIZE, HASH_SIZE)
 
     def _desire_data(self, desire, o, r, segnum, segsize):
         if segnum > r["num_segments"]:
@@ -719,12 +842,16 @@ class Share(object):
             # comes back and we learn the correct segsize/segnums, we'll
             # either reject the request or have enough information to proceed
             # normally. This costs one roundtrip.
-            log.msg("_desire_data: segnum(%d) looks wrong (numsegs=%d)"
-                    % (segnum, r["num_segments"]),
-                    level=log.UNUSUAL, parent=self._lp, umid="tuYRQQ")
+            log.msg(
+                "_desire_data: segnum(%d) looks wrong (numsegs=%d)"
+                % (segnum, r["num_segments"]),
+                level=log.UNUSUAL,
+                parent=self._lp,
+                umid="tuYRQQ",
+            )
             return
         (want_it, need_it, gotta_gotta_have_it) = desire
-        tail = (segnum == r["num_segments"]-1)
+        tail = segnum == r["num_segments"] - 1
         datastart = o["data"]
         blockstart = datastart + segnum * r["block_size"]
         blocklen = r["block_size"]
@@ -734,9 +861,13 @@ class Share(object):
 
     def _send_requests(self, desired):
         ask = desired - self._pending - self._received.get_spans()
-        log.msg("%s._send_requests, desired=%s, pending=%s, ask=%s" %
-                (repr(self), desired.dump(), self._pending.dump(), ask.dump()),
-                level=log.NOISY, parent=self._lp, umid="E94CVA")
+        log.msg(
+            "%s._send_requests, desired=%s, pending=%s, ask=%s"
+            % (repr(self), desired.dump(), self._pending.dump(), ask.dump()),
+            level=log.NOISY,
+            parent=self._lp,
+            umid="E94CVA",
+        )
         # XXX At one time, this code distinguished between data blocks and
         # hashes, and made sure to send (small) requests for hashes before
         # sending (big) requests for blocks. The idea was to make sure that
@@ -748,21 +879,31 @@ class Share(object):
         for (start, length) in ask:
             # TODO: quantize to reasonably-large blocks
             self._pending.add(start, length)
-            lp = log.msg(format="%(share)s._send_request"
-                         " [%(start)d:+%(length)d]",
-                         share=repr(self),
-                         start=start, length=length,
-                         level=log.NOISY, parent=self._lp, umid="sgVAyA")
-            block_ev = ds.add_block_request(self._server, self._shnum,
-                                            start, length, now())
+            lp = log.msg(
+                format="%(share)s._send_request" " [%(start)d:+%(length)d]",
+                share=repr(self),
+                start=start,
+                length=length,
+                level=log.NOISY,
+                parent=self._lp,
+                umid="sgVAyA",
+            )
+            block_ev = ds.add_block_request(
+                self._server, self._shnum, start, length, now()
+            )
             d = self._send_request(start, length)
             d.addCallback(self._got_data, start, length, block_ev, lp)
             d.addErrback(self._got_error, start, length, block_ev, lp)
             d.addCallback(self._trigger_loop)
-            d.addErrback(lambda f:
-                         log.err(format="unhandled error during send_request",
-                                 failure=f, parent=self._lp,
-                                 level=log.WEIRD, umid="qZu0wg"))
+            d.addErrback(
+                lambda f: log.err(
+                    format="unhandled error during send_request",
+                    failure=f,
+                    parent=self._lp,
+                    level=log.WEIRD,
+                    umid="qZu0wg",
+                )
+            )
 
     def _send_request(self, start, length):
         return self._rref.callRemote("read", start, length)
@@ -771,9 +912,16 @@ class Share(object):
         block_ev.finished(len(data), now())
         if not self._alive:
             return
-        log.msg(format="%(share)s._got_data [%(start)d:+%(length)d] -> %(datalen)d",
-                share=repr(self), start=start, length=length, datalen=len(data),
-                level=log.NOISY, parent=lp, umid="5Qn6VQ")
+        log.msg(
+            format="%(share)s._got_data [%(start)d:+%(length)d] -> %(datalen)d",
+            share=repr(self),
+            start=start,
+            length=length,
+            datalen=len(data),
+            level=log.NOISY,
+            parent=lp,
+            umid="5Qn6VQ",
+        )
         self._pending.remove(start, length)
         self._received.add(start, data)
 
@@ -786,7 +934,7 @@ class Share(object):
         # RTT when we don't know the length of the share ahead of time). So
         # not every asked-for-but-not-received byte is fatal.
         if len(data) < length:
-            self._unavailable.add(start+len(data), length-len(data))
+            self._unavailable.add(start + len(data), length - len(data))
 
         # XXX if table corruption causes our sections to overlap, then one
         # consumer (i.e. block hash tree) will pop/remove the data that
@@ -812,11 +960,18 @@ class Share(object):
 
     def _got_error(self, f, start, length, block_ev, lp):
         block_ev.error(now())
-        log.msg(format="error requesting %(start)d+%(length)d"
-                " from %(server)s for si %(si)s",
-                start=start, length=length,
-                server=self._server.get_name(), si=self._si_prefix,
-                failure=f, parent=lp, level=log.UNUSUAL, umid="BZgAJw")
+        log.msg(
+            format="error requesting %(start)d+%(length)d"
+            " from %(server)s for si %(si)s",
+            start=start,
+            length=length,
+            server=self._server.get_name(),
+            si=self._si_prefix,
+            failure=f,
+            parent=lp,
+            level=log.UNUSUAL,
+            umid="BZgAJw",
+        )
         # retire our observers, assuming we won't be able to make any
         # further progress
         self._fail(f, log.UNUSUAL)
@@ -827,9 +982,14 @@ class Share(object):
         return res
 
     def _fail(self, f, level=log.WEIRD):
-        log.msg(format="abandoning %(share)s",
-                share=repr(self), failure=f,
-                level=level, parent=self._lp, umid="JKM2Og")
+        log.msg(
+            format="abandoning %(share)s",
+            share=repr(self),
+            failure=f,
+            level=level,
+            parent=self._lp,
+            umid="JKM2Og",
+        )
         self._alive = False
         for (segnum, observers) in self._requested_blocks:
             for o in observers:
@@ -843,6 +1003,7 @@ class CommonShare(object):
     """I hold data that is common across all instances of a single share,
     like sh2 on both servers A and B. This is just the block hash tree.
     """
+
     def __init__(self, best_numsegs, si_prefix, shnum, logparent):
         self.si_prefix = si_prefix
         self.shnum = shnum
@@ -874,8 +1035,7 @@ class CommonShare(object):
 
     def get_desired_block_hashes(self, segnum):
         if segnum < self._block_hash_tree_leaves:
-            return self._block_hash_tree.needed_hashes(segnum,
-                                                       include_leaf=True)
+            return self._block_hash_tree.needed_hashes(segnum, include_leaf=True)
 
         # the segnum might be out-of-bounds. Originally it was due to a race
         # between the receipt of the UEB on one share (from which we learn
@@ -911,6 +1071,7 @@ class CommonShare(object):
         h = hashutil.block_hash(block)
         # this may raise BadHashError or NotEnoughHashesError
         self._block_hash_tree.set_hashes(leaves={segnum: h})
+
 
 # TODO: maybe stop using EventStreamObserver: instead, use a Deferred and an
 # auxilliary OVERDUE callback. Just make sure to get all the messages in the

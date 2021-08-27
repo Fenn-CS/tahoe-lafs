@@ -7,8 +7,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 from twisted.trial import unittest
 from twisted.internet import reactor
@@ -41,6 +64,7 @@ class CreateConnectionHandlersTests(SyncTestCase):
     Tests for the Foolscap connection handlers return by
     ``create_connection_handlers``.
     """
+
     def test_foolscap_handlers(self):
         """
         ``create_connection_handlers`` returns a Foolscap connection handlers
@@ -65,16 +89,17 @@ class CreateConnectionHandlersTests(SyncTestCase):
         )
         self.assertThat(
             foolscap_handlers,
-            MatchesDict({
-                "tcp": IsInstance(tcp.DefaultTCP),
-                "i2p": Equals(i2p_endpoint),
-                "tor": Equals(tor_endpoint),
-            }),
+            MatchesDict(
+                {
+                    "tcp": IsInstance(tcp.DefaultTCP),
+                    "i2p": Equals(i2p_endpoint),
+                    "tor": Equals(tor_endpoint),
+                }
+            ),
         )
 
 
 class Tor(unittest.TestCase):
-
     def test_socksport_bad_endpoint(self):
         config = config_from_string(
             "fake.port",
@@ -84,10 +109,7 @@ class Tor(unittest.TestCase):
         with self.assertRaises(ValueError) as ctx:
             tor_provider = create_tor_provider(reactor, config)
             tor_provider.get_tor_handler()
-        self.assertIn(
-            "Unknown endpoint type: 'meow'",
-            str(ctx.exception)
-        )
+        self.assertIn("Unknown endpoint type: 'meow'", str(ctx.exception))
 
     def test_socksport_not_integer(self):
         config = config_from_string(
@@ -98,36 +120,29 @@ class Tor(unittest.TestCase):
         with self.assertRaises(ValueError) as ctx:
             tor_provider = create_tor_provider(reactor, config)
             tor_provider.get_tor_handler()
-        self.assertIn(
-            "invalid literal for int()",
-            str(ctx.exception)
-        )
-        self.assertIn(
-            "kumquat",
-            str(ctx.exception)
-        )
+        self.assertIn("invalid literal for int()", str(ctx.exception))
+        self.assertIn("kumquat", str(ctx.exception))
+
 
 class I2P(unittest.TestCase):
-
     def test_samport_and_launch(self):
         config = config_from_string(
             "no-basedir",
             "fake.port",
-            BASECONFIG + "[i2p]\n" +
-            "sam.port = tcp:localhost:1234\n" + "launch = true\n",
+            BASECONFIG
+            + "[i2p]\n"
+            + "sam.port = tcp:localhost:1234\n"
+            + "launch = true\n",
         )
         with self.assertRaises(ValueError) as ctx:
             i2p_provider = create_i2p_provider(reactor, config)
             i2p_provider.get_i2p_handler()
-        self.assertIn(
-            "must not set both sam.port and launch",
-            str(ctx.exception)
-        )
+        self.assertIn("must not set both sam.port and launch", str(ctx.exception))
+
 
 class Connections(unittest.TestCase):
-
     def setUp(self):
-        self.basedir = 'BASEDIR'
+        self.basedir = "BASEDIR"
         self.config = config_from_string("fake.port", self.basedir, BASECONFIG)
 
     def test_default(self):
@@ -216,8 +231,8 @@ class Connections(unittest.TestCase):
         self.assertEqual(default_connection_handlers["tor"], "tor")
         self.assertEqual(default_connection_handlers["i2p"], "i2p")
 
-class Privacy(unittest.TestCase):
 
+class Privacy(unittest.TestCase):
     def test_connections(self):
         config = config_from_string(
             "fake.port",
@@ -242,8 +257,9 @@ class Privacy(unittest.TestCase):
         config = config_from_string(
             "no-basedir",
             "fake.port",
-            BASECONFIG + "[connections]\ntcp = disabled\n" +
-            "[node]\nreveal-IP-address = false\n",
+            BASECONFIG
+            + "[connections]\ntcp = disabled\n"
+            + "[node]\nreveal-IP-address = false\n",
         )
         default_connection_handlers, _ = create_connection_handlers(
             config,

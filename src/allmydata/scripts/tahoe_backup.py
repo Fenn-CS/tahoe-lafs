@@ -7,21 +7,54 @@ from __future__ import division
 from __future__ import print_function
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import os.path
 import time
 from urllib.parse import quote as url_quote
 import datetime
 
-from allmydata.scripts.common import get_alias, escape_path, DEFAULT_ALIAS, \
-                                     UnknownAliasError
+from allmydata.scripts.common import (
+    get_alias,
+    escape_path,
+    DEFAULT_ALIAS,
+    UnknownAliasError,
+)
 from allmydata.scripts.common_http import do_http, HTTPError, format_http_error
 from allmydata.util import time_format, jsonbytes as json
 from allmydata.scripts import backupdb
-from allmydata.util.encodingutil import listdir_unicode, quote_output, \
-     quote_local_unicode_path, to_bytes, FilenameEncodingError, unicode_to_url
+from allmydata.util.encodingutil import (
+    listdir_unicode,
+    quote_output,
+    quote_local_unicode_path,
+    to_bytes,
+    FilenameEncodingError,
+    unicode_to_url,
+)
 from allmydata.util.assertutil import precondition
 from allmydata.util.fileutil import abspath_expanduser_unicode, precondition_abspath
 
@@ -43,15 +76,25 @@ def get_local_metadata(path):
     # TODO: extended attributes, like on OS-X's HFS+
     return metadata
 
+
 def mkdir(contents, options):
-    kids = dict([ (childname, (contents[childname][0],
-                               {"ro_uri": contents[childname][1],
-                                "metadata": contents[childname][2],
-                                }))
-                  for childname in contents
-                  ])
+    kids = dict(
+        [
+            (
+                childname,
+                (
+                    contents[childname][0],
+                    {
+                        "ro_uri": contents[childname][1],
+                        "metadata": contents[childname][2],
+                    },
+                ),
+            )
+            for childname in contents
+        ]
+    )
     body = json.dumps(kids).encode("utf-8")
-    url = options['node-url'] + "uri?t=mkdir-immutable"
+    url = options["node-url"] + "uri?t=mkdir-immutable"
     resp = do_http("POST", url, body)
     if resp.status < 200 or resp.status >= 300:
         raise HTTPError("Error during mkdir", resp)
@@ -59,12 +102,14 @@ def mkdir(contents, options):
     dircap = to_bytes(resp.read().strip())
     return dircap
 
+
 def put_child(dirurl, childname, childcap):
     assert dirurl[-1] != "/"
     url = dirurl + "/" + url_quote(unicode_to_url(childname)) + "?t=uri"
     resp = do_http("PUT", url, childcap)
     if resp.status not in (200, 201):
         raise HTTPError("Error during put_child", resp)
+
 
 class BackerUpper(object):
     """
@@ -76,6 +121,7 @@ class BackerUpper(object):
         process has so-far inspected on the grid to determine if they need to
         be re-uploaded.
     """
+
     def __init__(self, options):
         self.options = options
         self._files_checked = 0
@@ -83,18 +129,17 @@ class BackerUpper(object):
 
     def run(self):
         options = self.options
-        nodeurl = options['node-url']
+        nodeurl = options["node-url"]
         self.verbosity = 1
-        if options['quiet']:
+        if options["quiet"]:
             self.verbosity = 0
-        if options['verbose']:
+        if options["verbose"]:
             self.verbosity = 2
         stdout = options.stdout
         stderr = options.stderr
 
         start_timestamp = datetime.datetime.now()
-        bdbfile = os.path.join(options["node-directory"],
-                               "private", "backupdb.sqlite")
+        bdbfile = os.path.join(options["node-directory"], "private", "backupdb.sqlite")
         bdbfile = abspath_expanduser_unicode(bdbfile)
         self.backupdb = backupdb.get_backupdb(bdbfile, stderr)
         if not self.backupdb:
@@ -123,15 +168,20 @@ class BackerUpper(object):
         if resp.status == 404:
             resp = do_http("POST", archives_url + "?t=mkdir")
             if resp.status != 200:
-                print(format_http_error("Unable to create target directory", resp), file=stderr)
+                print(
+                    format_http_error("Unable to create target directory", resp),
+                    file=stderr,
+                )
                 return 1
 
         # second step: process the tree
-        targets = list(collect_backup_targets(
-            options.from_dir,
-            listdir_unicode,
-            self.options.filter_listdir,
-        ))
+        targets = list(
+            collect_backup_targets(
+                options.from_dir,
+                listdir_unicode,
+                self.options.filter_listdir,
+            )
+        )
         completed = run_backup(
             warn=self.warn,
             upload_file=self.upload,
@@ -147,11 +197,14 @@ class BackerUpper(object):
 
         put_child(archives_url, now, new_backup_dircap)
         put_child(to_url, "Latest", new_backup_dircap)
-        print(completed.report(
-            self.verbosity,
-            self._files_checked,
-            self._directories_checked,
-        ), file=stdout)
+        print(
+            completed.report(
+                self.verbosity,
+                self._files_checked,
+                self._directories_checked,
+            ),
+            file=stdout,
+        )
 
         # The command exits with code 2 if files or directories were skipped
         if completed.any_skips():
@@ -172,16 +225,19 @@ class BackerUpper(object):
     def upload_directory(self, path, compare_contents, create_contents):
         must_create, r = self.check_backupdb_directory(compare_contents)
         if must_create:
-            self.verboseprint(" creating directory for %s" % quote_local_unicode_path(path))
+            self.verboseprint(
+                " creating directory for %s" % quote_local_unicode_path(path)
+            )
             newdircap = mkdir(create_contents, self.options)
             assert isinstance(newdircap, bytes)
             if r:
                 r.did_create(newdircap)
             return True, newdircap
         else:
-            self.verboseprint(" re-using old directory for %s" % quote_local_unicode_path(path))
+            self.verboseprint(
+                " re-using old directory for %s" % quote_local_unicode_path(path)
+            )
             return False, r.was_created()
-
 
     def check_backupdb_file(self, childpath):
         if not self.backupdb:
@@ -200,7 +256,7 @@ class BackerUpper(object):
         # we must check the file before using the results
         filecap = r.was_uploaded()
         self.verboseprint("checking %s" % quote_output(filecap))
-        nodeurl = self.options['node-url']
+        nodeurl = self.options["node-url"]
         checkurl = nodeurl + "uri/%s?t=check&output=JSON" % url_quote(filecap)
         self._files_checked += 1
         resp = do_http("POST", checkurl)
@@ -233,7 +289,7 @@ class BackerUpper(object):
         # we must check the directory before re-using it
         dircap = r.was_created()
         self.verboseprint("checking %s" % quote_output(dircap))
-        nodeurl = self.options['node-url']
+        nodeurl = self.options["node-url"]
         checkurl = nodeurl + "uri/%s?t=check&output=JSON" % url_quote(dircap)
         self._directories_checked += 1
         resp = do_http("POST", checkurl)
@@ -254,7 +310,7 @@ class BackerUpper(object):
     def upload(self, childpath):
         precondition_abspath(childpath)
 
-        #self.verboseprint("uploading %s.." % quote_local_unicode_path(childpath))
+        # self.verboseprint("uploading %s.." % quote_local_unicode_path(childpath))
         metadata = get_local_metadata(childpath)
 
         # we can use the backupdb here
@@ -263,15 +319,20 @@ class BackerUpper(object):
         if must_upload:
             self.verboseprint("uploading %s.." % quote_local_unicode_path(childpath))
             infileobj = open(childpath, "rb")
-            url = self.options['node-url'] + "uri"
+            url = self.options["node-url"] + "uri"
             resp = do_http("PUT", url, infileobj)
             if resp.status not in (200, 201):
                 raise HTTPError("Error during file PUT", resp)
 
             filecap = resp.read().strip()
-            self.verboseprint(" %s -> %s" % (quote_local_unicode_path(childpath, quotemarks=False),
-                                             quote_output(filecap, quotemarks=False)))
-            #self.verboseprint(" metadata: %s" % (quote_output(metadata, quotemarks=False),))
+            self.verboseprint(
+                " %s -> %s"
+                % (
+                    quote_local_unicode_path(childpath, quotemarks=False),
+                    quote_output(filecap, quotemarks=False),
+                )
+            )
+            # self.verboseprint(" metadata: %s" % (quote_output(metadata, quotemarks=False),))
 
             if bdb_results:
                 bdb_results.did_upload(filecap)
@@ -321,12 +382,12 @@ def collect_backup_targets(root, listdir, filter_children):
 
 
 def run_backup(
-        warn,
-        upload_file,
-        upload_directory,
-        targets,
-        start_timestamp,
-        stdout,
+    warn,
+    upload_file,
+    upload_directory,
+    targets,
+    start_timestamp,
+    stdout,
 ):
     progress = BackupProgress(warn, start_timestamp, len(targets))
     for target in targets:
@@ -412,16 +473,17 @@ class SpecialTarget(_ErrorTarget):
 
 
 class BackupComplete(object):
-    def __init__(self,
-                 start_timestamp,
-                 end_timestamp,
-                 files_created,
-                 files_reused,
-                 files_skipped,
-                 directories_created,
-                 directories_reused,
-                 directories_skipped,
-                 dircap,
+    def __init__(
+        self,
+        start_timestamp,
+        end_timestamp,
+        files_created,
+        files_reused,
+        files_skipped,
+        directories_created,
+        directories_reused,
+        directories_skipped,
+        dircap,
     ):
         self._start_timestamp = start_timestamp
         self._end_timestamp = end_timestamp
@@ -444,7 +506,8 @@ class BackupComplete(object):
                 " %d files uploaded (%d reused),"
                 " %d files skipped,"
                 " %d directories created (%d reused),"
-                " %d directories skipped" % (
+                " %d directories skipped"
+                % (
                     self._files_created,
                     self._files_reused,
                     self._files_skipped,
@@ -456,15 +519,14 @@ class BackupComplete(object):
 
         if verbosity >= 2:
             result.append(
-                " %d files checked, %d directories checked" % (
+                " %d files checked, %d directories checked"
+                % (
                     files_checked,
                     directories_checked,
                 ),
             )
         # calc elapsed time, omitting microseconds
-        elapsed_time = str(
-            self._end_timestamp - self._start_timestamp
-        ).split('.')[0]
+        elapsed_time = str(self._end_timestamp - self._start_timestamp).split(".")[0]
         result.append(" backup done, elapsed time: %s" % (elapsed_time,))
 
         return "\n".join(result)
@@ -531,17 +593,21 @@ class BackupProgress(object):
         )
 
     def consume_directory(self, dirpath):
-        return self, {
-            os.path.basename(create_path): create_value
-            for (create_path, create_value)
-            in list(self._create_contents.items())
-            if os.path.dirname(create_path) == dirpath
-        }, {
-            os.path.basename(compare_path): compare_value
-            for (compare_path, compare_value)
-            in list(self._compare_contents.items())
-            if os.path.dirname(compare_path) == dirpath
-        }
+        return (
+            self,
+            {
+                os.path.basename(create_path): create_value
+                for (create_path, create_value) in list(self._create_contents.items())
+                if os.path.dirname(create_path) == dirpath
+            },
+            {
+                os.path.basename(compare_path): compare_value
+                for (compare_path, compare_value) in list(
+                    self._compare_contents.items()
+                )
+                if os.path.dirname(compare_path) == dirpath
+            },
+        )
 
     def created_directory(self, path, dircap, metadata):
         self._create_contents[path] = ("dirnode", dircap, metadata)

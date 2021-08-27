@@ -7,8 +7,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import json
 from os.path import join
@@ -87,8 +110,7 @@ def create_introducer_webish(reactor, port_assigner, basedir):
     with open(join(basedir, "tahoe.cfg"), "w") as f:
         f.write(
             "[node]\n"
-            "tub.location = 127.0.0.1:1\n" +
-            "web.port = {}\n".format(port_endpoint)
+            "tub.location = 127.0.0.1:1\n" + "web.port = {}\n".format(port_endpoint)
         )
 
     intro_node = yield create_introducer(basedir)
@@ -103,6 +125,7 @@ class IntroducerWeb(AsyncTestCase):
     """
     Tests for web-facing functionality of an introducer node.
     """
+
     def setUp(self):
         self.node = None
         self.port_assigner = SameProcessStreamEndpointAssigner()
@@ -124,11 +147,11 @@ class IntroducerWeb(AsyncTestCase):
 
         url = "http://localhost:%d/" % (ws.getPortnum(),)
         res = yield do_http("get", url)
-        soup = BeautifulSoup(res, 'html5lib')
-        assert_soup_has_text(self, soup, u'Welcome to the Tahoe-LAFS Introducer')
+        soup = BeautifulSoup(res, "html5lib")
+        assert_soup_has_text(self, soup, "Welcome to the Tahoe-LAFS Introducer")
         assert_soup_has_favicon(self, soup)
-        assert_soup_has_text(self, soup, u'Page rendered at')
-        assert_soup_has_text(self, soup, u'Tahoe-LAFS code imported from:')
+        assert_soup_has_text(self, soup, "Page rendered at")
+        assert_soup_has_text(self, soup, "Tahoe-LAFS code imported from:")
 
     @defer.inlineCallbacks
     def test_basic_information(self):
@@ -145,14 +168,14 @@ class IntroducerWeb(AsyncTestCase):
 
         url = "http://localhost:%d/" % (ws.getPortnum(),)
         res = yield do_http("get", url)
-        soup = BeautifulSoup(res, 'html5lib')
+        soup = BeautifulSoup(res, "html5lib")
         assert_soup_has_text(
             self,
             soup,
             allmydata.__full_version__,
         )
-        assert_soup_has_text(self, soup, u"no peers!")
-        assert_soup_has_text(self, soup, u"subscribers!")
+        assert_soup_has_text(self, soup, "no peers!")
+        assert_soup_has_text(self, soup, "subscribers!")
         assert_soup_has_tag_with_attributes(
             self,
             soup,
@@ -201,6 +224,7 @@ class IntroducerRootTests(SyncTestCase):
     """
     Tests for ``IntroducerRoot``.
     """
+
     def test_json(self):
         """
         The JSON response includes totals for the number of subscriptions and
@@ -235,9 +259,9 @@ class IntroducerRootTests(SyncTestCase):
         resource = IntroducerRoot(introducer_node)
         response = render(resource, {b"t": [b"json"]})
         expected = {
-            u"subscription_summary": {"arbitrary": 2},
-            u"announcement_summary": {"arbitrary": 1},
+            "subscription_summary": {"arbitrary": 2},
+            "announcement_summary": {"arbitrary": 1},
         }
         self.assertThat(
-            response,
-            succeeded(AfterPreprocessing(json.loads, Equals(expected))))
+            response, succeeded(AfterPreprocessing(json.loads, Equals(expected)))
+        )

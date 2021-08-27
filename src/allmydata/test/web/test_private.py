@@ -12,8 +12,31 @@ from __future__ import (
 )
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 from testtools.matchers import (
     Equals,
@@ -50,22 +73,26 @@ from .matchers import (
     has_response_code,
 )
 
+
 class PrivacyTests(SyncTestCase):
     """
     Tests for the privacy features of the resources created by ``create_private_tree``.
     """
+
     def setUp(self):
         self.token = b"abcdef"
         self.resource = create_private_tree(lambda: self.token)
         self.agent = RequestTraversalAgent(self.resource)
-        self.client =  HTTPClient(self.agent)
+        self.client = HTTPClient(self.agent)
         return super(PrivacyTests, self).setUp()
 
     def _authorization(self, scheme, value):
         value = str(value, "utf-8")
-        return Headers({
-            u"authorization": [u"{} {}".format(scheme, value)],
-        })
+        return Headers(
+            {
+                "authorization": ["{} {}".format(scheme, value)],
+            }
+        )
 
     def test_unauthorized(self):
         """
@@ -84,7 +111,7 @@ class PrivacyTests(SyncTestCase):
         self.assertThat(
             self.client.head(
                 b"http:///foo/bar",
-                headers=self._authorization(u"basic", self.token),
+                headers=self._authorization("basic", self.token),
             ),
             succeeded(has_response_code(Equals(UNAUTHORIZED))),
         )

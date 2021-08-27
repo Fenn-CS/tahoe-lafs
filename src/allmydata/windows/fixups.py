@@ -14,6 +14,7 @@ from past.builtins import unicode
 #
 # https://mypy.readthedocs.io/en/stable/common_issues.html?highlight=platform#python-version-and-system-platform-checks
 import sys
+
 assert sys.platform == "win32"
 
 import codecs
@@ -27,7 +28,6 @@ from win32api import (
     STD_OUTPUT_HANDLE,
     STD_ERROR_HANDLE,
     SetErrorMode,
-
     # <https://msdn.microsoft.com/en-us/library/ms683231(VS.85).aspx>
     # HANDLE WINAPI GetStdHandle(DWORD nStdHandle);
     # returns INVALID_HANDLE_VALUE, NULL, or a valid handle
@@ -41,7 +41,6 @@ from win32con import (
 from win32file import (
     INVALID_HANDLE_VALUE,
     FILE_TYPE_CHAR,
-
     # <https://msdn.microsoft.com/en-us/library/aa364960(VS.85).aspx>
     # DWORD WINAPI GetFileType(DWORD hFile);
     GetFileType,
@@ -64,32 +63,29 @@ _done = False
 # BOOL WINAPI WriteConsoleW(HANDLE hOutput, LPWSTR lpBuffer, DWORD nChars,
 #                           LPDWORD lpCharsWritten, LPVOID lpReserved);
 WriteConsoleW = WINFUNCTYPE(
-    BOOL,  HANDLE, LPWSTR, DWORD, POINTER(DWORD), LPVOID,
-    use_last_error=True
+    BOOL, HANDLE, LPWSTR, DWORD, POINTER(DWORD), LPVOID, use_last_error=True
 )(("WriteConsoleW", windll.kernel32))
 
 # <https://msdn.microsoft.com/en-us/library/windows/desktop/ms683156%28v=vs.85%29.aspx>
-GetCommandLineW = WINFUNCTYPE(
-    LPWSTR,
-    use_last_error=True
-)(("GetCommandLineW", windll.kernel32))
+GetCommandLineW = WINFUNCTYPE(LPWSTR, use_last_error=True)(
+    ("GetCommandLineW", windll.kernel32)
+)
 
 # <https://msdn.microsoft.com/en-us/library/windows/desktop/bb776391%28v=vs.85%29.aspx>
 CommandLineToArgvW = WINFUNCTYPE(
-    POINTER(LPWSTR),  LPCWSTR, POINTER(c_int),
-    use_last_error=True
+    POINTER(LPWSTR), LPCWSTR, POINTER(c_int), use_last_error=True
 )(("CommandLineToArgvW", windll.shell32))
 
 # <https://msdn.microsoft.com/en-us/library/ms683167(VS.85).aspx>
 # BOOL WINAPI GetConsoleMode(HANDLE hConsole, LPDWORD lpMode);
-GetConsoleMode = WINFUNCTYPE(
-    BOOL,  HANDLE, POINTER(DWORD),
-    use_last_error=True
-)(("GetConsoleMode", windll.kernel32))
+GetConsoleMode = WINFUNCTYPE(BOOL, HANDLE, POINTER(DWORD), use_last_error=True)(
+    ("GetConsoleMode", windll.kernel32)
+)
 
 
 STDOUT_FILENO = 1
 STDERR_FILENO = 2
+
 
 def get_argv():
     """
@@ -108,16 +104,13 @@ def get_argv():
         raise WinError(get_last_error())
 
     # Convert it to a normal Python list
-    return list(
-        argv_unicode[i]
-        for i
-        in range(argc.value)
-    )
+    return list(argv_unicode[i] for i in range(argc.value))
 
 
 def initialize():
     global _done
     import sys
+
     if sys.platform != "win32" or _done:
         return True
     _done = True
@@ -141,7 +134,7 @@ def initialize():
     _complain = partial(_complain, original_stderr)
 
     # Work around <http://bugs.python.org/issue6058>.
-    codecs.register(lambda name: name == 'cp65001' and codecs.lookup('utf-8') or None)
+    codecs.register(lambda name: name == "cp65001" and codecs.lookup("utf-8") or None)
 
     # Make Unicode console output work independently of the current code page.
     # This also fixes <http://bugs.python.org/issue1602>.
@@ -151,13 +144,13 @@ def initialize():
     try:
         old_stdout_fileno = None
         old_stderr_fileno = None
-        if hasattr(sys.stdout, 'fileno'):
+        if hasattr(sys.stdout, "fileno"):
             old_stdout_fileno = sys.stdout.fileno()
-        if hasattr(sys.stderr, 'fileno'):
+        if hasattr(sys.stderr, "fileno"):
             old_stderr_fileno = sys.stderr.fileno()
 
-        real_stdout = (old_stdout_fileno == STDOUT_FILENO)
-        real_stderr = (old_stderr_fileno == STDERR_FILENO)
+        real_stdout = old_stdout_fileno == STDOUT_FILENO
+        real_stderr = old_stderr_fileno == STDERR_FILENO
 
         if real_stdout:
             hStdout = GetStdHandle(STD_OUTPUT_HANDLE)
@@ -170,14 +163,30 @@ def initialize():
                 real_stderr = False
 
         if real_stdout:
-            sys.stdout = UnicodeOutput(hStdout, None, STDOUT_FILENO, '<Unicode console stdout>', _complain)
+            sys.stdout = UnicodeOutput(
+                hStdout, None, STDOUT_FILENO, "<Unicode console stdout>", _complain
+            )
         else:
-            sys.stdout = UnicodeOutput(None, sys.stdout, old_stdout_fileno, '<Unicode redirected stdout>', _complain)
+            sys.stdout = UnicodeOutput(
+                None,
+                sys.stdout,
+                old_stdout_fileno,
+                "<Unicode redirected stdout>",
+                _complain,
+            )
 
         if real_stderr:
-            sys.stderr = UnicodeOutput(hStderr, None, STDERR_FILENO, '<Unicode console stderr>', _complain)
+            sys.stderr = UnicodeOutput(
+                hStderr, None, STDERR_FILENO, "<Unicode console stderr>", _complain
+            )
         else:
-            sys.stderr = UnicodeOutput(None, sys.stderr, old_stderr_fileno, '<Unicode redirected stderr>', _complain)
+            sys.stderr = UnicodeOutput(
+                None,
+                sys.stderr,
+                old_stderr_fileno,
+                "<Unicode redirected stderr>",
+                _complain,
+            )
     except Exception as e:
         _complain("exception %r while fixing up sys.stdout and sys.stderr" % (e,))
 
@@ -188,7 +197,7 @@ def initialize():
     # for example, the Python interpreter or any options passed to it, or runner
     # scripts such as 'coverage run'. It works even if there are no such arguments,
     # as in the case of a frozen executable created by bb-freeze or similar.
-    sys.argv = argv[-len(sys.argv):]
+    sys.argv = argv[-len(sys.argv) :]
 
 
 def a_console(handle):
@@ -199,7 +208,8 @@ def a_console(handle):
         return False
     return (
         # It's a character file (eg a printer or a console)
-        GetFileType(handle) == FILE_TYPE_CHAR and
+        GetFileType(handle) == FILE_TYPE_CHAR
+        and
         # Checking the console mode doesn't fail (thus it's a console)
         GetConsoleMode(handle, byref(DWORD())) != 0
     )
@@ -211,6 +221,7 @@ class UnicodeOutput(object):
     writes it to another file or writes unicode natively to the Windows
     console.
     """
+
     def __init__(self, hConsole, stream, fileno, name, _complain):
         """
         :param hConsole: ``None`` or a handle on the console to which to write
@@ -231,26 +242,36 @@ class UnicodeOutput(object):
         self._fileno = fileno
         self.closed = False
         self.softspace = False
-        self.mode = 'w'
-        self.encoding = 'utf-8'
+        self.mode = "w"
+        self.encoding = "utf-8"
         self.name = name
 
         self._complain = _complain
 
         from allmydata.util.encodingutil import canonical_encoding
         from allmydata.util import log
-        if hasattr(stream, 'encoding') and canonical_encoding(stream.encoding) != 'utf-8':
-            log.msg("%s: %r had encoding %r, but we're going to write UTF-8 to it" %
-                    (name, stream, stream.encoding), level=log.CURIOUS)
+
+        if (
+            hasattr(stream, "encoding")
+            and canonical_encoding(stream.encoding) != "utf-8"
+        ):
+            log.msg(
+                "%s: %r had encoding %r, but we're going to write UTF-8 to it"
+                % (name, stream, stream.encoding),
+                level=log.CURIOUS,
+            )
         self.flush()
 
     def isatty(self):
         return False
+
     def close(self):
         # don't really close the handle, that would only cause problems
         self.closed = True
+
     def fileno(self):
         return self._fileno
+
     def flush(self):
         if self._hConsole is None:
             try:
@@ -266,27 +287,35 @@ class UnicodeOutput(object):
                 # responsible for encoding the unicode to a byte string to
                 # write it to a Python file object.
                 if isinstance(text, unicode):
-                    text = text.encode('utf-8')
+                    text = text.encode("utf-8")
                 self._stream.write(text)
             else:
                 # There is a Windows console available.  That means Windows is
                 # responsible for dealing with the unicode itself.
                 if not isinstance(text, unicode):
-                    text = str(text).decode('utf-8')
+                    text = str(text).decode("utf-8")
                 remaining = len(text)
                 while remaining > 0:
                     n = DWORD(0)
                     # There is a shorter-than-documented limitation on the
                     # length of the string passed to WriteConsoleW (see
                     # #1232).
-                    retval = WriteConsoleW(self._hConsole, text, min(remaining, 10000), byref(n), None)
+                    retval = WriteConsoleW(
+                        self._hConsole, text, min(remaining, 10000), byref(n), None
+                    )
                     if retval == 0:
-                        raise IOError("WriteConsoleW failed with WinError: %s" % (WinError(get_last_error()),))
+                        raise IOError(
+                            "WriteConsoleW failed with WinError: %s"
+                            % (WinError(get_last_error()),)
+                        )
                     if n.value == 0:
-                        raise IOError("WriteConsoleW returned %r, n.value = 0" % (retval,))
+                        raise IOError(
+                            "WriteConsoleW returned %r, n.value = 0" % (retval,)
+                        )
                     remaining -= n.value
-                    if remaining == 0: break
-                    text = text[n.value:]
+                    if remaining == 0:
+                        break
+                    text = text[n.value :]
         except Exception as e:
             self._complain("%s.write: %r" % (self.name, e))
             raise

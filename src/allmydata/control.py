@@ -6,8 +6,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import os, time, tempfile
 from zope.interface import implementer
@@ -21,53 +44,61 @@ from allmydata.immutable import upload
 from allmydata.mutable.publish import MutableData
 from twisted.python import log
 
+
 def get_memory_usage():
     # this is obviously linux-specific
-    stat_names = (b"VmPeak",
-                  b"VmSize",
-                  #b"VmHWM",
-                  b"VmData")
+    stat_names = (
+        b"VmPeak",
+        b"VmSize",
+        # b"VmHWM",
+        b"VmData",
+    )
     stats = {}
     try:
         with open("/proc/self/status", "rb") as f:
             for line in f:
-                name, right = line.split(b":",2)
+                name, right = line.split(b":", 2)
                 if name in stat_names:
                     assert right.endswith(b" kB\n")
                     right = right[:-4]
                     stats[name] = int(right) * 1024
     except:
         # Probably not on (a compatible version of) Linux
-        stats['VmSize'] = 0
-        stats['VmPeak'] = 0
+        stats["VmSize"] = 0
+        stats["VmPeak"] = 0
     return stats
+
 
 def log_memory_usage(where=""):
     stats = get_memory_usage()
-    log.msg("VmSize: %9d  VmPeak: %9d  %s" % (stats[b"VmSize"],
-                                              stats[b"VmPeak"],
-                                              where))
+    log.msg(
+        "VmSize: %9d  VmPeak: %9d  %s" % (stats[b"VmSize"], stats[b"VmPeak"], where)
+    )
+
 
 @implementer(IConsumer)
 class FileWritingConsumer(object):
     def __init__(self, filename):
         self.done = False
         self.f = open(filename, "wb")
+
     def registerProducer(self, p, streaming):
         if streaming:
             p.resumeProducing()
         else:
             while not self.done:
                 p.resumeProducing()
+
     def write(self, data):
         self.f.write(data)
+
     def unregisterProducer(self):
         self.done = True
         self.f.close()
 
+
 @implementer(RIControlClient)
 class ControlServer(Referenceable, service.Service):
-
     def remote_wait_for_client_connections(self, num_clients):
         return self.parent.debug_wait_for_client_connections(num_clients)
 
@@ -86,10 +117,12 @@ class ControlServer(Referenceable, service.Service):
         # XXX should pass reactor arg
         d = uploader.upload(u)
         d.addCallback(lambda results: results.get_uri())
+
         def _done(uri):
             os.remove(filename)
             os.rmdir(tempdir)
             return uri
+
         d.addCallback(_done)
         return d
 
@@ -101,17 +134,18 @@ class ControlServer(Referenceable, service.Service):
             raise AssertionError("The URI does not reference a file.")
         c = FileWritingConsumer(filename)
         d = filenode.read(c)
+
         def _done(res):
             os.remove(filename)
             os.rmdir(tempdir)
             return None
+
         d.addCallback(_done)
         return d
 
     def remote_speed_test(self, count, size, mutable):
         assert size > 8
-        log.msg("speed_test: count=%d, size=%d, mutable=%s" % (count, size,
-                                                               mutable))
+        log.msg("speed_test: count=%d, size=%d, mutable=%s" % (count, size, mutable))
         st = SpeedTest(self.parent, count, size, mutable)
         return st.run()
 
@@ -129,6 +163,7 @@ class ControlServer(Referenceable, service.Service):
         everyone = list(everyone) * num_pings
         d = self._do_one_ping(None, everyone, results)
         return d
+
     def _do_one_ping(self, res, everyone_left, results):
         if not everyone_left:
             return results
@@ -137,6 +172,7 @@ class ControlServer(Referenceable, service.Service):
         storage_server = server.get_storage_server()
         start = time.time()
         d = storage_server.get_buckets(b"\x00" * 16)
+
         def _done(ignored):
             stop = time.time()
             elapsed = stop - start
@@ -144,15 +180,19 @@ class ControlServer(Referenceable, service.Service):
                 results[server_name].append(elapsed)
             else:
                 results[server_name] = [elapsed]
+
         d.addCallback(_done)
         d.addCallback(self._do_one_ping, everyone_left, results)
+
         def _average(res):
             averaged = {}
-            for server_name,times in results.items():
+            for server_name, times in results.items():
                 averaged[server_name] = sum(times) / len(times)
             return averaged
+
         d.addCallback(_average)
         return d
+
 
 class SpeedTest(object):
     def __init__(self, parent, count, size, mutable):
@@ -189,30 +229,37 @@ class SpeedTest(object):
 
     def do_upload(self):
         d = defer.succeed(None)
+
         def _create_slot(res):
             d1 = self.parent.create_mutable_file(b"")
+
             def _created(n):
                 self._n = n
+
             d1.addCallback(_created)
             return d1
+
         if self.mutable_mode == "upload":
             d.addCallback(_create_slot)
+
         def _start(res):
             self._start = time.time()
+
         d.addCallback(_start)
 
         def _record_uri(uri, i):
             self.uris[i] = uri
+
         def _upload_one_file(ignored, i):
             if i >= self.count:
                 return
             fn = os.path.join(self.basedir, str(i))
             if self.mutable_mode == "create":
-                data = open(fn,"rb").read()
+                data = open(fn, "rb").read()
                 d1 = self.parent.create_mutable_file(data)
                 d1.addCallback(lambda n: n.get_uri())
             elif self.mutable_mode == "upload":
-                data = open(fn,"rb").read()
+                data = open(fn, "rb").read()
                 d1 = self._n.overwrite(MutableData(data))
                 d1.addCallback(lambda res: self._n.get_uri())
             else:
@@ -220,18 +267,22 @@ class SpeedTest(object):
                 d1 = self.parent.upload(up)
                 d1.addCallback(lambda results: results.get_uri())
             d1.addCallback(_record_uri, i)
-            d1.addCallback(_upload_one_file, i+1)
+            d1.addCallback(_upload_one_file, i + 1)
             return d1
+
         d.addCallback(_upload_one_file, 0)
+
         def _upload_done(ignored):
             stop = time.time()
             self.upload_time = stop - self._start
+
         d.addCallback(_upload_done)
         return d
 
     def do_download(self):
         start = time.time()
         d = defer.succeed(None)
+
         def _download_one_file(ignored, i):
             if i >= self.count:
                 return
@@ -242,12 +293,15 @@ class SpeedTest(object):
                 d1 = n.download_best_version()
             else:
                 d1 = n.read(DiscardingConsumer())
-            d1.addCallback(_download_one_file, i+1)
+            d1.addCallback(_download_one_file, i + 1)
             return d1
+
         d.addCallback(_download_one_file, 0)
+
         def _download_done(ignored):
             stop = time.time()
             self.download_time = stop - start
+
         d.addCallback(_download_done)
         return d
 
@@ -257,17 +311,21 @@ class SpeedTest(object):
             os.unlink(fn)
         return res
 
+
 @implementer(IConsumer)
 class DiscardingConsumer(object):
     def __init__(self):
         self.done = False
+
     def registerProducer(self, p, streaming):
         if streaming:
             p.resumeProducing()
         else:
             while not self.done:
                 p.resumeProducing()
+
     def write(self, data):
         pass
+
     def unregisterProducer(self):
         self.done = True

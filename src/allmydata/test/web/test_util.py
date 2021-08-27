@@ -7,8 +7,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 from twisted.trial import unittest
 from allmydata.web import status, common
@@ -16,13 +39,12 @@ from allmydata.dirnode import ONLY_FILES
 from ..common import ShouldFailMixin
 from .. import common_util as testutil
 
-class Util(ShouldFailMixin, testutil.ReallyEqualMixin, unittest.TestCase):
 
+class Util(ShouldFailMixin, testutil.ReallyEqualMixin, unittest.TestCase):
     def test_parse_replace_arg(self):
         self.failUnlessReallyEqual(common.parse_replace_arg(b"true"), True)
         self.failUnlessReallyEqual(common.parse_replace_arg(b"false"), False)
-        self.failUnlessReallyEqual(common.parse_replace_arg(b"only-files"),
-                                   ONLY_FILES)
+        self.failUnlessReallyEqual(common.parse_replace_arg(b"only-files"), ONLY_FILES)
         self.failUnlessRaises(common.WebError, common.parse_replace_arg, b"only_fles")
 
     def test_abbreviate_time(self):
@@ -53,13 +75,15 @@ class Util(ShouldFailMixin, testutil.ReallyEqualMixin, unittest.TestCase):
         self.failUnlessReallyEqual(common.compute_rate(250000, 0), None)
         self.failUnlessReallyEqual(common.compute_rate(250000, 10), 25000.0)
         self.failUnlessReallyEqual(common.compute_rate(0, 10), 0.0)
-        self.shouldFail(AssertionError, "test_compute_rate", "",
-                        common.compute_rate, -100, 10)
-        self.shouldFail(AssertionError, "test_compute_rate", "",
-                        common.compute_rate, 100, -10)
+        self.shouldFail(
+            AssertionError, "test_compute_rate", "", common.compute_rate, -100, 10
+        )
+        self.shouldFail(
+            AssertionError, "test_compute_rate", "", common.compute_rate, 100, -10
+        )
 
         # Sanity check
-        rate = common.compute_rate(10*1000*1000, 1)
+        rate = common.compute_rate(10 * 1000 * 1000, 1)
         self.failUnlessReallyEqual(common.abbreviate_rate(rate), "10.00MBps")
 
     def test_abbreviate_rate(self):
@@ -73,19 +97,24 @@ class Util(ShouldFailMixin, testutil.ReallyEqualMixin, unittest.TestCase):
 
     def test_abbreviate_size(self):
         self.failUnlessReallyEqual(common.abbreviate_size(None), "")
-        self.failUnlessReallyEqual(common.abbreviate_size(1.23*1000*1000*1000), "1.23GB")
-        self.failUnlessReallyEqual(common.abbreviate_size(1.23*1000*1000), "1.23MB")
+        self.failUnlessReallyEqual(
+            common.abbreviate_size(1.23 * 1000 * 1000 * 1000), "1.23GB"
+        )
+        self.failUnlessReallyEqual(common.abbreviate_size(1.23 * 1000 * 1000), "1.23MB")
         self.failUnlessReallyEqual(common.abbreviate_size(1230), "1.2kB")
         self.failUnlessReallyEqual(common.abbreviate_size(123), "123B")
 
     def test_plural(self):
         def convert(s):
             return "%d second%s" % (s, status.plural(s))
+
         self.failUnlessReallyEqual(convert(0), "0 seconds")
         self.failUnlessReallyEqual(convert(1), "1 second")
         self.failUnlessReallyEqual(convert(2), "2 seconds")
+
         def convert2(s):
             return "has share%s: %s" % (status.plural(s), ",".join(s))
+
         self.failUnlessReallyEqual(convert2([]), "has shares: ")
         self.failUnlessReallyEqual(convert2(["1"]), "has share: 1")
-        self.failUnlessReallyEqual(convert2(["1","2"]), "has shares: 1,2")
+        self.failUnlessReallyEqual(convert2(["1", "2"]), "has shares: 1,2")

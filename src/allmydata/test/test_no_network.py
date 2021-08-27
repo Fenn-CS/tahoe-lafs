@@ -9,8 +9,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 from twisted.trial import unittest
 from twisted.application import service
@@ -21,6 +44,7 @@ from allmydata.util.consumer import download_to_data
 from .common import (
     SameProcessStreamEndpointAssigner,
 )
+
 
 class Harness(unittest.TestCase):
     def setUp(self):
@@ -55,12 +79,16 @@ class Harness(unittest.TestCase):
         DATA = b"Data to upload" * 100
         data = Data(DATA, b"")
         d = c0.upload(data)
+
         def _uploaded(res):
             n = c0.create_node_from_uri(res.get_uri())
             return download_to_data(n)
+
         d.addCallback(_uploaded)
+
         def _check(res):
             self.failUnlessEqual(res, DATA)
+
         d.addCallback(_check)
 
         return d

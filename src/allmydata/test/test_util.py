@@ -8,9 +8,31 @@ from __future__ import division
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
     # open is not here because we want to use native strings on Py2
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 import six
 import os, time, sys
 import yaml
@@ -35,18 +57,19 @@ if six.PY3:
 
 class IDLib(unittest.TestCase):
     def test_nodeid_b2a(self):
-        result = idlib.nodeid_b2a(b"\x00"*20)
-        self.assertEqual(result, "a"*32)
+        result = idlib.nodeid_b2a(b"\x00" * 20)
+        self.assertEqual(result, "a" * 32)
         self.assertIsInstance(result, str)
 
 
 class MyList(list):
     pass
 
+
 class Math(unittest.TestCase):
     def test_round_sigfigs(self):
         f = mathutil.round_sigfigs
-        self.failUnlessEqual(f(22.0/3, 4), 7.3330000000000002)
+        self.failUnlessEqual(f(22.0 / 3, 4), 7.3330000000000002)
 
 
 class FileUtil(ReallyEqualMixin, unittest.TestCase):
@@ -95,9 +118,9 @@ class FileUtil(ReallyEqualMixin, unittest.TestCase):
         fn = os.path.join(basedir, "here")
         fileutil.remove_if_possible(fn)
         self.failIf(os.path.exists(fn))
-        fileutil.remove_if_possible(fn) # should be idempotent
+        fileutil.remove_if_possible(fn)  # should be idempotent
         fileutil.rm_dir(basedir)
-        fileutil.remove_if_possible(fn) # should survive errors
+        fileutil.remove_if_possible(fn)  # should survive errors
 
     def test_write_atomically(self):
         basedir = "util/FileUtil/test_write_atomically"
@@ -105,7 +128,7 @@ class FileUtil(ReallyEqualMixin, unittest.TestCase):
         fn = os.path.join(basedir, "here")
         fileutil.write_atomically(fn, b"one", "b")
         self.failUnlessEqual(fileutil.read(fn), b"one")
-        fileutil.write_atomically(fn, u"two", mode="") # non-binary
+        fileutil.write_atomically(fn, "two", mode="")  # non-binary
         self.failUnlessEqual(fileutil.read(fn), b"two")
 
     def test_rename(self):
@@ -119,25 +142,31 @@ class FileUtil(ReallyEqualMixin, unittest.TestCase):
         self.failUnless(os.path.exists(fn2))
 
     def test_rename_no_overwrite(self):
-        workdir = fileutil.abspath_expanduser_unicode(u"test_rename_no_overwrite")
+        workdir = fileutil.abspath_expanduser_unicode("test_rename_no_overwrite")
         fileutil.make_dirs(workdir)
 
         source_path = os.path.join(workdir, "source")
-        dest_path   = os.path.join(workdir, "dest")
+        dest_path = os.path.join(workdir, "dest")
 
         # when neither file exists
-        self.failUnlessRaises(OSError, fileutil.rename_no_overwrite, source_path, dest_path)
+        self.failUnlessRaises(
+            OSError, fileutil.rename_no_overwrite, source_path, dest_path
+        )
 
         # when only dest exists
-        fileutil.write(dest_path,   b"dest")
-        self.failUnlessRaises(OSError, fileutil.rename_no_overwrite, source_path, dest_path)
-        self.failUnlessEqual(fileutil.read(dest_path),   b"dest")
+        fileutil.write(dest_path, b"dest")
+        self.failUnlessRaises(
+            OSError, fileutil.rename_no_overwrite, source_path, dest_path
+        )
+        self.failUnlessEqual(fileutil.read(dest_path), b"dest")
 
         # when both exist
         fileutil.write(source_path, b"source")
-        self.failUnlessRaises(OSError, fileutil.rename_no_overwrite, source_path, dest_path)
+        self.failUnlessRaises(
+            OSError, fileutil.rename_no_overwrite, source_path, dest_path
+        )
         self.failUnlessEqual(fileutil.read(source_path), b"source")
-        self.failUnlessEqual(fileutil.read(dest_path),   b"dest")
+        self.failUnlessEqual(fileutil.read(dest_path), b"dest")
 
         # when only source exists
         os.remove(dest_path)
@@ -146,18 +175,28 @@ class FileUtil(ReallyEqualMixin, unittest.TestCase):
         self.failIf(os.path.exists(source_path))
 
     def test_replace_file(self):
-        workdir = fileutil.abspath_expanduser_unicode(u"test_replace_file")
+        workdir = fileutil.abspath_expanduser_unicode("test_replace_file")
         fileutil.make_dirs(workdir)
 
-        replaced_path    = os.path.join(workdir, "replaced")
+        replaced_path = os.path.join(workdir, "replaced")
         replacement_path = os.path.join(workdir, "replacement")
 
         # when none of the files exist
-        self.failUnlessRaises(fileutil.ConflictError, fileutil.replace_file, replaced_path, replacement_path)
+        self.failUnlessRaises(
+            fileutil.ConflictError,
+            fileutil.replace_file,
+            replaced_path,
+            replacement_path,
+        )
 
         # when only replaced exists
-        fileutil.write(replaced_path,   b"foo")
-        self.failUnlessRaises(fileutil.ConflictError, fileutil.replace_file, replaced_path, replacement_path)
+        fileutil.write(replaced_path, b"foo")
+        self.failUnlessRaises(
+            fileutil.ConflictError,
+            fileutil.replace_file,
+            replaced_path,
+            replacement_path,
+        )
         self.failUnlessEqual(fileutil.read(replaced_path), b"foo")
 
         # when both replaced and replacement exist
@@ -178,99 +217,120 @@ class FileUtil(ReallyEqualMixin, unittest.TestCase):
         fileutil.make_dirs(basedir)
         d = os.path.join(basedir, "space-consuming")
         self.mkdir(d, "a/b")
-        self.touch(d, "a/b/1.txt", data="a"*10)
-        self.touch(d, "a/b/2.txt", data="b"*11)
+        self.touch(d, "a/b/1.txt", data="a" * 10)
+        self.touch(d, "a/b/2.txt", data="b" * 11)
         self.mkdir(d, "a/c")
-        self.touch(d, "a/c/1.txt", data="c"*12)
-        self.touch(d, "a/c/2.txt", data="d"*13)
+        self.touch(d, "a/c/1.txt", data="c" * 12)
+        self.touch(d, "a/c/2.txt", data="d" * 13)
 
         used = fileutil.du(basedir)
-        self.failUnlessEqual(10+11+12+13, used)
+        self.failUnlessEqual(10 + 11 + 12 + 13, used)
 
     def test_abspath_expanduser_unicode(self):
-        self.failUnlessRaises(AssertionError, fileutil.abspath_expanduser_unicode, b"bytestring")
+        self.failUnlessRaises(
+            AssertionError, fileutil.abspath_expanduser_unicode, b"bytestring"
+        )
 
         saved_cwd = os.path.normpath(os.getcwd())
         if PY2:
             saved_cwd = saved_cwd.decode("utf8")
-        abspath_cwd = fileutil.abspath_expanduser_unicode(u".")
-        abspath_cwd_notlong = fileutil.abspath_expanduser_unicode(u".", long_path=False)
+        abspath_cwd = fileutil.abspath_expanduser_unicode(".")
+        abspath_cwd_notlong = fileutil.abspath_expanduser_unicode(".", long_path=False)
         self.failUnless(isinstance(saved_cwd, str), saved_cwd)
         self.failUnless(isinstance(abspath_cwd, str), abspath_cwd)
         if sys.platform == "win32":
-            self.failUnlessReallyEqual(abspath_cwd, fileutil.to_windows_long_path(saved_cwd))
+            self.failUnlessReallyEqual(
+                abspath_cwd, fileutil.to_windows_long_path(saved_cwd)
+            )
         else:
             self.failUnlessReallyEqual(abspath_cwd, saved_cwd)
         self.failUnlessReallyEqual(abspath_cwd_notlong, saved_cwd)
 
-        self.failUnlessReallyEqual(fileutil.to_windows_long_path(u"\\\\?\\foo"), u"\\\\?\\foo")
-        self.failUnlessReallyEqual(fileutil.to_windows_long_path(u"\\\\.\\foo"), u"\\\\.\\foo")
-        self.failUnlessReallyEqual(fileutil.to_windows_long_path(u"\\\\server\\foo"), u"\\\\?\\UNC\\server\\foo")
-        self.failUnlessReallyEqual(fileutil.to_windows_long_path(u"C:\\foo"), u"\\\\?\\C:\\foo")
-        self.failUnlessReallyEqual(fileutil.to_windows_long_path(u"C:\\foo/bar"), u"\\\\?\\C:\\foo\\bar")
+        self.failUnlessReallyEqual(
+            fileutil.to_windows_long_path("\\\\?\\foo"), "\\\\?\\foo"
+        )
+        self.failUnlessReallyEqual(
+            fileutil.to_windows_long_path("\\\\.\\foo"), "\\\\.\\foo"
+        )
+        self.failUnlessReallyEqual(
+            fileutil.to_windows_long_path("\\\\server\\foo"), "\\\\?\\UNC\\server\\foo"
+        )
+        self.failUnlessReallyEqual(
+            fileutil.to_windows_long_path("C:\\foo"), "\\\\?\\C:\\foo"
+        )
+        self.failUnlessReallyEqual(
+            fileutil.to_windows_long_path("C:\\foo/bar"), "\\\\?\\C:\\foo\\bar"
+        )
 
         # adapted from <http://svn.python.org/view/python/branches/release26-maint/Lib/test/test_posixpath.py?view=markup&pathrev=78279#test_abspath>
 
-        foo = fileutil.abspath_expanduser_unicode(u"foo")
-        self.failUnless(foo.endswith(u"%sfoo" % (os.path.sep,)), foo)
+        foo = fileutil.abspath_expanduser_unicode("foo")
+        self.failUnless(foo.endswith("%sfoo" % (os.path.sep,)), foo)
 
-        foobar = fileutil.abspath_expanduser_unicode(u"bar", base=foo)
-        self.failUnless(foobar.endswith(u"%sfoo%sbar" % (os.path.sep, os.path.sep)), foobar)
+        foobar = fileutil.abspath_expanduser_unicode("bar", base=foo)
+        self.failUnless(
+            foobar.endswith("%sfoo%sbar" % (os.path.sep, os.path.sep)), foobar
+        )
 
         if sys.platform == "win32":
             # This is checking that a drive letter is added for a path without one.
-            baz = fileutil.abspath_expanduser_unicode(u"\\baz")
-            self.failUnless(baz.startswith(u"\\\\?\\"), baz)
-            self.failUnlessReallyEqual(baz[5 :], u":\\baz")
+            baz = fileutil.abspath_expanduser_unicode("\\baz")
+            self.failUnless(baz.startswith("\\\\?\\"), baz)
+            self.failUnlessReallyEqual(baz[5:], ":\\baz")
 
-            bar = fileutil.abspath_expanduser_unicode(u"\\bar", base=baz)
-            self.failUnless(bar.startswith(u"\\\\?\\"), bar)
-            self.failUnlessReallyEqual(bar[5 :], u":\\bar")
+            bar = fileutil.abspath_expanduser_unicode("\\bar", base=baz)
+            self.failUnless(bar.startswith("\\\\?\\"), bar)
+            self.failUnlessReallyEqual(bar[5:], ":\\bar")
             # not u":\\baz\\bar", because \bar is absolute on the current drive.
 
             self.failUnlessReallyEqual(baz[4], bar[4])  # same drive
 
-            baz_notlong = fileutil.abspath_expanduser_unicode(u"\\baz", long_path=False)
-            self.failIf(baz_notlong.startswith(u"\\\\?\\"), baz_notlong)
-            self.failUnlessReallyEqual(baz_notlong[1 :], u":\\baz")
+            baz_notlong = fileutil.abspath_expanduser_unicode("\\baz", long_path=False)
+            self.failIf(baz_notlong.startswith("\\\\?\\"), baz_notlong)
+            self.failUnlessReallyEqual(baz_notlong[1:], ":\\baz")
 
-            bar_notlong = fileutil.abspath_expanduser_unicode(u"\\bar", base=baz_notlong, long_path=False)
-            self.failIf(bar_notlong.startswith(u"\\\\?\\"), bar_notlong)
-            self.failUnlessReallyEqual(bar_notlong[1 :], u":\\bar")
+            bar_notlong = fileutil.abspath_expanduser_unicode(
+                "\\bar", base=baz_notlong, long_path=False
+            )
+            self.failIf(bar_notlong.startswith("\\\\?\\"), bar_notlong)
+            self.failUnlessReallyEqual(bar_notlong[1:], ":\\bar")
             # not u":\\baz\\bar", because \bar is absolute on the current drive.
 
             self.failUnlessReallyEqual(baz_notlong[0], bar_notlong[0])  # same drive
 
-        self.failIfIn(u"~", fileutil.abspath_expanduser_unicode(u"~"))
-        self.failIfIn(u"~", fileutil.abspath_expanduser_unicode(u"~", long_path=False))
+        self.failIfIn("~", fileutil.abspath_expanduser_unicode("~"))
+        self.failIfIn("~", fileutil.abspath_expanduser_unicode("~", long_path=False))
 
-        cwds = ['cwd']
+        cwds = ["cwd"]
         try:
-            cwds.append(u'\xe7w\xf0'.encode(sys.getfilesystemencoding()
-                                            or 'ascii'))
+            cwds.append("\xe7w\xf0".encode(sys.getfilesystemencoding() or "ascii"))
         except UnicodeEncodeError:
-            pass # the cwd can't be encoded -- test with ascii cwd only
+            pass  # the cwd can't be encoded -- test with ascii cwd only
 
         for cwd in cwds:
             try:
                 os.mkdir(cwd)
                 os.chdir(cwd)
-                for upath in (u'', u'fuu', u'f\xf9\xf9', u'/fuu', u'U:\\', u'~'):
+                for upath in ("", "fuu", "f\xf9\xf9", "/fuu", "U:\\", "~"):
                     uabspath = fileutil.abspath_expanduser_unicode(upath)
                     self.failUnless(isinstance(uabspath, str), uabspath)
 
-                    uabspath_notlong = fileutil.abspath_expanduser_unicode(upath, long_path=False)
+                    uabspath_notlong = fileutil.abspath_expanduser_unicode(
+                        upath, long_path=False
+                    )
                     self.failUnless(isinstance(uabspath_notlong, str), uabspath_notlong)
             finally:
                 os.chdir(saved_cwd)
 
     def test_make_dirs_with_absolute_mode(self):
-        if sys.platform == 'win32':
+        if sys.platform == "win32":
             raise unittest.SkipTest("Permissions don't work the same on windows.")
 
-        workdir = fileutil.abspath_expanduser_unicode(u"test_make_dirs_with_absolute_mode")
+        workdir = fileutil.abspath_expanduser_unicode(
+            "test_make_dirs_with_absolute_mode"
+        )
         fileutil.make_dirs(workdir)
-        abspath = fileutil.abspath_expanduser_unicode(u"a/b/c/d", base=workdir)
+        abspath = fileutil.abspath_expanduser_unicode("a/b/c/d", base=workdir)
         fileutil.make_dirs_with_absolute_mode(workdir, abspath, 0o766)
         new_mode = os.stat(os.path.join(workdir, "a", "b", "c", "d")).st_mode & 0o777
         self.failUnlessEqual(new_mode, 0o766)
@@ -293,7 +353,7 @@ class FileUtil(ReallyEqualMixin, unittest.TestCase):
         documents certain Windows-specific path length limitations this test
         is specifically intended to demonstrate can be overcome.
         """
-        workdir = u"test_create_long_path"
+        workdir = "test_create_long_path"
         fileutil.make_dirs(workdir)
         base_path = fileutil.abspath_expanduser_unicode(workdir)
         base_length = len(base_path)
@@ -307,10 +367,11 @@ class FileUtil(ReallyEqualMixin, unittest.TestCase):
         # clear there's anything we can *do* about lower limits, though, and
         # POSIX.1-2017 (and earlier) only requires that the maximum be at
         # least 14 (!!!)  bytes.
-        long_path = os.path.join(base_path, u'x' * (261 - base_length))
+        long_path = os.path.join(base_path, "x" * (261 - base_length))
 
         def _cleanup():
             fileutil.remove(long_path)
+
         self.addCleanup(_cleanup)
 
         fileutil.write(long_path, b"test")
@@ -321,43 +382,64 @@ class FileUtil(ReallyEqualMixin, unittest.TestCase):
 
     def _test_windows_expanduser(self, userprofile=None, homedrive=None, homepath=None):
         def call_windows_getenv(name):
-            if name == u"USERPROFILE": return userprofile
-            if name == u"HOMEDRIVE":   return homedrive
-            if name == u"HOMEPATH":    return homepath
+            if name == "USERPROFILE":
+                return userprofile
+            if name == "HOMEDRIVE":
+                return homedrive
+            if name == "HOMEPATH":
+                return homepath
             self.fail("unexpected argument to call_windows_getenv")
-        self.patch(fileutil, 'windows_getenv', call_windows_getenv)
 
-        self.failUnlessReallyEqual(fileutil.windows_expanduser(u"~"), os.path.join(u"C:", u"\\Documents and Settings\\\u0100"))
-        self.failUnlessReallyEqual(fileutil.windows_expanduser(u"~\\foo"), os.path.join(u"C:", u"\\Documents and Settings\\\u0100", u"foo"))
-        self.failUnlessReallyEqual(fileutil.windows_expanduser(u"~/foo"), os.path.join(u"C:", u"\\Documents and Settings\\\u0100", u"foo"))
-        self.failUnlessReallyEqual(fileutil.windows_expanduser(u"a"), u"a")
-        self.failUnlessReallyEqual(fileutil.windows_expanduser(u"a~"), u"a~")
-        self.failUnlessReallyEqual(fileutil.windows_expanduser(u"a\\~\\foo"), u"a\\~\\foo")
+        self.patch(fileutil, "windows_getenv", call_windows_getenv)
+
+        self.failUnlessReallyEqual(
+            fileutil.windows_expanduser("~"),
+            os.path.join("C:", "\\Documents and Settings\\\u0100"),
+        )
+        self.failUnlessReallyEqual(
+            fileutil.windows_expanduser("~\\foo"),
+            os.path.join("C:", "\\Documents and Settings\\\u0100", "foo"),
+        )
+        self.failUnlessReallyEqual(
+            fileutil.windows_expanduser("~/foo"),
+            os.path.join("C:", "\\Documents and Settings\\\u0100", "foo"),
+        )
+        self.failUnlessReallyEqual(fileutil.windows_expanduser("a"), "a")
+        self.failUnlessReallyEqual(fileutil.windows_expanduser("a~"), "a~")
+        self.failUnlessReallyEqual(
+            fileutil.windows_expanduser("a\\~\\foo"), "a\\~\\foo"
+        )
 
     def test_windows_expanduser_xp(self):
-        return self._test_windows_expanduser(homedrive=u"C:", homepath=u"\\Documents and Settings\\\u0100")
+        return self._test_windows_expanduser(
+            homedrive="C:", homepath="\\Documents and Settings\\\u0100"
+        )
 
     def test_windows_expanduser_win7(self):
-        return self._test_windows_expanduser(userprofile=os.path.join(u"C:", u"\\Documents and Settings\\\u0100"))
+        return self._test_windows_expanduser(
+            userprofile=os.path.join("C:", "\\Documents and Settings\\\u0100")
+        )
 
     def test_disk_stats(self):
-        avail = fileutil.get_available_space('.', 2**14)
+        avail = fileutil.get_available_space(".", 2 ** 14)
         if avail == 0:
-            raise unittest.SkipTest("This test will spuriously fail there is no disk space left.")
+            raise unittest.SkipTest(
+                "This test will spuriously fail there is no disk space left."
+            )
 
-        disk = fileutil.get_disk_stats('.', 2**13)
-        self.failUnless(disk['total'] > 0, disk['total'])
+        disk = fileutil.get_disk_stats(".", 2 ** 13)
+        self.failUnless(disk["total"] > 0, disk["total"])
         # we tolerate used==0 for a Travis-CI bug, see #2290
-        self.failUnless(disk['used'] >= 0, disk['used'])
-        self.failUnless(disk['free_for_root'] > 0, disk['free_for_root'])
-        self.failUnless(disk['free_for_nonroot'] > 0, disk['free_for_nonroot'])
-        self.failUnless(disk['avail'] > 0, disk['avail'])
+        self.failUnless(disk["used"] >= 0, disk["used"])
+        self.failUnless(disk["free_for_root"] > 0, disk["free_for_root"])
+        self.failUnless(disk["free_for_nonroot"] > 0, disk["free_for_nonroot"])
+        self.failUnless(disk["avail"] > 0, disk["avail"])
 
     def test_disk_stats_avail_nonnegative(self):
         # This test will spuriously fail if you have more than 2^128
         # bytes of available space on your filesystem.
-        disk = fileutil.get_disk_stats('.', 2**128)
-        self.failUnlessEqual(disk['avail'], 0)
+        disk = fileutil.get_disk_stats(".", 2 ** 128)
+        self.failUnlessEqual(disk["avail"], 0)
 
     def test_get_pathinfo(self):
         basedir = "util/FileUtil/test_get_pathinfo"
@@ -373,7 +455,7 @@ class FileUtil(ReallyEqualMixin, unittest.TestCase):
 
         # create a file
         f = os.path.join(basedir, "1.txt")
-        fileutil.write(f, b"a"*10)
+        fileutil.write(f, b"a" * 10)
         fileinfo = fileutil.get_pathinfo(f)
         self.failUnlessTrue(fileinfo.isfile)
         self.failUnlessTrue(fileinfo.exists)
@@ -394,14 +476,14 @@ class FileUtil(ReallyEqualMixin, unittest.TestCase):
         self.failUnlessEqual(dneinfo.ctime_ns, now_ns)
 
     def test_get_pathinfo_symlink(self):
-        if not hasattr(os, 'symlink'):
+        if not hasattr(os, "symlink"):
             raise unittest.SkipTest("can't create symlinks on this platform")
 
         basedir = "util/FileUtil/test_get_pathinfo"
         fileutil.make_dirs(basedir)
 
         f = os.path.join(basedir, "1.txt")
-        fileutil.write(f, b"a"*10)
+        fileutil.write(f, b"a" * 10)
 
         # create a symlink pointing to 1.txt
         slname = os.path.join(basedir, "linkto1.txt")
@@ -423,9 +505,9 @@ class FileUtil(ReallyEqualMixin, unittest.TestCase):
         fileutil.write(path, b"abc")
         with open(path, "rb") as f:
             self.assertEqual(f.read(), b"abc")
-        fileutil.write(path, u"def \u1234")
+        fileutil.write(path, "def \u1234")
         with open(path, "rb") as f:
-            self.assertEqual(f.read(), u"def \u1234".encode("utf-8"))
+            self.assertEqual(f.read(), "def \u1234".encode("utf-8"))
 
 
 class PollMixinTests(unittest.TestCase):
@@ -433,49 +515,61 @@ class PollMixinTests(unittest.TestCase):
         self.pm = pollmixin.PollMixin()
 
     def test_PollMixin_True(self):
-        d = self.pm.poll(check_f=lambda : True,
-                         pollinterval=0.1)
+        d = self.pm.poll(check_f=lambda: True, pollinterval=0.1)
         return d
 
     def test_PollMixin_False_then_True(self):
         i = iter([False, True])
-        d = self.pm.poll(check_f=lambda: next(i),
-                         pollinterval=0.1)
+        d = self.pm.poll(check_f=lambda: next(i), pollinterval=0.1)
         return d
 
     def test_timeout(self):
-        d = self.pm.poll(check_f=lambda: False,
-                         pollinterval=0.01,
-                         timeout=1)
+        d = self.pm.poll(check_f=lambda: False, pollinterval=0.01, timeout=1)
+
         def _suc(res):
             self.fail("poll should have failed, not returned %s" % (res,))
+
         def _err(f):
             f.trap(pollmixin.TimeoutError)
-            return None # success
+            return None  # success
+
         d.addCallbacks(_suc, _err)
         return d
 
 
 ctr = [0]
+
+
 class EqButNotIs(object):
     def __init__(self, x):
         self.x = x
         self.hash = ctr[0]
         ctr[0] += 1
+
     def __repr__(self):
-        return "<%s %s>" % (self.__class__.__name__, self.x,)
+        return "<%s %s>" % (
+            self.__class__.__name__,
+            self.x,
+        )
+
     def __hash__(self):
         return self.hash
+
     def __le__(self, other):
         return self.x <= other
+
     def __lt__(self, other):
         return self.x < other
+
     def __ge__(self, other):
         return self.x >= other
+
     def __gt__(self, other):
         return self.x > other
+
     def __ne__(self, other):
         return self.x != other
+
     def __eq__(self, other):
         return self.x == other
 
@@ -485,9 +579,7 @@ class YAML(unittest.TestCase):
         """
         Unicode and (ASCII) native strings get roundtripped to Unicode strings.
         """
-        data = yaml.safe_dump(
-            [six.ensure_str("str"), u"unicode", u"\u1234nicode"]
-        )
+        data = yaml.safe_dump([six.ensure_str("str"), "unicode", "\u1234nicode"])
         back = yamlutil.safe_load(data)
         self.assertIsInstance(back[0], str)
         self.assertIsInstance(back[1], str)
@@ -502,12 +594,12 @@ class JSONBytes(unittest.TestCase):
 
         Bytes are presumed to be UTF-8 encoded.
         """
-        snowman = u"def\N{SNOWMAN}\uFF00"
+        snowman = "def\N{SNOWMAN}\uFF00"
         data = {
             b"hello": [1, b"cd", {b"abc": [123, snowman.encode("utf-8")]}],
         }
         expected = {
-            u"hello": [1, u"cd", {u"abc": [123, snowman]}],
+            "hello": [1, "cd", {"abc": [123, snowman]}],
         }
         # Bytes get passed through as if they were UTF-8 Unicode:
         encoded = jsonbytes.dumps(data)
@@ -517,14 +609,14 @@ class JSONBytes(unittest.TestCase):
     def test_encode_unicode(self):
         """jsonbytes.dumps() encodes Unicode string as usual."""
         expected = {
-            u"hello": [1, u"cd"],
+            "hello": [1, "cd"],
         }
         encoded = jsonbytes.dumps(expected)
         self.assertEqual(json.loads(encoded), expected)
 
     def test_dumps_bytes(self):
         """jsonbytes.dumps_bytes always returns bytes."""
-        x = {u"def\N{SNOWMAN}\uFF00": 123}
+        x = {"def\N{SNOWMAN}\uFF00": 123}
         encoded = jsonbytes.dumps_bytes(x)
         self.assertIsInstance(encoded, bytes)
         self.assertEqual(json.loads(encoded), x)
@@ -549,15 +641,10 @@ class JSONBytes(unittest.TestCase):
             expected,
         )
         self.assertEqual(
-            json.loads(json.dumps(
-                o, cls=jsonbytes.AnyBytesJSONEncoder)),
+            json.loads(json.dumps(o, cls=jsonbytes.AnyBytesJSONEncoder)),
             expected,
         )
-        self.assertEqual(
-            json.loads(jsonbytes.dumps(o, any_bytes=True)),
-            expected
-        )
-
+        self.assertEqual(json.loads(jsonbytes.dumps(o, any_bytes=True)), expected)
 
 
 class FakeGetVersion(object):

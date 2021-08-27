@@ -10,11 +10,33 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 from future.utils import PY2, PY3
+
 if PY2:
     # Don't use future bytes, since it breaks tests. No further works is
     # needed, once we're only on Python 3 we'll be deleting this future imports
     # anyway, and tests pass just fine on Python 3.
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import time
 import os.path
@@ -29,31 +51,38 @@ from allmydata.storage.crawler import ShareCrawler, TimeSliceExceeded
 
 from allmydata.test.common_util import StallMixin, FakeCanary
 
+
 class BucketEnumeratingCrawler(ShareCrawler):
-    cpu_slice = 500 # make sure it can complete in a single slice
+    cpu_slice = 500  # make sure it can complete in a single slice
     slow_start = 0
+
     def __init__(self, *args, **kwargs):
         ShareCrawler.__init__(self, *args, **kwargs)
         self.all_buckets = []
         self.finished_d = defer.Deferred()
+
     def process_bucket(self, cycle, prefix, prefixdir, storage_index_b32):
         if PY3:
             # Bucket _inputs_ are bytes, and that's what we will compare this
             # to:
             storage_index_b32 = storage_index_b32.encode("ascii")
         self.all_buckets.append(storage_index_b32)
+
     def finished_cycle(self, cycle):
         eventually(self.finished_d.callback, None)
 
+
 class PacedCrawler(ShareCrawler):
-    cpu_slice = 500 # make sure it can complete in a single slice
+    cpu_slice = 500  # make sure it can complete in a single slice
     slow_start = 0
+
     def __init__(self, *args, **kwargs):
         ShareCrawler.__init__(self, *args, **kwargs)
         self.countdown = 6
         self.all_buckets = []
         self.finished_d = defer.Deferred()
         self.yield_cb = None
+
     def process_bucket(self, cycle, prefix, prefixdir, storage_index_b32):
         if PY3:
             # Bucket _inputs_ are bytes, and that's what we will compare this
@@ -64,12 +93,15 @@ class PacedCrawler(ShareCrawler):
         if self.countdown == 0:
             # force a timeout. We restore it in yielding()
             self.cpu_slice = -1.0
+
     def yielding(self, sleep_time):
         self.cpu_slice = 500
         if self.yield_cb:
             self.yield_cb()
+
     def finished_cycle(self, cycle):
         eventually(self.finished_d.callback, None)
+
 
 class ConsumingCrawler(ShareCrawler):
     cpu_slice = 0.5
@@ -82,29 +114,37 @@ class ConsumingCrawler(ShareCrawler):
         self.accumulated = 0.0
         self.cycles = 0
         self.last_yield = 0.0
+
     def process_bucket(self, cycle, prefix, prefixdir, storage_index_b32):
         start = time.time()
         time.sleep(0.05)
         elapsed = time.time() - start
         self.accumulated += elapsed
         self.last_yield += elapsed
+
     def finished_cycle(self, cycle):
         self.cycles += 1
+
     def yielding(self, sleep_time):
         self.last_yield = 0.0
 
+
 class OneShotCrawler(ShareCrawler):
-    cpu_slice = 500 # make sure it can complete in a single slice
+    cpu_slice = 500  # make sure it can complete in a single slice
     slow_start = 0
+
     def __init__(self, *args, **kwargs):
         ShareCrawler.__init__(self, *args, **kwargs)
         self.counter = 0
         self.finished_d = defer.Deferred()
+
     def process_bucket(self, cycle, prefix, prefixdir, storage_index_b32):
         self.counter += 1
+
     def finished_cycle(self, cycle):
         self.finished_d.callback(None)
         self.disownServiceParent()
+
 
 class Basic(unittest.TestCase, StallMixin, pollmixin.PollMixin):
     def setUp(self):
@@ -116,18 +156,19 @@ class Basic(unittest.TestCase, StallMixin, pollmixin.PollMixin):
 
     def si(self, i):
         return hashutil.storage_index_hash(b"%d" % (i,))
+
     def rs(self, i, serverid):
         return hashutil.bucket_renewal_secret_hash(b"%d" % (i,), serverid)
+
     def cs(self, i, serverid):
         return hashutil.bucket_cancel_secret_hash(b"%d" % (i,), serverid)
 
     def write(self, i, ss, serverid, tail=0):
         si = self.si(i)
         si = si[:-1] + bytes(bytearray((tail,)))
-        had,made = ss.remote_allocate_buckets(si,
-                                              self.rs(i, serverid),
-                                              self.cs(i, serverid),
-                                              set([0]), 99, FakeCanary())
+        had, made = ss.remote_allocate_buckets(
+            si, self.rs(i, serverid), self.cs(i, serverid), set([0]), 99, FakeCanary()
+        )
         made[0].remote_write(0, b"data")
         made[0].remote_close()
         return si_b2a(si)
@@ -142,7 +183,7 @@ class Basic(unittest.TestCase, StallMixin, pollmixin.PollMixin):
         sis = [self.write(i, ss, serverid) for i in range(10)]
         statefile = os.path.join(self.basedir, "statefile")
 
-        c = BucketEnumeratingCrawler(ss, statefile, allowed_cpu_percentage=.1)
+        c = BucketEnumeratingCrawler(ss, statefile, allowed_cpu_percentage=0.1)
         c.load_state()
 
         c.start_current_prefix(time.time())
@@ -184,8 +225,10 @@ class Basic(unittest.TestCase, StallMixin, pollmixin.PollMixin):
         self.failUnlessEqual(p["cycle-in-progress"], False)
 
         d = c.finished_d
+
         def _check(ignored):
             self.failUnlessEqual(sorted(sis), sorted(c.all_buckets))
+
         d.addCallback(_check)
         return d
 
@@ -217,7 +260,7 @@ class Basic(unittest.TestCase, StallMixin, pollmixin.PollMixin):
         c.cpu_slice = PacedCrawler.cpu_slice
         self.failUnlessEqual(len(c.all_buckets), 6)
 
-        c.start_current_prefix(time.time()) # finish it
+        c.start_current_prefix(time.time())  # finish it
         self.failUnlessEqual(len(sis), len(c.all_buckets))
         self.failUnlessEqual(sorted(sis), sorted(c.all_buckets))
 
@@ -265,7 +308,7 @@ class Basic(unittest.TestCase, StallMixin, pollmixin.PollMixin):
         c.save_state()
         c.cpu_slice = PacedCrawler.cpu_slice
         self.failUnlessEqual(len(c.all_buckets), 4)
-        c.start_current_prefix(time.time()) # finish it
+        c.start_current_prefix(time.time())  # finish it
         self.failUnlessEqual(len(sis), len(c.all_buckets))
         self.failUnlessEqual(sorted(sis), sorted(c.all_buckets))
         del c
@@ -304,6 +347,7 @@ class Basic(unittest.TestCase, StallMixin, pollmixin.PollMixin):
         c = PacedCrawler(ss, statefile)
 
         did_check_progress = [False]
+
         def check_progress():
             c.yield_cb = None
             try:
@@ -321,6 +365,7 @@ class Basic(unittest.TestCase, StallMixin, pollmixin.PollMixin):
                 did_check_progress[0] = e
             else:
                 did_check_progress[0] = True
+
         c.yield_cb = check_progress
 
         c.setServiceParent(self.s)
@@ -328,6 +373,7 @@ class Basic(unittest.TestCase, StallMixin, pollmixin.PollMixin):
         # run check_progress()), then resume
 
         d = c.finished_d
+
         def _check(ignored):
             if did_check_progress[0] is not True:
                 raise did_check_progress[0]
@@ -391,6 +437,7 @@ class Basic(unittest.TestCase, StallMixin, pollmixin.PollMixin):
 
         start = time.time()
         d = self.stall(delay=4.0)
+
         def _done(res):
             elapsed = time.time() - start
             percent = 100.0 * c.accumulated / elapsed
@@ -400,6 +447,7 @@ class Basic(unittest.TestCase, StallMixin, pollmixin.PollMixin):
             print()
             print("crawler: got %d%% percent when trying for 50%%" % percent)
             print("crawler: got %d full cycles" % c.cycles)
+
         d.addCallback(_done)
         return d
 
@@ -423,13 +471,15 @@ class Basic(unittest.TestCase, StallMixin, pollmixin.PollMixin):
 
         def _check():
             return bool(c.state["last-cycle-finished"] is not None)
+
         d = self.poll(_check)
+
         def _done(ignored):
             state = c.get_state()
             self.failUnless(state["last-cycle-finished"] is not None)
+
         d.addCallback(_done)
         return d
-
 
     def test_oneshot(self):
         self.basedir = "crawler/Basic/oneshot"
@@ -446,9 +496,12 @@ class Basic(unittest.TestCase, StallMixin, pollmixin.PollMixin):
         c.setServiceParent(self.s)
 
         d = c.finished_d
+
         def _finished_first_cycle(ignored):
             return fireEventually(c.counter)
+
         d.addCallback(_finished_first_cycle)
+
         def _check(old_counter):
             # the crawler should do any work after it's been stopped
             self.failUnlessEqual(old_counter, c.counter)
@@ -458,6 +511,6 @@ class Basic(unittest.TestCase, StallMixin, pollmixin.PollMixin):
             s = c.get_state()
             self.failUnlessEqual(s["last-cycle-finished"], 0)
             self.failUnlessEqual(s["current-cycle"], None)
+
         d.addCallback(_check)
         return d
-

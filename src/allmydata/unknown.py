@@ -6,18 +6,45 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 from zope.interface import implementer
 from twisted.internet import defer
-from allmydata.interfaces import IFilesystemNode, MustNotBeUnknownRWError, \
-    MustBeDeepImmutableError
+from allmydata.interfaces import (
+    IFilesystemNode,
+    MustNotBeUnknownRWError,
+    MustBeDeepImmutableError,
+)
 from allmydata import uri
 from allmydata.uri import ALLEGED_READONLY_PREFIX, ALLEGED_IMMUTABLE_PREFIX
 
 
 # See ticket #833 for design rationale of UnknownNodes.
+
 
 def strip_prefix_for_ro(ro_uri, deep_immutable):
     """Strip prefixes when storing an URI in a ro_uri slot."""
@@ -30,17 +57,18 @@ def strip_prefix_for_ro(ro_uri, deep_immutable):
     if ro_uri.startswith(ALLEGED_IMMUTABLE_PREFIX):
         if not deep_immutable:
             return ro_uri
-        return ro_uri[len(ALLEGED_IMMUTABLE_PREFIX):]
+        return ro_uri[len(ALLEGED_IMMUTABLE_PREFIX) :]
     elif ro_uri.startswith(ALLEGED_READONLY_PREFIX):
-        return ro_uri[len(ALLEGED_READONLY_PREFIX):]
+        return ro_uri[len(ALLEGED_READONLY_PREFIX) :]
     else:
         return ro_uri
 
+
 @implementer(IFilesystemNode)
 class UnknownNode(object):
-
-    def __init__(self, given_rw_uri, given_ro_uri, deep_immutable=False,
-                 name=u"<unknown name>"):
+    def __init__(
+        self, given_rw_uri, given_ro_uri, deep_immutable=False, name="<unknown name>"
+    ):
         assert given_rw_uri is None or isinstance(given_rw_uri, bytes)
         assert given_ro_uri is None or isinstance(given_ro_uri, bytes)
         given_rw_uri = given_rw_uri or None
@@ -57,33 +85,41 @@ class UnknownNode(object):
         self.rw_uri = self.ro_uri = None
         if given_rw_uri:
             if deep_immutable:
-                if given_rw_uri.startswith(ALLEGED_IMMUTABLE_PREFIX) and not given_ro_uri:
+                if (
+                    given_rw_uri.startswith(ALLEGED_IMMUTABLE_PREFIX)
+                    and not given_ro_uri
+                ):
                     # We needed an immutable cap, and were given one. It was given in the
                     # rw_uri slot, but that's fine; we'll move it to ro_uri below.
                     pass
                 elif not given_ro_uri:
-                    self.error = MustNotBeUnknownRWError("cannot attach unknown rw cap as immutable child",
-                                                         name, True)
+                    self.error = MustNotBeUnknownRWError(
+                        "cannot attach unknown rw cap as immutable child", name, True
+                    )
                     return  # node will be opaque
                 else:
                     # We could report either error, but this probably makes more sense.
-                    self.error = MustBeDeepImmutableError("cannot attach unknown rw cap as immutable child",
-                                                         name)
+                    self.error = MustBeDeepImmutableError(
+                        "cannot attach unknown rw cap as immutable child", name
+                    )
                     return  # node will be opaque
 
             if not given_ro_uri:
                 # We were given a single cap argument, or a rw_uri with no ro_uri.
 
-                if not (given_rw_uri.startswith(ALLEGED_READONLY_PREFIX)
-                        or given_rw_uri.startswith(ALLEGED_IMMUTABLE_PREFIX)):
+                if not (
+                    given_rw_uri.startswith(ALLEGED_READONLY_PREFIX)
+                    or given_rw_uri.startswith(ALLEGED_IMMUTABLE_PREFIX)
+                ):
                     # If the single cap is unprefixed, then we cannot tell whether it is a
                     # writecap, and we don't know how to diminish it to a readcap if it is one.
                     # If it didn't *already* have at least an ALLEGED_READONLY_PREFIX, then
                     # prefixing it would be a bad idea because we have been given no reason
                     # to believe that it is a readcap, so we might be letting a client
                     # inadvertently grant excess write authority.
-                    self.error = MustNotBeUnknownRWError("cannot attach unknown rw cap as child",
-                                                         name, False)
+                    self.error = MustNotBeUnknownRWError(
+                        "cannot attach unknown rw cap as child", name, False
+                    )
                     return  # node will be opaque
 
                 # OTOH, if the single cap already had a prefix (which is of the required
@@ -97,15 +133,19 @@ class UnknownNode(object):
             elif given_ro_uri.startswith(ALLEGED_IMMUTABLE_PREFIX):
                 # Strange corner case: we were given a cap in both slots, with the ro_uri
                 # alleged to be immutable. A real immutable object wouldn't have a writecap.
-                self.error = MustBeDeepImmutableError("cannot accept a child entry that specifies "
-                                                      "both rw_uri, and ro_uri with an imm. prefix",
-                                                      name)
+                self.error = MustBeDeepImmutableError(
+                    "cannot accept a child entry that specifies "
+                    "both rw_uri, and ro_uri with an imm. prefix",
+                    name,
+                )
                 return  # node will be opaque
 
         # If the ro_uri definitely fails the constraint, it should be treated as opaque and
         # the error recorded.
         if given_ro_uri:
-            read_cap = uri.from_string(given_ro_uri, deep_immutable=deep_immutable, name=name)
+            read_cap = uri.from_string(
+                given_ro_uri, deep_immutable=deep_immutable, name=name
+            )
             if isinstance(read_cap, uri.UnknownURI):
                 self.error = read_cap.get_error()
                 if self.error:
@@ -119,7 +159,10 @@ class UnknownNode(object):
                 if given_ro_uri.startswith(ALLEGED_IMMUTABLE_PREFIX):
                     self.ro_uri = given_ro_uri
                 elif given_ro_uri.startswith(ALLEGED_READONLY_PREFIX):
-                    self.ro_uri = ALLEGED_IMMUTABLE_PREFIX + given_ro_uri[len(ALLEGED_READONLY_PREFIX):]
+                    self.ro_uri = (
+                        ALLEGED_IMMUTABLE_PREFIX
+                        + given_ro_uri[len(ALLEGED_READONLY_PREFIX) :]
+                    )
                 else:
                     self.ro_uri = ALLEGED_IMMUTABLE_PREFIX + given_ro_uri
         else:
@@ -127,8 +170,9 @@ class UnknownNode(object):
             self.rw_uri = given_rw_uri
             # strengthen the constraint on ro_uri to ALLEGED_READONLY_PREFIX
             if given_ro_uri:
-                if (given_ro_uri.startswith(ALLEGED_READONLY_PREFIX) or
-                    given_ro_uri.startswith(ALLEGED_IMMUTABLE_PREFIX)):
+                if given_ro_uri.startswith(
+                    ALLEGED_READONLY_PREFIX
+                ) or given_ro_uri.startswith(ALLEGED_IMMUTABLE_PREFIX):
                     self.ro_uri = given_ro_uri
                 else:
                     self.ro_uri = ALLEGED_READONLY_PREFIX + given_ro_uri
@@ -140,12 +184,16 @@ class UnknownNode(object):
         return uri.UnknownURI(self.ro_uri)
 
     def is_readonly(self):
-        raise AssertionError("an UnknownNode might be either read-only or "
-                             "read/write, so we shouldn't be calling is_readonly")
+        raise AssertionError(
+            "an UnknownNode might be either read-only or "
+            "read/write, so we shouldn't be calling is_readonly"
+        )
 
     def is_mutable(self):
-        raise AssertionError("an UnknownNode might be either mutable or immutable, "
-                             "so we shouldn't be calling is_mutable")
+        raise AssertionError(
+            "an UnknownNode might be either mutable or immutable, "
+            "so we shouldn't be calling is_mutable"
+        )
 
     def is_unknown(self):
         return True
@@ -157,7 +205,11 @@ class UnknownNode(object):
         return not self.error and not self.rw_uri
 
     def is_alleged_immutable(self):
-        return not self.error and not self.rw_uri and (not self.ro_uri or self.ro_uri.startswith(ALLEGED_IMMUTABLE_PREFIX))
+        return (
+            not self.error
+            and not self.rw_uri
+            and (not self.ro_uri or self.ro_uri.startswith(ALLEGED_IMMUTABLE_PREFIX))
+        )
 
     def raise_error(self):
         if self.error is not None:

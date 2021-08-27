@@ -7,8 +7,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 __all__ = [
     "CLINodeAPI",
@@ -56,6 +79,7 @@ from ..util.eliotutil import (
     inline_callbacks,
     log_call_deferred,
 )
+
 
 class Expect(Protocol, object):
     def __init__(self):
@@ -114,11 +138,14 @@ class _ProcessProtocolAdapter(ProcessProtocol, object):
 def on_stdout(protocol):
     return _ProcessProtocolAdapter({1: protocol})
 
+
 def on_stdout_and_stderr(protocol):
     return _ProcessProtocolAdapter({1: protocol, 2: protocol})
 
+
 def on_different(fd_mapping):
     return _ProcessProtocolAdapter(fd_mapping)
+
 
 @attr.s
 class CLINodeAPI(object):
@@ -128,23 +155,23 @@ class CLINodeAPI(object):
 
     @property
     def twistd_pid_file(self):
-        return self.basedir.child(u"twistd.pid")
+        return self.basedir.child("twistd.pid")
 
     @property
     def node_url_file(self):
-        return self.basedir.child(u"node.url")
+        return self.basedir.child("node.url")
 
     @property
     def storage_furl_file(self):
-        return self.basedir.child(u"private").child(u"storage.furl")
+        return self.basedir.child("private").child("storage.furl")
 
     @property
     def introducer_furl_file(self):
-        return self.basedir.child(u"private").child(u"introducer.furl")
+        return self.basedir.child("private").child("introducer.furl")
 
     @property
     def config_file(self):
-        return self.basedir.child(u"tahoe.cfg")
+        return self.basedir.child("tahoe.cfg")
 
     @property
     def exit_trigger_file(self):
@@ -155,8 +182,8 @@ class CLINodeAPI(object):
         argv = [
             exe,
             "-b",
-            u"-m",
-            u"allmydata.scripts.runner",
+            "-m",
+            "allmydata.scripts.runner",
         ] + argv
         return self.reactor.spawnProcess(
             processProtocol=process_protocol,
@@ -177,7 +204,7 @@ class CLINodeAPI(object):
             raise TypeError("run requires process protocol, got {}".format(protocol))
         self.process = self._execute(
             protocol,
-            list(extra_tahoe_args) + [u"run", self.basedir.asTextMode().path],
+            list(extra_tahoe_args) + ["run", self.basedir.asTextMode().path],
         )
         # Don't let the process run away forever.
         try:

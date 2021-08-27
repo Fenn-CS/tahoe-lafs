@@ -10,9 +10,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
     # We omit dict, just in case newdict breaks things.
-    from builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, list, object, range, str, max, min  # noqa: F401
+    from builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 from copy import deepcopy
 from allmydata.immutable.happiness_upload import residual_network
@@ -23,34 +45,37 @@ def failure_message(peer_count, k, happy, effective_happy):
     # If peer_count < needed_shares, this error message makes more
     # sense than any of the others, so use it.
     if peer_count < k:
-        msg = ("shares could be placed or found on only %d "
-               "server(s). "
-               "We were asked to place shares on at least %d "
-               "server(s) such that any %d of them have "
-               "enough shares to recover the file." %
-                (peer_count, happy, k))
+        msg = (
+            "shares could be placed or found on only %d "
+            "server(s). "
+            "We were asked to place shares on at least %d "
+            "server(s) such that any %d of them have "
+            "enough shares to recover the file." % (peer_count, happy, k)
+        )
     # Otherwise, if we've placed on at least needed_shares
     # peers, but there isn't an x-happy subset of those peers
     # for x >= needed_shares, we use this error message.
     elif effective_happy < k:
-        msg = ("shares could be placed or found on %d "
-               "server(s), but they are not spread out evenly "
-               "enough to ensure that any %d of these servers "
-               "would have enough shares to recover the file. "
-               "We were asked to place "
-               "shares on at least %d servers such that any "
-               "%d of them have enough shares to recover the "
-               "file." %
-                (peer_count, k, happy, k))
+        msg = (
+            "shares could be placed or found on %d "
+            "server(s), but they are not spread out evenly "
+            "enough to ensure that any %d of these servers "
+            "would have enough shares to recover the file. "
+            "We were asked to place "
+            "shares on at least %d servers such that any "
+            "%d of them have enough shares to recover the "
+            "file." % (peer_count, k, happy, k)
+        )
     # Otherwise, if there is an x-happy subset of peers where
     # x >= needed_shares, but x < servers_of_happiness, then
     # we use this message.
     else:
-        msg = ("shares could be placed on only %d server(s) "
-               "such that any %d of them have enough shares "
-               "to recover the file, but we were asked to "
-               "place shares on at least %d such servers." %
-                (effective_happy, k, happy))
+        msg = (
+            "shares could be placed on only %d server(s) "
+            "such that any %d of them have enough shares "
+            "to recover the file, but we were asked to "
+            "place shares on at least %d such servers." % (effective_happy, k, happy)
+        )
     return msg
 
 
@@ -68,6 +93,7 @@ def shares_by_server(servermap):
             ret.setdefault(peerid, set()).add(shareid)
     return ret
 
+
 def merge_servers(servermap, upload_trackers=None):
     """
     I accept a dict of shareid -> set(serverid) mappings, and optionally a
@@ -83,8 +109,8 @@ def merge_servers(servermap, upload_trackers=None):
     if not upload_trackers:
         return servermap
 
-    assert(isinstance(servermap, dict))
-    assert(isinstance(upload_trackers, set))
+    assert isinstance(servermap, dict)
+    assert isinstance(upload_trackers, set)
 
     for tracker in upload_trackers:
         for shnum in tracker.buckets:
@@ -171,8 +197,7 @@ def servers_of_happiness(sharemap):
         for (u, v) in path:
             flow_function[u][v] += delta
             flow_function[v][u] -= delta
-        residual_graph, residual_function = residual_network(graph,
-                                                             flow_function)
+        residual_graph, residual_function = residual_network(graph, flow_function)
     num_servers = len(servermap)
     # The value of a flow is the total flow out of the source vertex
     # (vertex 0, in our graph). We could just as well sum across all of
@@ -180,7 +205,8 @@ def servers_of_happiness(sharemap):
     # our graph, so we can stop after summing flow across those. The
     # value of a flow computed in this way is the size of a maximum
     # matching on the bipartite graph described above.
-    return sum([flow_function[0][v] for v in range(1, num_servers+1)])
+    return sum([flow_function[0][v] for v in range(1, num_servers + 1)])
+
 
 def _flow_network_for(servermap):
     """
@@ -206,7 +232,7 @@ def _flow_network_for(servermap):
     # can add a source node at index 0.
     servermap, num_shares = _reindex(servermap, base_index=1)
     num_servers = len(servermap)
-    graph = [] # index -> [index], an adjacency list
+    graph = []  # index -> [index], an adjacency list
     # Add an entry at the top (index 0) that has an edge to every server
     # in servermap
     graph.append(list(servermap.keys()))
@@ -232,9 +258,9 @@ def _reindex(servermap, base_index):
     number of distinct shares in the resulting servermap as a convenience
     for my caller. base_index tells me where to start indexing.
     """
-    shares  = {} # shareid  -> vertex index
+    shares = {}  # shareid  -> vertex index
     num = base_index
-    ret = {} # peerid -> [shareid], a reindexed servermap.
+    ret = {}  # peerid -> [shareid], a reindexed servermap.
     # Number the servers first
     for k in servermap:
         ret[num] = servermap[k]

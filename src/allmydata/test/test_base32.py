@@ -9,8 +9,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import base64
 
@@ -24,7 +47,6 @@ from allmydata.util import base32
 
 
 class Base32(unittest.TestCase):
-
     @given(input_bytes=st.binary(max_size=100))
     def test_a2b_b2a_match_Pythons(self, input_bytes):
         encoded = base32.b2a(input_bytes)

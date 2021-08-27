@@ -9,8 +9,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import os, shutil
 from twisted.trial import unittest
@@ -29,8 +52,10 @@ from allmydata.interfaces import NotEnoughSharesError
 immutable_plaintext = b"data" * 10000
 mutable_plaintext = b"muta" * 10000
 
-class HungServerDownloadTest(GridTestMixin, ShouldFailMixin, PollMixin,
-                             unittest.TestCase):
+
+class HungServerDownloadTest(
+    GridTestMixin, ShouldFailMixin, PollMixin, unittest.TestCase
+):
     def _break(self, servers):
         for (id, ss) in servers:
             self.g.break_server(id)
@@ -82,8 +107,7 @@ class HungServerDownloadTest(GridTestMixin, ShouldFailMixin, PollMixin,
         shutil.copy(sharefile, new_sharefile)
         self.shares = self.find_uri_shares(self.uri)
         # Make sure that the storage server has the share.
-        self.failUnless((sharenum, ss.original.my_nodeid, new_sharefile)
-                        in self.shares)
+        self.failUnless((sharenum, ss.original.my_nodeid, new_sharefile) in self.shares)
 
     def _corrupt_share(self, share, corruptor_func):
         (sharenum, sharefile) = share
@@ -105,23 +129,31 @@ class HungServerDownloadTest(GridTestMixin, ShouldFailMixin, PollMixin,
 
         self.c0 = self.g.clients[0]
         nm = self.c0.nodemaker
-        self.servers = sorted([(s.get_serverid(), s.get_rref())
-                               for s in nm.storage_broker.get_connected_servers()])
+        self.servers = sorted(
+            [
+                (s.get_serverid(), s.get_rref())
+                for s in nm.storage_broker.get_connected_servers()
+            ]
+        )
         self.servers = self.servers[5:] + self.servers[:5]
 
         if mutable:
             uploadable = MutableData(mutable_plaintext)
             d = nm.create_mutable_file(uploadable)
+
             def _uploaded_mutable(node):
                 self.uri = node.get_uri()
                 self.shares = self.find_uri_shares(self.uri)
+
             d.addCallback(_uploaded_mutable)
         else:
             data = upload.Data(immutable_plaintext, convergence=b"")
             d = self.c0.upload(data)
+
             def _uploaded_immutable(upload_res):
                 self.uri = upload_res.get_uri()
                 self.shares = self.find_uri_shares(self.uri)
+
             d.addCallback(_uploaded_immutable)
         return d
 
@@ -153,34 +185,55 @@ class HungServerDownloadTest(GridTestMixin, ShouldFailMixin, PollMixin,
 
     def _should_fail_download(self):
         if self.mutable:
-            return self.shouldFail(UnrecoverableFileError, self.basedir,
-                                   "no recoverable versions",
-                                   self._download_and_check)
+            return self.shouldFail(
+                UnrecoverableFileError,
+                self.basedir,
+                "no recoverable versions",
+                self._download_and_check,
+            )
         else:
-            return self.shouldFail(NotEnoughSharesError, self.basedir,
-                                   "ran out of shares",
-                                   self._download_and_check)
-
+            return self.shouldFail(
+                NotEnoughSharesError,
+                self.basedir,
+                "ran out of shares",
+                self._download_and_check,
+            )
 
     def test_10_good_sanity_check(self):
         d = defer.succeed(None)
         for mutable in [False, True]:
-            d.addCallback(lambda ign, mutable=mutable: self._set_up(mutable, "test_10_good_sanity_check"))
+            d.addCallback(
+                lambda ign, mutable=mutable: self._set_up(
+                    mutable, "test_10_good_sanity_check"
+                )
+            )
             d.addCallback(lambda ign: self._download_and_check())
         return d
 
     def test_10_good_copied_share(self):
         d = defer.succeed(None)
         for mutable in [False, True]:
-            d.addCallback(lambda ign, mutable=mutable: self._set_up(mutable, "test_10_good_copied_share"))
-            d.addCallback(lambda ign: self._copy_all_shares_from(self.servers[2:3], self.servers[0]))
+            d.addCallback(
+                lambda ign, mutable=mutable: self._set_up(
+                    mutable, "test_10_good_copied_share"
+                )
+            )
+            d.addCallback(
+                lambda ign: self._copy_all_shares_from(
+                    self.servers[2:3], self.servers[0]
+                )
+            )
             d.addCallback(lambda ign: self._download_and_check())
             return d
 
     def test_3_good_7_noshares(self):
         d = defer.succeed(None)
         for mutable in [False, True]:
-            d.addCallback(lambda ign, mutable=mutable: self._set_up(mutable, "test_3_good_7_noshares"))
+            d.addCallback(
+                lambda ign, mutable=mutable: self._set_up(
+                    mutable, "test_3_good_7_noshares"
+                )
+            )
             d.addCallback(lambda ign: self._delete_all_shares_from(self.servers[3:]))
             d.addCallback(lambda ign: self._download_and_check())
         return d
@@ -188,7 +241,11 @@ class HungServerDownloadTest(GridTestMixin, ShouldFailMixin, PollMixin,
     def test_2_good_8_broken_fail(self):
         d = defer.succeed(None)
         for mutable in [False, True]:
-            d.addCallback(lambda ign, mutable=mutable: self._set_up(mutable, "test_2_good_8_broken_fail"))
+            d.addCallback(
+                lambda ign, mutable=mutable: self._set_up(
+                    mutable, "test_2_good_8_broken_fail"
+                )
+            )
             d.addCallback(lambda ign: self._break(self.servers[2:]))
             d.addCallback(lambda ign: self._should_fail_download())
         return d
@@ -196,7 +253,11 @@ class HungServerDownloadTest(GridTestMixin, ShouldFailMixin, PollMixin,
     def test_2_good_8_noshares_fail(self):
         d = defer.succeed(None)
         for mutable in [False, True]:
-            d.addCallback(lambda ign, mutable=mutable: self._set_up(mutable, "test_2_good_8_noshares_fail"))
+            d.addCallback(
+                lambda ign, mutable=mutable: self._set_up(
+                    mutable, "test_2_good_8_noshares_fail"
+                )
+            )
             d.addCallback(lambda ign: self._delete_all_shares_from(self.servers[2:]))
             d.addCallback(lambda ign: self._should_fail_download())
         return d
@@ -204,8 +265,16 @@ class HungServerDownloadTest(GridTestMixin, ShouldFailMixin, PollMixin,
     def test_2_good_8_broken_copied_share(self):
         d = defer.succeed(None)
         for mutable in [False, True]:
-            d.addCallback(lambda ign, mutable=mutable: self._set_up(mutable, "test_2_good_8_broken_copied_share"))
-            d.addCallback(lambda ign: self._copy_all_shares_from(self.servers[2:3], self.servers[0]))
+            d.addCallback(
+                lambda ign, mutable=mutable: self._set_up(
+                    mutable, "test_2_good_8_broken_copied_share"
+                )
+            )
+            d.addCallback(
+                lambda ign: self._copy_all_shares_from(
+                    self.servers[2:3], self.servers[0]
+                )
+            )
             d.addCallback(lambda ign: self._break(self.servers[2:]))
             d.addCallback(lambda ign: self._download_and_check())
         return d
@@ -213,8 +282,16 @@ class HungServerDownloadTest(GridTestMixin, ShouldFailMixin, PollMixin,
     def test_2_good_8_broken_duplicate_share_fail(self):
         d = defer.succeed(None)
         for mutable in [False, True]:
-            d.addCallback(lambda ign, mutable=mutable: self._set_up(mutable, "test_2_good_8_broken_duplicate_share_fail"))
-            d.addCallback(lambda ign: self._copy_all_shares_from(self.servers[1:2], self.servers[0]))
+            d.addCallback(
+                lambda ign, mutable=mutable: self._set_up(
+                    mutable, "test_2_good_8_broken_duplicate_share_fail"
+                )
+            )
+            d.addCallback(
+                lambda ign: self._copy_all_shares_from(
+                    self.servers[1:2], self.servers[0]
+                )
+            )
             d.addCallback(lambda ign: self._break(self.servers[2:]))
             d.addCallback(lambda ign: self._should_fail_download())
         return d
@@ -235,6 +312,7 @@ class HungServerDownloadTest(GridTestMixin, ShouldFailMixin, PollMixin,
         # timing out.
         done = []
         d = self._set_up(False, "test_5_overdue_immutable")
+
         def _reduce_max_outstanding_requests_and_download(ign):
             # we need to hang the first 5 servers, so we have to
             # figure out where the shares were placed.
@@ -250,20 +328,26 @@ class HungServerDownloadTest(GridTestMixin, ShouldFailMixin, PollMixin,
             d2 = download_to_data(n)
             # start download, but don't wait for it to complete yet
             def _done(res):
-                done.append(res) # we will poll for this later
+                done.append(res)  # we will poll for this later
+
             d2.addBoth(_done)
+
         d.addCallback(_reduce_max_outstanding_requests_and_download)
         from foolscap.eventual import fireEventually, flushEventualQueue
+
         # wait here a while
         d.addCallback(lambda res: fireEventually(res))
         d.addCallback(lambda res: flushEventualQueue())
         d.addCallback(lambda ign: self.failIf(done))
+
         def _check_waiting(ign):
             # all the share requests should now be stuck waiting
             self.failUnlessEqual(len(self._sf.pending_requests), 5)
             # but none should be marked as OVERDUE until the timers expire
             self.failUnlessEqual(len(self._sf.overdue_requests), 0)
+
         d.addCallback(_check_waiting)
+
         def _mark_overdue(ign):
             # declare four requests overdue, allowing new requests to take
             # their place, and leaving one stuck. The finder will keep
@@ -278,20 +362,27 @@ class HungServerDownloadTest(GridTestMixin, ShouldFailMixin, PollMixin,
                 t.reset(-1.0)
             # the timers ought to fire before the eventual-send does
             return fireEventually()
+
         d.addCallback(_mark_overdue)
+
         def _we_are_done():
             return bool(done)
+
         d.addCallback(lambda ign: self.poll(_we_are_done))
+
         def _check_done(ign):
             self.failUnlessEqual(done, [immutable_plaintext])
             self.failUnlessEqual(len(self._sf.pending_requests), 5)
             self.failUnlessEqual(len(self._sf.overdue_requests), 4)
+
         d.addCallback(_check_done)
         return d
 
     def test_2_good_8_hung_then_1_recovers_immutable(self):
         d = defer.succeed(None)
-        d.addCallback(lambda ign: self._set_up(False, "test_2_good_8_hung_then_1_recovers"))
+        d.addCallback(
+            lambda ign: self._set_up(False, "test_2_good_8_hung_then_1_recovers")
+        )
         d.addCallback(lambda ign: self._hang(self.servers[2:3]))
         d.addCallback(lambda ign: self._hang(self.servers[3:]))
         d.addCallback(lambda ign: self._unhang(self.servers[2:3]))
@@ -300,8 +391,14 @@ class HungServerDownloadTest(GridTestMixin, ShouldFailMixin, PollMixin,
 
     def test_2_good_8_hung_then_1_recovers_with_2_shares_immutable(self):
         d = defer.succeed(None)
-        d.addCallback(lambda ign: self._set_up(False, "test_2_good_8_hung_then_1_recovers_with_2_shares"))
-        d.addCallback(lambda ign: self._copy_all_shares_from(self.servers[0:1], self.servers[2]))
+        d.addCallback(
+            lambda ign: self._set_up(
+                False, "test_2_good_8_hung_then_1_recovers_with_2_shares"
+            )
+        )
+        d.addCallback(
+            lambda ign: self._copy_all_shares_from(self.servers[0:1], self.servers[2])
+        )
         d.addCallback(lambda ign: self._hang(self.servers[2:3]))
         d.addCallback(lambda ign: self._hang(self.servers[3:]))
         d.addCallback(lambda ign: self._unhang(self.servers[2:3]))
@@ -323,7 +420,9 @@ class HungServerDownloadTest(GridTestMixin, ShouldFailMixin, PollMixin,
     def test_2_good_8_hung_then_1_recovers_mutable(self):
         raise unittest.SkipTest("still broken")
         d = defer.succeed(None)
-        d.addCallback(lambda ign: self._set_up(True, "test_2_good_8_hung_then_1_recovers"))
+        d.addCallback(
+            lambda ign: self._set_up(True, "test_2_good_8_hung_then_1_recovers")
+        )
         d.addCallback(lambda ign: self._hang(self.servers[2:3]))
         d.addCallback(lambda ign: self._hang(self.servers[3:]))
         d.addCallback(lambda ign: self._unhang(self.servers[2:3]))
@@ -333,8 +432,14 @@ class HungServerDownloadTest(GridTestMixin, ShouldFailMixin, PollMixin,
     def test_2_good_8_hung_then_1_recovers_with_2_shares_mutable(self):
         raise unittest.SkipTest("still broken")
         d = defer.succeed(None)
-        d.addCallback(lambda ign: self._set_up(True, "test_2_good_8_hung_then_1_recovers_with_2_shares"))
-        d.addCallback(lambda ign: self._copy_all_shares_from(self.servers[0:1], self.servers[2]))
+        d.addCallback(
+            lambda ign: self._set_up(
+                True, "test_2_good_8_hung_then_1_recovers_with_2_shares"
+            )
+        )
+        d.addCallback(
+            lambda ign: self._copy_all_shares_from(self.servers[0:1], self.servers[2])
+        )
         d.addCallback(lambda ign: self._hang(self.servers[2:3]))
         d.addCallback(lambda ign: self._hang(self.servers[3:]))
         d.addCallback(lambda ign: self._unhang(self.servers[2:3]))

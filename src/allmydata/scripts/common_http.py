@@ -7,14 +7,37 @@ from __future__ import division
 from __future__ import print_function
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import os
 from io import BytesIO
 from six.moves import urllib, http_client
 import six
-import allmydata # for __full_version__
+import allmydata  # for __full_version__
 
 from allmydata.util.encodingutil import quote_output
 from allmydata.scripts.common import TahoeError
@@ -25,25 +48,27 @@ def parse_url(url, defaultPort=None):
     url = url.strip()
     parsed = urllib.parse.urlparse(url)
     scheme = parsed[0]
-    path = urllib.parse.urlunparse(('','')+parsed[2:])
+    path = urllib.parse.urlunparse(("", "") + parsed[2:])
     if defaultPort is None:
-        if scheme == 'https':
+        if scheme == "https":
             defaultPort = 443
         else:
             defaultPort = 80
     host, port = parsed[1], defaultPort
-    if ':' in host:
-        host, port = host.split(':')
+    if ":" in host:
+        host, port = host.split(":")
         port = int(port)
     if path == "":
         path = "/"
     return scheme, host, port, path
+
 
 class BadResponse(object):
     def __init__(self, url, err):
         self.status = -1
         self.reason = "Error trying to connect to %s: %s" % (url, err)
         self.error = err
+
     def read(self, length=0):
         return ""
 
@@ -96,15 +121,23 @@ def do_http(method, url, body=b""):
 def format_http_success(resp):
     # ensure_text() shouldn't be necessary when Python 2 is dropped.
     return quote_output(
-        "%s %s" % (resp.status, six.ensure_text(resp.reason)),
-        quotemarks=False)
+        "%s %s" % (resp.status, six.ensure_text(resp.reason)), quotemarks=False
+    )
+
 
 def format_http_error(msg, resp):
     # ensure_text() shouldn't be necessary when Python 2 is dropped.
     return quote_output(
-        "%s: %s %s\n%s" % (msg, resp.status, six.ensure_text(resp.reason),
-                           six.ensure_text(resp.read())),
-        quotemarks=False)
+        "%s: %s %s\n%s"
+        % (
+            msg,
+            resp.status,
+            six.ensure_text(resp.reason),
+            six.ensure_text(resp.read()),
+        ),
+        quotemarks=False,
+    )
+
 
 def check_http_error(resp, stderr):
     if resp.status < 200 or resp.status >= 300:

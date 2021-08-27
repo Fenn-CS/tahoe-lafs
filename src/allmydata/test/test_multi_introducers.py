@@ -7,8 +7,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 from six import ensure_binary
 
 import os
@@ -20,28 +43,34 @@ from allmydata.util import yamlutil
 from allmydata.client import create_client
 from allmydata.scripts.create_node import write_node_config
 
-INTRODUCERS_CFG_FURLS=['furl1', 'furl2']
-INTRODUCERS_CFG_FURLS_COMMENTED="""introducers:
+INTRODUCERS_CFG_FURLS = ["furl1", "furl2"]
+INTRODUCERS_CFG_FURLS_COMMENTED = """introducers:
   'intro1': {furl: furl1}
 # 'intro2': {furl: furl4}
         """
 
-class MultiIntroTests(unittest.TestCase):
 
+class MultiIntroTests(unittest.TestCase):
     def setUp(self):
         # setup tahoe.cfg and basedir/private/introducers
         # create a custom tahoe.cfg
         self.basedir = os.path.dirname(self.mktemp())
         c = open(os.path.join(self.basedir, "tahoe.cfg"), "w")
-        config = {'hide-ip':False, 'listen': 'tcp',
-                  'port': None, 'location': None, 'hostname': 'example.net'}
+        config = {
+            "hide-ip": False,
+            "listen": "tcp",
+            "port": None,
+            "location": None,
+            "hostname": "example.net",
+        }
         write_node_config(c, config)
         c.write("[storage]\n")
         c.write("enabled = false\n")
         c.close()
-        os.mkdir(os.path.join(self.basedir,"private"))
-        self.yaml_path = FilePath(os.path.join(self.basedir, "private",
-                                               "introducers.yaml"))
+        os.mkdir(os.path.join(self.basedir, "private"))
+        self.yaml_path = FilePath(
+            os.path.join(self.basedir, "private", "introducers.yaml")
+        )
 
     @defer.inlineCallbacks
     def test_introducer_count(self):
@@ -50,9 +79,9 @@ class MultiIntroTests(unittest.TestCase):
         ``Client`` creates two introducer clients.
         """
         connections = {
-            'introducers': {
-                u'intro1':{ 'furl': 'furl1' },
-                u'intro2':{ 'furl': 'furl4' },
+            "introducers": {
+                "intro1": {"furl": "furl1"},
+                "intro2": {"furl": "furl4"},
             },
         }
         self.yaml_path.setContent(ensure_binary(yamlutil.safe_dump(connections)))
@@ -70,8 +99,13 @@ class MultiIntroTests(unittest.TestCase):
         """
         # create a custom tahoe.cfg
         c = open(os.path.join(self.basedir, "tahoe.cfg"), "w")
-        config = {'hide-ip':False, 'listen': 'tcp',
-                  'port': None, 'location': None, 'hostname': 'example.net'}
+        config = {
+            "hide-ip": False,
+            "listen": "tcp",
+            "port": None,
+            "location": None,
+            "hostname": "example.net",
+        }
         write_node_config(c, config)
         fake_furl = "furl1"
         c.write("[client]\n")
@@ -89,12 +123,13 @@ class MultiIntroTests(unittest.TestCase):
         self.assertEqual(
             list(
                 warning["message"]
-                for warning
-                in self.flushWarnings()
+                for warning in self.flushWarnings()
                 if warning["category"] is DeprecationWarning
             ),
-            ["tahoe.cfg [client]introducer.furl is deprecated; "
-             "use private/introducers.yaml instead."],
+            [
+                "tahoe.cfg [client]introducer.furl is deprecated; "
+                "use private/introducers.yaml instead."
+            ],
         )
 
     @defer.inlineCallbacks
@@ -105,14 +140,13 @@ class MultiIntroTests(unittest.TestCase):
         introducers.yaml is rejected.
         """
         connections = {
-            'introducers': {
-                u'default': { 'furl': 'furl1' },
+            "introducers": {
+                "default": {"furl": "furl1"},
             },
         }
         self.yaml_path.setContent(ensure_binary(yamlutil.safe_dump(connections)))
         FilePath(self.basedir).child("tahoe.cfg").setContent(
-            b"[client]\n"
-            b"introducer.furl = furl1\n"
+            b"[client]\n" b"introducer.furl = furl1\n"
         )
 
         with self.assertRaises(ValueError) as ctx:
@@ -123,6 +157,7 @@ class MultiIntroTests(unittest.TestCase):
             "'default' introducer furl cannot be specified in tahoe.cfg and introducers.yaml; "
             "please fix impossible configuration.",
         )
+
 
 SIMPLE_YAML = b"""
 introducers:
@@ -138,38 +173,47 @@ introducers:
   one: furl = furl1
 """
 
+
 class NoDefault(unittest.TestCase):
     def setUp(self):
         # setup tahoe.cfg and basedir/private/introducers
         # create a custom tahoe.cfg
         self.basedir = os.path.dirname(self.mktemp())
         c = open(os.path.join(self.basedir, "tahoe.cfg"), "w")
-        config = {'hide-ip':False, 'listen': 'tcp',
-                  'port': None, 'location': None, 'hostname': 'example.net'}
+        config = {
+            "hide-ip": False,
+            "listen": "tcp",
+            "port": None,
+            "location": None,
+            "hostname": "example.net",
+        }
         write_node_config(c, config)
         c.write("[storage]\n")
         c.write("enabled = false\n")
         c.close()
-        os.mkdir(os.path.join(self.basedir,"private"))
-        self.yaml_path = FilePath(os.path.join(self.basedir, "private",
-                                               "introducers.yaml"))
+        os.mkdir(os.path.join(self.basedir, "private"))
+        self.yaml_path = FilePath(
+            os.path.join(self.basedir, "private", "introducers.yaml")
+        )
 
     @defer.inlineCallbacks
     def test_ok(self):
-        connections = {'introducers': {
-            u'one': { 'furl': 'furl1' },
-            }}
+        connections = {
+            "introducers": {
+                "one": {"furl": "furl1"},
+            }
+        }
         self.yaml_path.setContent(ensure_binary(yamlutil.safe_dump(connections)))
         myclient = yield create_client(self.basedir)
         tahoe_cfg_furl = myclient.introducer_clients[0].introducer_furl
-        self.assertEquals(tahoe_cfg_furl, b'furl1')
+        self.assertEquals(tahoe_cfg_furl, b"furl1")
 
     @defer.inlineCallbacks
     def test_real_yaml(self):
         self.yaml_path.setContent(SIMPLE_YAML)
         myclient = yield create_client(self.basedir)
         tahoe_cfg_furl = myclient.introducer_clients[0].introducer_furl
-        self.assertEquals(tahoe_cfg_furl, b'furl1')
+        self.assertEquals(tahoe_cfg_furl, b"furl1")
 
     @defer.inlineCallbacks
     def test_invalid_equals_yaml(self):
@@ -183,7 +227,7 @@ class NoDefault(unittest.TestCase):
 
     @defer.inlineCallbacks
     def test_introducerless(self):
-        connections = {'introducers': {} }
+        connections = {"introducers": {}}
         self.yaml_path.setContent(ensure_binary(yamlutil.safe_dump(connections)))
         myclient = yield create_client(self.basedir)
         self.assertEquals(len(myclient.introducer_clients), 0)

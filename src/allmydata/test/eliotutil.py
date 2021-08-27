@@ -13,8 +13,30 @@ from __future__ import unicode_literals
 # `exceptions.TypeError: <class 'future.types.newstr.newstr'> is not JSON-encodeable`
 from past.builtins import unicode as str
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        max,
+        min,
+    )  # noqa: F401
 
 from six import ensure_text
 
@@ -58,16 +80,16 @@ from ..util.jsonbytes import AnyBytesJSONEncoder
 
 
 _NAME = Field.for_types(
-    u"name",
+    "name",
     [str],
-    u"The name of the test.",
+    "The name of the test.",
 )
 
 RUN_TEST = ActionType(
-    u"run-test",
+    "run-test",
     [_NAME],
     [],
-    u"A test is run.",
+    "A test is run.",
 )
 
 
@@ -94,6 +116,7 @@ class EliotLoggedRunTest(object):
 
     :ivar _run_tests_with_factory: A factory for the other *RunTest*.
     """
+
     _run_tests_with_factory = attr.ib()
     case = attr.ib()
     handlers = attr.ib(default=None)
@@ -155,8 +178,8 @@ class EliotLoggedRunTest(object):
 
 
 def with_logging(
-        test_id,      # type: str
-        test_method,  # type: Callable
+    test_id,  # type: str
+    test_method,  # type: Callable
 ):
     """
     Decorate a test method with additional log-related behaviors.
@@ -168,6 +191,7 @@ def with_logging(
     :param test_id: The full identifier of the test being decorated.
     :param test_method: The method itself.
     """
+
     @wraps(test_method)
     def run_with_logging(*args, **kwargs):
         validating_logger = _memory_logger()
@@ -181,6 +205,7 @@ def with_logging(
                     check_for_errors(validating_logger)
         finally:
             swap_logger(original)
+
     return run_with_logging
 
 
@@ -194,13 +219,14 @@ class _TwoLoggers(object):
     of destinations.  That means this *is* useful to simultaneously write to
     the normal places and validate all written log messages.
     """
+
     def __init__(self, a, b):
         """
         :param ILogger a: One logger
         :param ILogger b: Another logger
         """
-        self._a = a # type: ILogger
-        self._b = b # type: ILogger
+        self._a = a  # type: ILogger
+        self._b = b  # type: ILogger
 
     def write(self, dictionary, serializer=None):
         self._a.write(dictionary, serializer)

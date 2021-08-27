@@ -10,27 +10,59 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 from future.utils import native_str
 
 import calendar, datetime, re, time
 
+
 def format_time(t):
     return time.strftime("%Y-%m-%d %H:%M:%S", t)
+
 
 def iso_utc_date(now=None, t=time.time):
     if now is None:
         now = t()
     return datetime.datetime.utcfromtimestamp(now).isoformat()[:10]
 
-def iso_utc(now=None, sep='_', t=time.time):
+
+def iso_utc(now=None, sep="_", t=time.time):
     if now is None:
         now = t()
     sep = native_str(sep)  # Python 2 doesn't allow unicode input to isoformat
     return datetime.datetime.utcfromtimestamp(now).isoformat(sep)
 
-def iso_utc_time_to_seconds(isotime, _conversion_re=re.compile(r"(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})[T_ ](?P<hour>\d{2}):(?P<minute>\d{2}):(?P<second>\d{2})(?P<subsecond>\.\d+)?")):
+
+def iso_utc_time_to_seconds(
+    isotime,
+    _conversion_re=re.compile(
+        r"(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})[T_ ](?P<hour>\d{2}):(?P<minute>\d{2}):(?P<second>\d{2})(?P<subsecond>\.\d+)?"
+    ),
+):
     """
     The inverse of iso_utc().
 
@@ -40,59 +72,68 @@ def iso_utc_time_to_seconds(isotime, _conversion_re=re.compile(r"(?P<year>\d{4})
     m = _conversion_re.match(isotime)
     if not m:
         raise ValueError(isotime, "not a complete ISO8601 timestamp")
-    year, month, day = int(m.group('year')), int(m.group('month')), int(m.group('day'))
-    hour, minute, second = int(m.group('hour')), int(m.group('minute')), int(m.group('second'))
-    subsecstr = m.group('subsecond')
+    year, month, day = int(m.group("year")), int(m.group("month")), int(m.group("day"))
+    hour, minute, second = (
+        int(m.group("hour")),
+        int(m.group("minute")),
+        int(m.group("second")),
+    )
+    subsecstr = m.group("subsecond")
     if subsecstr:
         subsecfloat = float(subsecstr)
     else:
         subsecfloat = 0
 
-    return calendar.timegm( (year, month, day, hour, minute, second, 0, 1, 0) ) + subsecfloat
+    return (
+        calendar.timegm((year, month, day, hour, minute, second, 0, 1, 0)) + subsecfloat
+    )
+
 
 def parse_duration(s):
     orig = s
     unit = None
-    DAY = 24*60*60
-    MONTH = 31*DAY
-    YEAR = 365*DAY
+    DAY = 24 * 60 * 60
+    MONTH = 31 * DAY
+    YEAR = 365 * DAY
     if s.endswith("s"):
         s = s[:-1]
     if s.endswith("day"):
         unit = DAY
-        s = s[:-len("day")]
+        s = s[: -len("day")]
     elif s.endswith("month"):
         unit = MONTH
-        s = s[:-len("month")]
+        s = s[: -len("month")]
     elif s.endswith("mo"):
         unit = MONTH
-        s = s[:-len("mo")]
+        s = s[: -len("mo")]
     elif s.endswith("year"):
         unit = YEAR
-        s = s[:-len("YEAR")]
+        s = s[: -len("YEAR")]
     else:
         raise ValueError("no unit (like day, month, or year) in '%s'" % orig)
     s = s.strip()
     return int(s) * unit
+
 
 def parse_date(s):
     # return seconds-since-epoch for the UTC midnight that starts the given
     # day
     return int(iso_utc_time_to_seconds(s + "T00:00:00"))
 
+
 def format_delta(time_1, time_2):
     if time_1 is None:
         return "N/A"
     if time_1 > time_2:
-        return '-'
+        return "-"
     delta = int(time_2 - time_1)
     seconds = delta % 60
-    delta  -= seconds
+    delta -= seconds
     minutes = (delta // 60) % 60
-    delta  -= minutes * 60
-    hours   = delta // (60*60) % 24
-    delta  -= hours * 24
-    days    = delta // (24*60*60)
+    delta -= minutes * 60
+    hours = delta // (60 * 60) % 24
+    delta -= hours * 24
+    days = delta // (24 * 60 * 60)
     if not days:
         if not hours:
             if not minutes:
@@ -103,4 +144,3 @@ def format_delta(time_1, time_2):
             return "%sh %sm %ss" % (hours, minutes, seconds)
     else:
         return "%sd %sh %sm %ss" % (days, hours, minutes, seconds)
-

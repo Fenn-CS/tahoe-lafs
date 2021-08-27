@@ -9,11 +9,33 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
     # IMPORTANT: We deliberately don't import dict. The issue is that we're
     # subclassing dict, so we'd end up exposing Python 3 dict APIs to lots of
     # code that doesn't support it.
-    from builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, list, object, range, str, max, min  # noqa: F401
+    from builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 from six import ensure_str
 
 
@@ -38,6 +60,7 @@ class DictOfSets(dict):
         if not self[key]:
             del self[key]
 
+
 class AuxValueDict(dict):
     """I behave like a regular dict, but each key is associated with two
     values: the main value, and an auxilliary one. Setting the main value
@@ -58,7 +81,7 @@ class AuxValueDict(dict):
 
     def __setitem__(self, key, value):
         super(AuxValueDict, self).__setitem__(key, value)
-        self.auxilliary[key] = None # clear the auxvalue
+        self.auxilliary[key] = None  # clear the auxvalue
 
     def __delitem__(self, key):
         super(AuxValueDict, self).__delitem__(key)
@@ -94,21 +117,22 @@ class _TypedKeyDict(dict):
         dict.__init__(self, *args, **kwargs)
         for key in self:
             if not isinstance(key, self.KEY_TYPE):
-                raise TypeError("{} must be of type {}".format(
-                    repr(key), self.KEY_TYPE))
+                raise TypeError(
+                    "{} must be of type {}".format(repr(key), self.KEY_TYPE)
+                )
 
 
 def _make_enforcing_override(K, method_name):
     def f(self, key, *args, **kwargs):
         if not isinstance(key, self.KEY_TYPE):
-            raise TypeError("{} must be of type {}".format(
-                repr(key), self.KEY_TYPE))
+            raise TypeError("{} must be of type {}".format(repr(key), self.KEY_TYPE))
         return getattr(dict, method_name)(self, key, *args, **kwargs)
+
     f.__name__ = ensure_str(method_name)
     setattr(K, method_name, f)
 
-for _method_name in ["__setitem__", "__getitem__", "setdefault", "get",
-                     "__delitem__"]:
+
+for _method_name in ["__setitem__", "__getitem__", "setdefault", "get", "__delitem__"]:
     _make_enforcing_override(_TypedKeyDict, _method_name)
 del _method_name
 
@@ -118,11 +142,11 @@ if PY2:
     # fine.
     BytesKeyDict = UnicodeKeyDict = dict
 else:
+
     class BytesKeyDict(_TypedKeyDict):
         """Keys should be bytes."""
 
         KEY_TYPE = bytes
-
 
     class UnicodeKeyDict(_TypedKeyDict):
         """Keys should be unicode strings."""

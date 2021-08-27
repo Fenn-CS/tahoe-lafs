@@ -7,8 +7,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 from zope.interface import implementer
 from twisted.internet import defer
@@ -17,23 +40,29 @@ from allmydata.mutable.publish import MutableData
 from allmydata.mutable.common import MODE_REPAIR
 from allmydata.mutable.servermap import ServerMap, ServermapUpdater
 
+
 @implementer(IRepairResults)
 class RepairResults(object):
-
     def __init__(self, smap):
         self.servermap = smap
+
     def set_successful(self, successful):
         self.successful = successful
+
     def get_successful(self):
         return self.successful
+
     def to_string(self):
         return ""
+
 
 class RepairRequiresWritecapError(Exception):
     """Repair currently requires a writecap."""
 
+
 class MustForceRepairError(Exception):
     pass
+
 
 class Repairer(object):
     def __init__(self, node, check_results, storage_broker, history, monitor):
@@ -73,8 +102,9 @@ class Repairer(object):
 
         # first, update the servermap in MODE_REPAIR, which files all shares
         # and makes sure we get the privkey.
-        u = ServermapUpdater(self.node, self._storage_broker, self._monitor,
-                             ServerMap(), MODE_REPAIR)
+        u = ServermapUpdater(
+            self.node, self._storage_broker, self._monitor, ServerMap(), MODE_REPAIR
+        )
         if self._history:
             self._history.notify_mapupdate(u.get_status())
         d = u.update()
@@ -91,18 +121,22 @@ class Repairer(object):
 
         if smap.unrecoverable_newer_versions():
             if not force:
-                raise MustForceRepairError("There were unrecoverable newer "
-                                           "versions, so force=True must be "
-                                           "passed to the repair() operation")
+                raise MustForceRepairError(
+                    "There were unrecoverable newer "
+                    "versions, so force=True must be "
+                    "passed to the repair() operation"
+                )
             # continuing on means that node.upload() will pick a seqnum that
             # is higher than everything visible in the servermap, effectively
             # discarding the unrecoverable versions.
         if smap.needs_merge():
             if not force:
-                raise MustForceRepairError("There were multiple recoverable "
-                                           "versions with identical seqnums, "
-                                           "so force=True must be passed to "
-                                           "the repair() operation")
+                raise MustForceRepairError(
+                    "There were multiple recoverable "
+                    "versions with identical seqnums, "
+                    "so force=True must be passed to "
+                    "the repair() operation"
+                )
             # continuing on means that smap.best_recoverable_version() will
             # pick the one with the highest roothash, and then node.upload()
             # will replace all shares with its contents
@@ -127,11 +161,12 @@ class Repairer(object):
         # say, added an smap.get_privkey() method.
 
         if not self.node.get_writekey():
-            raise RepairRequiresWritecapError("Sorry, repair currently requires a writecap, to set the write-enabler properly.")
+            raise RepairRequiresWritecapError(
+                "Sorry, repair currently requires a writecap, to set the write-enabler properly."
+            )
 
         d = self.node.download_version(smap, best_version, fetch_privkey=True)
-        d.addCallback(lambda data:
-            MutableData(data))
+        d.addCallback(lambda data: MutableData(data))
         d.addCallback(self.node.upload, smap)
         d.addCallback(self.get_results, smap)
         return d

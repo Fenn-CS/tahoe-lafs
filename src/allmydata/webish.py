@@ -7,8 +7,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 from six import ensure_str
 
@@ -48,6 +71,7 @@ from .web.storage_plugins import (
 if PY2:
     FileUploadFieldStorage = FieldStorage
 else:
+
     class FileUploadFieldStorage(FieldStorage):
         """
         Do terrible things to ensure files are still bytes.
@@ -66,6 +90,7 @@ else:
         Source for idea:
         https://mail.python.org/pipermail/python-dev/2017-February/147402.html
         """
+
         @property  # type: ignore
         def filename(self):
             if self.name == "file" and not self._mime_filename:
@@ -90,6 +115,7 @@ class TahoeLAFSRequest(Request, object):
         representation of the contents of the request body.  For anything
         else, ``None``.
     """
+
     fields = None
 
     def requestReceived(self, command, path, version):
@@ -106,7 +132,7 @@ class TahoeLAFSRequest(Request, object):
 
         self.method, self.uri = command, path
         self.clientproto = version
-        x = self.uri.split(b'?', 1)
+        x = self.uri.split(b"?", 1)
 
         if len(x) == 1:
             self.path = self.uri
@@ -114,25 +140,25 @@ class TahoeLAFSRequest(Request, object):
             self.path, argstring = x
             self.args = parse_qs(argstring, 1)
 
-        if self.method == b'POST':
+        if self.method == b"POST":
             # We use FieldStorage here because it performs better than
             # cgi.parse_multipart(self.content, pdict) which is what
             # twisted.web.http.Request uses.
 
             headers = {
                 ensure_str(name.lower()): ensure_str(value[-1])
-                for (name, value)
-                in self.requestHeaders.getAllRawHeaders()
+                for (name, value) in self.requestHeaders.getAllRawHeaders()
             }
 
-            if 'content-length' not in headers:
+            if "content-length" not in headers:
                 # Python 3's cgi module would really, really like us to set Content-Length.
                 self.content.seek(0, 2)
-                headers['content-length'] = str(self.content.tell())
+                headers["content-length"] = str(self.content.tell())
                 self.content.seek(0)
 
             self.fields = FileUploadFieldStorage(
-                self.content, headers, environ={'REQUEST_METHOD': 'POST'})
+                self.content, headers, environ={"REQUEST_METHOD": "POST"}
+            )
             self.content.seek(0)
 
         self._tahoeLAFSSecurityPolicy()
@@ -218,6 +244,7 @@ class TahoeLAFSSite(Site, object):
     * A log formatter that writes some access logs but omits capability
       strings to help keep them secret.
     """
+
     requestFactory = TahoeLAFSRequest
 
     def __init__(self, tempdir, *args, **kwargs):
@@ -233,8 +260,16 @@ class TahoeLAFSSite(Site, object):
 class WebishServer(service.MultiService):
     name = "webish"
 
-    def __init__(self, client, webport, tempdir, nodeurl_path=None, staticdir=None,
-                 clock=None, now_fn=time.time):
+    def __init__(
+        self,
+        client,
+        webport,
+        tempdir,
+        nodeurl_path=None,
+        staticdir=None,
+        clock=None,
+        now_fn=time.time,
+    ):
         service.MultiService.__init__(self)
         # the 'data' argument to all render() methods default to the Client
         # the 'clock' argument to root.Root is, if set, a
@@ -256,11 +291,11 @@ class WebishServer(service.MultiService):
     def buildServer(self, webport, tempdir, nodeurl_path, staticdir):
         self.webport = webport
         self.site = TahoeLAFSSite(tempdir, self.root)
-        self.staticdir = staticdir # so tests can check
+        self.staticdir = staticdir  # so tests can check
         if staticdir:
             self.root.putChild(b"static", static.File(staticdir))
-        if re.search(r'^\d', webport):
-            webport = "tcp:"+webport # twisted warns about bare "0" or "3456"
+        if re.search(r"^\d", webport):
+            webport = "tcp:" + webport  # twisted warns about bare "0" or "3456"
         # strports must be native strings.
         webport = ensure_str(webport)
         s = strports.service(webport, self.site)
@@ -269,14 +304,16 @@ class WebishServer(service.MultiService):
         self._scheme = None
         self._portnum = None
         self._url = None
-        self._listener = s # stash it so we can query for the portnum
+        self._listener = s  # stash it so we can query for the portnum
 
         self._started = defer.Deferred()
         if nodeurl_path:
+
             def _write_nodeurl_file(ign):
                 # this file will be created with default permissions
                 line = self.getURL() + "\n"
                 fileutil.write_atomically(nodeurl_path, line, mode="")
+
             self._started.addCallback(_write_nodeurl_file)
 
     def getURL(self):
@@ -295,32 +332,37 @@ class WebishServer(service.MultiService):
             self._url = "%s://127.0.0.1:%d/" % (self._scheme, self._portnum)
             self._started.callback(None)
             return lp
+
         def _fail(f):
             self._started.errback(f)
             return f
 
         service.MultiService.startService(self)
         s = self._listener
-        if hasattr(s, 'endpoint') and hasattr(s, '_waitingForPort'):
+        if hasattr(s, "endpoint") and hasattr(s, "_waitingForPort"):
             # Twisted 10.2 gives us a StreamServerEndpointService. This is
             # ugly but should do for now.
             classname = s.endpoint.__class__.__name__
-            if classname.startswith('SSL'):
-                self._scheme = 'https'
+            if classname.startswith("SSL"):
+                self._scheme = "https"
             else:
-                self._scheme = 'http'
+                self._scheme = "http"
             s._waitingForPort.addCallbacks(_got_port, _fail)
         elif isinstance(s, internet.TCPServer):
             # Twisted <= 10.1
-            self._scheme = 'http'
+            self._scheme = "http"
             _got_port(s._port)
         elif isinstance(s, internet.SSLServer):
             # Twisted <= 10.1
-            self._scheme = 'https'
+            self._scheme = "https"
             _got_port(s._port)
         else:
             # who knows, probably some weirdo future version of Twisted
-            self._started.errback(AssertionError("couldn't find out the scheme or port for the web-API server"))
+            self._started.errback(
+                AssertionError(
+                    "couldn't find out the scheme or port for the web-API server"
+                )
+            )
 
     def get_operations(self):
         """

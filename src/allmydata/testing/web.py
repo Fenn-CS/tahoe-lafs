@@ -17,8 +17,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 
 import hashlib
@@ -84,7 +107,7 @@ class _FakeTahoeRoot(Resource, object):
 KNOWN_CAPABILITIES = [
     getattr(allmydata.uri, t).BASE_STRING
     for t in dir(allmydata.uri)
-    if hasattr(getattr(allmydata.uri, t), 'BASE_STRING')
+    if hasattr(getattr(allmydata.uri, t), "BASE_STRING")
 ]
 
 
@@ -105,8 +128,8 @@ def capability_generator(kind):
     if kind not in KNOWN_CAPABILITIES:
         raise ValueError(
             "Unknown capability kind '{}' (valid are {})".format(
-                kind.decode('ascii'),
-                ", ".join([x.decode('ascii') for x in KNOWN_CAPABILITIES]),
+                kind.decode("ascii"),
+                ", ".join([x.decode("ascii") for x in KNOWN_CAPABILITIES]),
             )
         )
     # what we do here is to start with empty hashers for the key and
@@ -127,10 +150,10 @@ def capability_generator(kind):
         key = base32.b2a(key_hasher.digest()[:16])  # key is 16 bytes
         ueb_hash = base32.b2a(ueb_hasher.digest())  # ueb hash is 32 bytes
 
-        cap = u"{kind}{key}:{ueb_hash}:{n}:{k}:{size}".format(
-            kind=kind.decode('ascii'),
-            key=key.decode('ascii'),
-            ueb_hash=ueb_hash.decode('ascii'),
+        cap = "{kind}{key}:{ueb_hash}:{n}:{k}:{size}".format(
+            kind=kind.decode("ascii"),
+            key=key.decode("ascii"),
+            ueb_hash=ueb_hash.decode("ascii"),
             n=1,
             k=1,
             size=number * 1000,
@@ -188,27 +211,27 @@ class _FakeTahoeUriHandler(Resource, object):
         data = request.content.read()
         fresh, cap = self.add_data(b"URI:CHK:", data)
         if fresh:
-            request.setResponseCode(http.CREATED)  # real code does this for brand-new files
+            request.setResponseCode(
+                http.CREATED
+            )  # real code does this for brand-new files
         else:
             request.setResponseCode(http.OK)  # replaced/modified files
         return cap
 
     def render_POST(self, request):
-        t = request.args[u"t"][0]
+        t = request.args["t"][0]
         data = request.content.read()
 
-        type_to_kind = {
-            "mkdir-immutable": b"URI:DIR2-CHK:"
-        }
+        type_to_kind = {"mkdir-immutable": b"URI:DIR2-CHK:"}
         kind = type_to_kind[t]
         fresh, cap = self.add_data(kind, data)
         return cap
 
     def render_GET(self, request):
-        uri = DecodedURL.from_text(request.uri.decode('utf8'))
+        uri = DecodedURL.from_text(request.uri.decode("utf8"))
         capability = None
         for arg, value in uri.query:
-            if arg == u"uri":
+            if arg == "uri":
                 capability = value
         # it's legal to use the form "/uri/<capability>"
         if capability is None and request.postpath and request.postpath[0]:
@@ -221,10 +244,10 @@ class _FakeTahoeUriHandler(Resource, object):
 
         # the user gave us a capability; if our Grid doesn't have any
         # data for it, that's an error.
-        capability = capability.encode('ascii')
+        capability = capability.encode("ascii")
         if capability not in self.data:
             request.setResponseCode(http.BAD_REQUEST)
-            return u"No data for '{}'".format(capability.decode('ascii'))
+            return "No data for '{}'".format(capability.decode("ascii"))
 
         return self.data[capability]
 
@@ -271,9 +294,7 @@ class _SynchronousProducer(object):
             body = body._inputFile.read()
 
         if not isinstance(body, bytes):
-            raise ValueError(
-                "'body' must be bytes not '{}'".format(type(body))
-            )
+            raise ValueError("'body' must be bytes not '{}'".format(type(body)))
         self.body = body
         self.length = len(body)
 

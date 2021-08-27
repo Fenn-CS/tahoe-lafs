@@ -10,10 +10,32 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
     # Omitted list since it broke a test on Python 2. Shouldn't require further
     # work, when we switch to Python 3 we'll be dropping this, anyway.
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import time
 import os.path
@@ -28,26 +50,27 @@ from twisted.web.template import flattenString
 
 from foolscap.api import fireEventually
 from allmydata.util import fileutil, hashutil, base32, pollmixin
-from allmydata.storage.common import storage_index_to_dir, \
-     UnknownMutableContainerVersionError, UnknownImmutableContainerVersionError
+from allmydata.storage.common import (
+    storage_index_to_dir,
+    UnknownMutableContainerVersionError,
+    UnknownImmutableContainerVersionError,
+)
 from allmydata.storage.server import StorageServer
 from allmydata.storage.crawler import BucketCountingCrawler
 from allmydata.storage.expirer import LeaseCheckingCrawler
-from allmydata.web.storage import (
-    StorageStatus,
-    StorageStatusElement,
-    remove_prefix
-)
+from allmydata.web.storage import StorageStatus, StorageStatusElement, remove_prefix
 from .common_util import FakeCanary
 
 from .common_web import (
     render,
 )
 
+
 def remove_tags(s):
-    s = re.sub(br'<[^>]*>', b' ', s)
-    s = re.sub(br'\s+', b' ', s)
+    s = re.sub(br"<[^>]*>", b" ", s)
+    s = re.sub(br"\s+", b" ", s)
     return s
+
 
 def renderSynchronously(ss):
     """
@@ -56,6 +79,7 @@ def renderSynchronously(ss):
     :param _StorageStatus ss: a StorageStatus instance.
     """
     return unittest.TestCase().successResultOf(renderDeferred(ss))
+
 
 def renderDeferred(ss):
     """
@@ -66,11 +90,13 @@ def renderDeferred(ss):
     elem = StorageStatusElement(ss._storage, ss._nickname)
     return flattenString(None, elem)
 
+
 def renderJSON(resource):
     """
     Render a JSON from the given resource.
     """
     return render(resource, {b"t": [b"json"]})
+
 
 class MyBucketCountingCrawler(BucketCountingCrawler):
     def finished_prefix(self, cycle, prefix):
@@ -78,6 +104,7 @@ class MyBucketCountingCrawler(BucketCountingCrawler):
         if self.hook_ds:
             d = self.hook_ds.pop(0)
             d.callback(None)
+
 
 class MyStorageServer(StorageServer):
     def add_bucket_counter(self):
@@ -87,10 +114,10 @@ class MyStorageServer(StorageServer):
 
 
 class BucketCounter(unittest.TestCase, pollmixin.PollMixin):
-
     def setUp(self):
         self.s = service.MultiService()
         self.s.startService()
+
     def tearDown(self):
         return self.s.stopService()
 
@@ -122,6 +149,7 @@ class BucketCounter(unittest.TestCase, pollmixin.PollMixin):
         # first prefix
 
         d = fireEventually()
+
         def _check(ignored):
             # are we really right after the first prefix?
             state = ss.bucket_counter.get_state()
@@ -129,25 +157,32 @@ class BucketCounter(unittest.TestCase, pollmixin.PollMixin):
                 d2 = fireEventually()
                 d2.addCallback(_check)
                 return d2
-            self.failUnlessEqual(state["last-complete-prefix"],
-                                 ss.bucket_counter.prefixes[0])
-            ss.bucket_counter.cpu_slice = 100.0 # finish as fast as possible
+            self.failUnlessEqual(
+                state["last-complete-prefix"], ss.bucket_counter.prefixes[0]
+            )
+            ss.bucket_counter.cpu_slice = 100.0  # finish as fast as possible
             html = renderSynchronously(w)
             s = remove_tags(html)
             self.failUnlessIn(b" Current crawl ", s)
             self.failUnlessIn(b" (next work in ", s)
+
         d.addCallback(_check)
 
         # now give it enough time to complete a full cycle
         def _watch():
             return not ss.bucket_counter.get_progress()["cycle-in-progress"]
+
         d.addCallback(lambda ignored: self.poll(_watch))
+
         def _check2(ignored):
             ss.bucket_counter.cpu_slice = orig_cpu_slice
             html = renderSynchronously(w)
             s = remove_tags(html)
             self.failUnlessIn(b"Total buckets: 0 (the number of", s)
-            self.failUnless(b"Next crawl in 59 minutes" in s or "Next crawl in 60 minutes" in s, s)
+            self.failUnless(
+                b"Next crawl in 59 minutes" in s or "Next crawl in 60 minutes" in s, s
+            )
+
         d.addCallback(_check2)
         return d
 
@@ -170,26 +205,33 @@ class BucketCounter(unittest.TestCase, pollmixin.PollMixin):
                 d2 = fireEventually()
                 d2.addCallback(_after_first_prefix)
                 return d2
-            ss.bucket_counter.cpu_slice = 100.0 # finish as fast as possible
+            ss.bucket_counter.cpu_slice = 100.0  # finish as fast as possible
             # now sneak in and mess with its state, to make sure it cleans up
             # properly at the end of the cycle
-            self.failUnlessEqual(state["last-complete-prefix"],
-                                 ss.bucket_counter.prefixes[0])
+            self.failUnlessEqual(
+                state["last-complete-prefix"], ss.bucket_counter.prefixes[0]
+            )
             state["bucket-counts"][-12] = {}
             state["storage-index-samples"]["bogusprefix!"] = (-12, [])
             ss.bucket_counter.save_state()
+
         d.addCallback(_after_first_prefix)
 
         # now give it enough time to complete a cycle
         def _watch():
             return not ss.bucket_counter.get_progress()["cycle-in-progress"]
+
         d.addCallback(lambda ignored: self.poll(_watch))
+
         def _check2(ignored):
             ss.bucket_counter.cpu_slice = orig_cpu_slice
             s = ss.bucket_counter.get_state()
             self.failIf(-12 in s["bucket-counts"], list(s["bucket-counts"].keys()))
-            self.failIf("bogusprefix!" in s["storage-index-samples"],
-                        list(s["storage-index-samples"].keys()))
+            self.failIf(
+                "bogusprefix!" in s["storage-index-samples"],
+                list(s["storage-index-samples"].keys()),
+            )
+
         d.addCallback(_check2)
         return d
 
@@ -231,19 +273,24 @@ class BucketCounter(unittest.TestCase, pollmixin.PollMixin):
         ss.setServiceParent(self.s)
         return d
 
+
 class InstrumentedLeaseCheckingCrawler(LeaseCheckingCrawler):
     stop_after_first_bucket = False
+
     def process_bucket(self, *args, **kwargs):
         LeaseCheckingCrawler.process_bucket(self, *args, **kwargs)
         if self.stop_after_first_bucket:
             self.stop_after_first_bucket = False
             self.cpu_slice = -1.0
+
     def yielding(self, sleep_time):
         if not self.stop_after_first_bucket:
             self.cpu_slice = 500
 
+
 class BrokenStatResults(object):
     pass
+
 
 class No_ST_BLOCKS_LeaseCheckingCrawler(LeaseCheckingCrawler):
     def stat(self, fn):
@@ -257,30 +304,44 @@ class No_ST_BLOCKS_LeaseCheckingCrawler(LeaseCheckingCrawler):
             setattr(bsr, attrname, getattr(s, attrname))
         return bsr
 
+
 class InstrumentedStorageServer(StorageServer):
     LeaseCheckerClass = InstrumentedLeaseCheckingCrawler
+
+
 class No_ST_BLOCKS_StorageServer(StorageServer):
     LeaseCheckerClass = No_ST_BLOCKS_LeaseCheckingCrawler
 
-class LeaseCrawler(unittest.TestCase, pollmixin.PollMixin):
 
+class LeaseCrawler(unittest.TestCase, pollmixin.PollMixin):
     def setUp(self):
         self.s = service.MultiService()
         self.s.startService()
+
     def tearDown(self):
         return self.s.stopService()
 
     def make_shares(self, ss):
         def make(si):
-            return (si, hashutil.tagged_hash(b"renew", si),
-                    hashutil.tagged_hash(b"cancel", si))
+            return (
+                si,
+                hashutil.tagged_hash(b"renew", si),
+                hashutil.tagged_hash(b"cancel", si),
+            )
+
         def make_mutable(si):
-            return (si, hashutil.tagged_hash(b"renew", si),
-                    hashutil.tagged_hash(b"cancel", si),
-                    hashutil.tagged_hash(b"write-enabler", si))
+            return (
+                si,
+                hashutil.tagged_hash(b"renew", si),
+                hashutil.tagged_hash(b"cancel", si),
+                hashutil.tagged_hash(b"write-enabler", si),
+            )
+
         def make_extra_lease(si, num):
-            return (hashutil.tagged_hash(b"renew-%d" % num, si),
-                    hashutil.tagged_hash(b"cancel-%d" % num, si))
+            return (
+                hashutil.tagged_hash(b"renew-%d" % num, si),
+                hashutil.tagged_hash(b"cancel-%d" % num, si),
+            )
 
         immutable_si_0, rs0, cs0 = make(b"\x00" * 16)
         immutable_si_1, rs1, cs1 = make(b"\x01" * 16)
@@ -294,22 +355,22 @@ class LeaseCrawler(unittest.TestCase, pollmixin.PollMixin):
         # inner contents are not a valid CHK share
         data = b"\xff" * 1000
 
-        a,w = ss.remote_allocate_buckets(immutable_si_0, rs0, cs0, sharenums,
-                                         1000, canary)
+        a, w = ss.remote_allocate_buckets(
+            immutable_si_0, rs0, cs0, sharenums, 1000, canary
+        )
         w[0].remote_write(0, data)
         w[0].remote_close()
 
-        a,w = ss.remote_allocate_buckets(immutable_si_1, rs1, cs1, sharenums,
-                                         1000, canary)
+        a, w = ss.remote_allocate_buckets(
+            immutable_si_1, rs1, cs1, sharenums, 1000, canary
+        )
         w[0].remote_write(0, data)
         w[0].remote_close()
         ss.remote_add_lease(immutable_si_1, rs1a, cs1a)
 
         writev = ss.remote_slot_testv_and_readv_and_writev
-        writev(mutable_si_2, (we2, rs2, cs2),
-               {0: ([], [(0,data)], len(data))}, [])
-        writev(mutable_si_3, (we3, rs3, cs3),
-               {0: ([], [(0,data)], len(data))}, [])
+        writev(mutable_si_2, (we2, rs2, cs2), {0: ([], [(0, data)], len(data))}, [])
+        writev(mutable_si_3, (we3, rs3, cs3), {0: ([], [(0, data)], len(data))}, [])
         ss.remote_add_lease(mutable_si_3, rs3a, cs3a)
 
         self.sis = [immutable_si_0, immutable_si_1, mutable_si_2, mutable_si_3]
@@ -332,9 +393,9 @@ class LeaseCrawler(unittest.TestCase, pollmixin.PollMixin):
         [immutable_si_0, immutable_si_1, mutable_si_2, mutable_si_3] = self.sis
 
         # add a non-sharefile to exercise another code path
-        fn = os.path.join(ss.sharedir,
-                          storage_index_to_dir(immutable_si_0),
-                          "not-a-share")
+        fn = os.path.join(
+            ss.sharedir, storage_index_to_dir(immutable_si_0), "not-a-share"
+        )
         f = open(fn, "wb")
         f.write(b"I am not a share.\n")
         f.close()
@@ -350,7 +411,7 @@ class LeaseCrawler(unittest.TestCase, pollmixin.PollMixin):
 
         ss.setServiceParent(self.s)
 
-        DAY = 24*60*60
+        DAY = 24 * 60 * 60
 
         d = fireEventually()
 
@@ -375,7 +436,7 @@ class LeaseCrawler(unittest.TestCase, pollmixin.PollMixin):
             lah = so_far["lease-age-histogram"]
             self.failUnlessEqual(type(lah), list)
             self.failUnlessEqual(len(lah), 1)
-            self.failUnlessEqual(lah, [ (0.0, DAY, 1) ] )
+            self.failUnlessEqual(lah, [(0.0, DAY, 1)])
             self.failUnlessEqual(so_far["leases-per-share-histogram"], {1: 1})
             self.failUnlessEqual(so_far["corrupt-shares"], [])
             sr1 = so_far["space-recovered"]
@@ -391,35 +452,57 @@ class LeaseCrawler(unittest.TestCase, pollmixin.PollMixin):
             self.failIfEqual(sr2["actual-shares"], None)
             self.failIfEqual(sr2["configured-diskbytes"], None)
             self.failIfEqual(sr2["original-sharebytes"], None)
+
         d.addCallback(_after_first_bucket)
         d.addCallback(lambda ign: renderDeferred(webstatus))
+
         def _check_html_in_cycle(html):
             s = remove_tags(html)
-            self.failUnlessIn(b"So far, this cycle has examined "
-                              b"1 shares in 1 buckets (0 mutable / 1 immutable) ", s)
-            self.failUnlessIn(b"and has recovered: "
-                              b"0 shares, 0 buckets (0 mutable / 0 immutable), "
-                              b"0 B (0 B / 0 B)", s)
-            self.failUnlessIn(b"If expiration were enabled, "
-                              b"we would have recovered: "
-                              b"0 shares, 0 buckets (0 mutable / 0 immutable),"
-                              b" 0 B (0 B / 0 B) by now", s)
-            self.failUnlessIn(b"and the remainder of this cycle "
-                              b"would probably recover: "
-                              b"0 shares, 0 buckets (0 mutable / 0 immutable),"
-                              b" 0 B (0 B / 0 B)", s)
-            self.failUnlessIn(b"and the whole cycle would probably recover: "
-                              b"0 shares, 0 buckets (0 mutable / 0 immutable),"
-                              b" 0 B (0 B / 0 B)", s)
-            self.failUnlessIn(b"if we were strictly using each lease's default "
-                              b"31-day lease lifetime", s)
+            self.failUnlessIn(
+                b"So far, this cycle has examined "
+                b"1 shares in 1 buckets (0 mutable / 1 immutable) ",
+                s,
+            )
+            self.failUnlessIn(
+                b"and has recovered: "
+                b"0 shares, 0 buckets (0 mutable / 0 immutable), "
+                b"0 B (0 B / 0 B)",
+                s,
+            )
+            self.failUnlessIn(
+                b"If expiration were enabled, "
+                b"we would have recovered: "
+                b"0 shares, 0 buckets (0 mutable / 0 immutable),"
+                b" 0 B (0 B / 0 B) by now",
+                s,
+            )
+            self.failUnlessIn(
+                b"and the remainder of this cycle "
+                b"would probably recover: "
+                b"0 shares, 0 buckets (0 mutable / 0 immutable),"
+                b" 0 B (0 B / 0 B)",
+                s,
+            )
+            self.failUnlessIn(
+                b"and the whole cycle would probably recover: "
+                b"0 shares, 0 buckets (0 mutable / 0 immutable),"
+                b" 0 B (0 B / 0 B)",
+                s,
+            )
+            self.failUnlessIn(
+                b"if we were strictly using each lease's default "
+                b"31-day lease lifetime",
+                s,
+            )
             self.failUnlessIn(b"this cycle would be expected to recover: ", s)
+
         d.addCallback(_check_html_in_cycle)
 
         # wait for the crawler to finish the first cycle. Nothing should have
         # been removed.
         def _wait():
             return bool(lc.get_state()["last-cycle-finished"] is not None)
+
         d.addCallback(lambda ign: self.poll(_wait))
 
         def _after_first_cycle(ignored):
@@ -437,7 +520,7 @@ class LeaseCrawler(unittest.TestCase, pollmixin.PollMixin):
             lah = last["lease-age-histogram"]
             self.failUnlessEqual(type(lah), list)
             self.failUnlessEqual(len(lah), 1)
-            self.failUnlessEqual(lah, [ (0.0, DAY, 6) ] )
+            self.failUnlessEqual(lah, [(0.0, DAY, 6)])
 
             self.failUnlessEqual(last["leases-per-share-histogram"], {1: 2, 2: 2})
             self.failUnlessEqual(last["corrupt-shares"], [])
@@ -460,27 +543,40 @@ class LeaseCrawler(unittest.TestCase, pollmixin.PollMixin):
 
             def _get_sharefile(si):
                 return list(ss._iter_share_files(si))[0]
+
             def count_leases(si):
                 return len(list(_get_sharefile(si).get_leases()))
+
             self.failUnlessEqual(count_leases(immutable_si_0), 1)
             self.failUnlessEqual(count_leases(immutable_si_1), 2)
             self.failUnlessEqual(count_leases(mutable_si_2), 1)
             self.failUnlessEqual(count_leases(mutable_si_3), 2)
+
         d.addCallback(_after_first_cycle)
         d.addCallback(lambda ign: renderDeferred(webstatus))
+
         def _check_html(html):
             s = remove_tags(html)
-            self.failUnlessIn(b"recovered: 0 shares, 0 buckets "
-                              b"(0 mutable / 0 immutable), 0 B (0 B / 0 B) ", s)
-            self.failUnlessIn(b"and saw a total of 4 shares, 4 buckets "
-                              b"(2 mutable / 2 immutable),", s)
+            self.failUnlessIn(
+                b"recovered: 0 shares, 0 buckets "
+                b"(0 mutable / 0 immutable), 0 B (0 B / 0 B) ",
+                s,
+            )
+            self.failUnlessIn(
+                b"and saw a total of 4 shares, 4 buckets "
+                b"(2 mutable / 2 immutable),",
+                s,
+            )
             self.failUnlessIn(b"but expiration was not enabled", s)
+
         d.addCallback(_check_html)
         d.addCallback(lambda ign: renderJSON(webstatus))
+
         def _check_json(raw):
             data = json.loads(raw)
             self.failUnlessIn("lease-checker", data)
             self.failUnlessIn("lease-checker-progress", data)
+
         d.addCallback(_check_json)
         return d
 
@@ -488,10 +584,10 @@ class LeaseCrawler(unittest.TestCase, pollmixin.PollMixin):
         # ShareFile.renew_lease ignores attempts to back-date a lease (i.e.
         # "renew" a lease with a new_expire_time that is older than what the
         # current lease has), so we have to reach inside it.
-        for i,lease in enumerate(sf.get_leases()):
+        for i, lease in enumerate(sf.get_leases()):
             if lease.renew_secret == renew_secret:
                 lease.expiration_time = new_expire_time
-                f = open(sf.home, 'rb+')
+                f = open(sf.home, "rb+")
                 sf._write_lease_record(f, i, lease)
                 f.close()
                 return
@@ -502,10 +598,13 @@ class LeaseCrawler(unittest.TestCase, pollmixin.PollMixin):
         fileutil.make_dirs(basedir)
         # setting expiration_time to 2000 means that any lease which is more
         # than 2000s old will be expired.
-        ss = InstrumentedStorageServer(basedir, b"\x00" * 20,
-                                       expiration_enabled=True,
-                                       expiration_mode="age",
-                                       expiration_override_lease_duration=2000)
+        ss = InstrumentedStorageServer(
+            basedir,
+            b"\x00" * 20,
+            expiration_enabled=True,
+            expiration_mode="age",
+            expiration_override_lease_duration=2000,
+        )
         # make it start sooner than usual.
         lc = ss.lease_checker
         lc.slow_start = 0
@@ -518,8 +617,10 @@ class LeaseCrawler(unittest.TestCase, pollmixin.PollMixin):
 
         def count_shares(si):
             return len(list(ss._iter_share_files(si)))
+
         def _get_sharefile(si):
             return list(ss._iter_share_files(si))[0]
+
         def count_leases(si):
             return len(list(_get_sharefile(si).get_leases()))
 
@@ -566,8 +667,10 @@ class LeaseCrawler(unittest.TestCase, pollmixin.PollMixin):
                 d2 = fireEventually()
                 d2.addCallback(_after_first_bucket)
                 return d2
+
         d.addCallback(_after_first_bucket)
         d.addCallback(lambda ign: renderDeferred(webstatus))
+
         def _check_html_in_cycle(html):
             s = remove_tags(html)
             # the first bucket encountered gets deleted, and its prefix
@@ -575,17 +678,25 @@ class LeaseCrawler(unittest.TestCase, pollmixin.PollMixin):
             # predictor thinks we'll have 5 shares and that we'll delete them
             # all. This part of the test depends upon the SIs landing right
             # where they do now.
-            self.failUnlessIn(b"The remainder of this cycle is expected to "
-                              b"recover: 4 shares, 4 buckets", s)
-            self.failUnlessIn(b"The whole cycle is expected to examine "
-                              b"5 shares in 5 buckets and to recover: "
-                              b"5 shares, 5 buckets", s)
+            self.failUnlessIn(
+                b"The remainder of this cycle is expected to "
+                b"recover: 4 shares, 4 buckets",
+                s,
+            )
+            self.failUnlessIn(
+                b"The whole cycle is expected to examine "
+                b"5 shares in 5 buckets and to recover: "
+                b"5 shares, 5 buckets",
+                s,
+            )
+
         d.addCallback(_check_html_in_cycle)
 
         # wait for the crawler to finish the first cycle. Two shares should
         # have been removed
         def _wait():
             return bool(lc.get_state()["last-cycle-finished"] is not None)
+
         d.addCallback(lambda ign: self.poll(_wait))
 
         def _after_first_cycle(ignored):
@@ -600,8 +711,10 @@ class LeaseCrawler(unittest.TestCase, pollmixin.PollMixin):
             last = s["history"][0]
 
             self.failUnlessEqual(last["expiration-enabled"], True)
-            self.failUnlessEqual(last["configured-expiration-mode"],
-                                 ("age", 2000, None, ("mutable", "immutable")))
+            self.failUnlessEqual(
+                last["configured-expiration-mode"],
+                ("age", 2000, None, ("mutable", "immutable")),
+            )
             self.failUnlessEqual(last["leases-per-share-histogram"], {1: 2, 2: 2})
 
             rec = last["space-recovered"]
@@ -619,19 +732,26 @@ class LeaseCrawler(unittest.TestCase, pollmixin.PollMixin):
             self.failUnlessEqual(rec["configured-sharebytes"], size)
             # different platforms have different notions of "blocks used by
             # this file", so merely assert that it's a number
-            self.failUnless(rec["actual-diskbytes"] >= 0,
-                            rec["actual-diskbytes"])
-            self.failUnless(rec["original-diskbytes"] >= 0,
-                            rec["original-diskbytes"])
-            self.failUnless(rec["configured-diskbytes"] >= 0,
-                            rec["configured-diskbytes"])
+            self.failUnless(rec["actual-diskbytes"] >= 0, rec["actual-diskbytes"])
+            self.failUnless(rec["original-diskbytes"] >= 0, rec["original-diskbytes"])
+            self.failUnless(
+                rec["configured-diskbytes"] >= 0, rec["configured-diskbytes"]
+            )
+
         d.addCallback(_after_first_cycle)
         d.addCallback(lambda ign: renderDeferred(webstatus))
+
         def _check_html(html):
             s = remove_tags(html)
             self.failUnlessIn(b"Expiration Enabled: expired leases will be removed", s)
-            self.failUnlessIn(b"Leases created or last renewed more than 33 minutes ago will be considered expired.", s)
-            self.failUnlessIn(b" recovered: 2 shares, 2 buckets (1 mutable / 1 immutable), ", s)
+            self.failUnlessIn(
+                b"Leases created or last renewed more than 33 minutes ago will be considered expired.",
+                s,
+            )
+            self.failUnlessIn(
+                b" recovered: 2 shares, 2 buckets (1 mutable / 1 immutable), ", s
+            )
+
         d.addCallback(_check_html)
         return d
 
@@ -642,10 +762,13 @@ class LeaseCrawler(unittest.TestCase, pollmixin.PollMixin):
         # is more than 2000s old will be expired.
         now = time.time()
         then = int(now - 2000)
-        ss = InstrumentedStorageServer(basedir, b"\x00" * 20,
-                                       expiration_enabled=True,
-                                       expiration_mode="cutoff-date",
-                                       expiration_cutoff_date=then)
+        ss = InstrumentedStorageServer(
+            basedir,
+            b"\x00" * 20,
+            expiration_enabled=True,
+            expiration_mode="cutoff-date",
+            expiration_cutoff_date=then,
+        )
         # make it start sooner than usual.
         lc = ss.lease_checker
         lc.slow_start = 0
@@ -658,8 +781,10 @@ class LeaseCrawler(unittest.TestCase, pollmixin.PollMixin):
 
         def count_shares(si):
             return len(list(ss._iter_share_files(si)))
+
         def _get_sharefile(si):
             return list(ss._iter_share_files(si))[0]
+
         def count_leases(si):
             return len(list(_get_sharefile(si).get_leases()))
 
@@ -677,7 +802,7 @@ class LeaseCrawler(unittest.TestCase, pollmixin.PollMixin):
         # this, we need to set the expiration time to now-3000+31days. This
         # will change when the lease format is improved to contain both
         # create/renew time and duration.
-        new_expiration_time = now - 3000 + 31*24*60*60
+        new_expiration_time = now - 3000 + 31 * 24 * 60 * 60
 
         # Some shares have an extra lease which is set to expire at the
         # default time in 31 days from now (age=31days). We then run the
@@ -710,8 +835,10 @@ class LeaseCrawler(unittest.TestCase, pollmixin.PollMixin):
                 d2 = fireEventually()
                 d2.addCallback(_after_first_bucket)
                 return d2
+
         d.addCallback(_after_first_bucket)
         d.addCallback(lambda ign: renderDeferred(webstatus))
+
         def _check_html_in_cycle(html):
             s = remove_tags(html)
             # the first bucket encountered gets deleted, and its prefix
@@ -719,17 +846,25 @@ class LeaseCrawler(unittest.TestCase, pollmixin.PollMixin):
             # predictor thinks we'll have 5 shares and that we'll delete them
             # all. This part of the test depends upon the SIs landing right
             # where they do now.
-            self.failUnlessIn(b"The remainder of this cycle is expected to "
-                              b"recover: 4 shares, 4 buckets", s)
-            self.failUnlessIn(b"The whole cycle is expected to examine "
-                              b"5 shares in 5 buckets and to recover: "
-                              b"5 shares, 5 buckets", s)
+            self.failUnlessIn(
+                b"The remainder of this cycle is expected to "
+                b"recover: 4 shares, 4 buckets",
+                s,
+            )
+            self.failUnlessIn(
+                b"The whole cycle is expected to examine "
+                b"5 shares in 5 buckets and to recover: "
+                b"5 shares, 5 buckets",
+                s,
+            )
+
         d.addCallback(_check_html_in_cycle)
 
         # wait for the crawler to finish the first cycle. Two shares should
         # have been removed
         def _wait():
             return bool(lc.get_state()["last-cycle-finished"] is not None)
+
         d.addCallback(lambda ign: self.poll(_wait))
 
         def _after_first_cycle(ignored):
@@ -744,11 +879,11 @@ class LeaseCrawler(unittest.TestCase, pollmixin.PollMixin):
             last = s["history"][0]
 
             self.failUnlessEqual(last["expiration-enabled"], True)
-            self.failUnlessEqual(last["configured-expiration-mode"],
-                                 ("cutoff-date", None, then,
-                                  ("mutable", "immutable")))
-            self.failUnlessEqual(last["leases-per-share-histogram"],
-                                 {1: 2, 2: 2})
+            self.failUnlessEqual(
+                last["configured-expiration-mode"],
+                ("cutoff-date", None, then, ("mutable", "immutable")),
+            )
+            self.failUnlessEqual(last["leases-per-share-histogram"], {1: 2, 2: 2})
 
             rec = last["space-recovered"]
             self.failUnlessEqual(rec["examined-buckets"], 4)
@@ -765,23 +900,32 @@ class LeaseCrawler(unittest.TestCase, pollmixin.PollMixin):
             self.failUnlessEqual(rec["configured-sharebytes"], size)
             # different platforms have different notions of "blocks used by
             # this file", so merely assert that it's a number
-            self.failUnless(rec["actual-diskbytes"] >= 0,
-                            rec["actual-diskbytes"])
-            self.failUnless(rec["original-diskbytes"] >= 0,
-                            rec["original-diskbytes"])
-            self.failUnless(rec["configured-diskbytes"] >= 0,
-                            rec["configured-diskbytes"])
+            self.failUnless(rec["actual-diskbytes"] >= 0, rec["actual-diskbytes"])
+            self.failUnless(rec["original-diskbytes"] >= 0, rec["original-diskbytes"])
+            self.failUnless(
+                rec["configured-diskbytes"] >= 0, rec["configured-diskbytes"]
+            )
+
         d.addCallback(_after_first_cycle)
         d.addCallback(lambda ign: renderDeferred(webstatus))
+
         def _check_html(html):
             s = remove_tags(html)
-            self.failUnlessIn(b"Expiration Enabled:"
-                              b" expired leases will be removed", s)
-            date = time.strftime(
-                u"%Y-%m-%d (%d-%b-%Y) UTC", time.gmtime(then)).encode("ascii")
-            substr =b"Leases created or last renewed before %s will be considered expired." % date
+            self.failUnlessIn(
+                b"Expiration Enabled:" b" expired leases will be removed", s
+            )
+            date = time.strftime("%Y-%m-%d (%d-%b-%Y) UTC", time.gmtime(then)).encode(
+                "ascii"
+            )
+            substr = (
+                b"Leases created or last renewed before %s will be considered expired."
+                % date
+            )
             self.failUnlessIn(substr, s)
-            self.failUnlessIn(b" recovered: 2 shares, 2 buckets (1 mutable / 1 immutable), ", s)
+            self.failUnlessIn(
+                b" recovered: 2 shares, 2 buckets (1 mutable / 1 immutable), ", s
+            )
+
         d.addCallback(_check_html)
         return d
 
@@ -790,11 +934,14 @@ class LeaseCrawler(unittest.TestCase, pollmixin.PollMixin):
         fileutil.make_dirs(basedir)
         now = time.time()
         then = int(now - 2000)
-        ss = StorageServer(basedir, b"\x00" * 20,
-                           expiration_enabled=True,
-                           expiration_mode="cutoff-date",
-                           expiration_cutoff_date=then,
-                           expiration_sharetypes=("immutable",))
+        ss = StorageServer(
+            basedir,
+            b"\x00" * 20,
+            expiration_enabled=True,
+            expiration_mode="cutoff-date",
+            expiration_cutoff_date=then,
+            expiration_sharetypes=("immutable",),
+        )
         lc = ss.lease_checker
         lc.slow_start = 0
         webstatus = StorageStatus(ss)
@@ -802,12 +949,14 @@ class LeaseCrawler(unittest.TestCase, pollmixin.PollMixin):
         self.make_shares(ss)
         [immutable_si_0, immutable_si_1, mutable_si_2, mutable_si_3] = self.sis
         # set all leases to be expirable
-        new_expiration_time = now - 3000 + 31*24*60*60
+        new_expiration_time = now - 3000 + 31 * 24 * 60 * 60
 
         def count_shares(si):
             return len(list(ss._iter_share_files(si)))
+
         def _get_sharefile(si):
             return list(ss._iter_share_files(si))[0]
+
         def count_leases(si):
             return len(list(_get_sharefile(si).get_leases()))
 
@@ -823,8 +972,10 @@ class LeaseCrawler(unittest.TestCase, pollmixin.PollMixin):
         self.backdate_lease(sf3, self.renew_secrets[5], new_expiration_time)
 
         ss.setServiceParent(self.s)
+
         def _wait():
             return bool(lc.get_state()["last-cycle-finished"] is not None)
+
         d = self.poll(_wait)
 
         def _after_first_cycle(ignored):
@@ -834,11 +985,16 @@ class LeaseCrawler(unittest.TestCase, pollmixin.PollMixin):
             self.failUnlessEqual(count_leases(mutable_si_2), 1)
             self.failUnlessEqual(count_shares(mutable_si_3), 1)
             self.failUnlessEqual(count_leases(mutable_si_3), 2)
+
         d.addCallback(_after_first_cycle)
         d.addCallback(lambda ign: renderDeferred(webstatus))
+
         def _check_html(html):
             s = remove_tags(html)
-            self.failUnlessIn(b"The following sharetypes will be expired: immutable.", s)
+            self.failUnlessIn(
+                b"The following sharetypes will be expired: immutable.", s
+            )
+
         d.addCallback(_check_html)
         return d
 
@@ -847,11 +1003,14 @@ class LeaseCrawler(unittest.TestCase, pollmixin.PollMixin):
         fileutil.make_dirs(basedir)
         now = time.time()
         then = int(now - 2000)
-        ss = StorageServer(basedir, b"\x00" * 20,
-                           expiration_enabled=True,
-                           expiration_mode="cutoff-date",
-                           expiration_cutoff_date=then,
-                           expiration_sharetypes=("mutable",))
+        ss = StorageServer(
+            basedir,
+            b"\x00" * 20,
+            expiration_enabled=True,
+            expiration_mode="cutoff-date",
+            expiration_cutoff_date=then,
+            expiration_sharetypes=("mutable",),
+        )
         lc = ss.lease_checker
         lc.slow_start = 0
         webstatus = StorageStatus(ss)
@@ -859,12 +1018,14 @@ class LeaseCrawler(unittest.TestCase, pollmixin.PollMixin):
         self.make_shares(ss)
         [immutable_si_0, immutable_si_1, mutable_si_2, mutable_si_3] = self.sis
         # set all leases to be expirable
-        new_expiration_time = now - 3000 + 31*24*60*60
+        new_expiration_time = now - 3000 + 31 * 24 * 60 * 60
 
         def count_shares(si):
             return len(list(ss._iter_share_files(si)))
+
         def _get_sharefile(si):
             return list(ss._iter_share_files(si))[0]
+
         def count_leases(si):
             return len(list(_get_sharefile(si).get_leases()))
 
@@ -880,8 +1041,10 @@ class LeaseCrawler(unittest.TestCase, pollmixin.PollMixin):
         self.backdate_lease(sf3, self.renew_secrets[5], new_expiration_time)
 
         ss.setServiceParent(self.s)
+
         def _wait():
             return bool(lc.get_state()["last-cycle-finished"] is not None)
+
         d = self.poll(_wait)
 
         def _after_first_cycle(ignored):
@@ -891,20 +1054,23 @@ class LeaseCrawler(unittest.TestCase, pollmixin.PollMixin):
             self.failUnlessEqual(count_leases(immutable_si_1), 2)
             self.failUnlessEqual(count_shares(mutable_si_2), 0)
             self.failUnlessEqual(count_shares(mutable_si_3), 0)
+
         d.addCallback(_after_first_cycle)
         d.addCallback(lambda ign: renderDeferred(webstatus))
+
         def _check_html(html):
             s = remove_tags(html)
             self.failUnlessIn(b"The following sharetypes will be expired: mutable.", s)
+
         d.addCallback(_check_html)
         return d
 
     def test_bad_mode(self):
         basedir = "storage/LeaseCrawler/bad_mode"
         fileutil.make_dirs(basedir)
-        e = self.failUnlessRaises(ValueError,
-                                  StorageServer, basedir, b"\x00" * 20,
-                                  expiration_mode="bogus")
+        e = self.failUnlessRaises(
+            ValueError, StorageServer, basedir, b"\x00" * 20, expiration_mode="bogus"
+        )
         self.failUnlessIn("GC mode 'bogus' must be 'age' or 'cutoff-date'", str(e))
 
     def test_limited_history(self):
@@ -928,6 +1094,7 @@ class LeaseCrawler(unittest.TestCase, pollmixin.PollMixin):
             if lc.timer:
                 lc.timer.reset(0)
             return False
+
         d = self.poll(_wait_until_15_cycles_done)
 
         def _check(ignored):
@@ -936,6 +1103,7 @@ class LeaseCrawler(unittest.TestCase, pollmixin.PollMixin):
             self.failUnlessEqual(len(h), 10)
             self.failUnlessEqual(max(h.keys()), 15)
             self.failUnlessEqual(min(h.keys()), 6)
+
         d.addCallback(_check)
         return d
 
@@ -946,13 +1114,14 @@ class LeaseCrawler(unittest.TestCase, pollmixin.PollMixin):
         # make it start sooner than usual.
         lc = ss.lease_checker
         lc.slow_start = 0
-        lc.cpu_slice = -1.0 # stop quickly
+        lc.cpu_slice = -1.0  # stop quickly
 
         self.make_shares(ss)
 
         ss.setServiceParent(self.s)
 
         d = fireEventually()
+
         def _check(ignored):
             # this should fire after the first bucket is complete, but before
             # the first prefix is complete, so the progress-measurer won't
@@ -1005,9 +1174,12 @@ class LeaseCrawler(unittest.TestCase, pollmixin.PollMixin):
     def test_no_st_blocks(self):
         basedir = "storage/LeaseCrawler/no_st_blocks"
         fileutil.make_dirs(basedir)
-        ss = No_ST_BLOCKS_StorageServer(basedir, b"\x00" * 20,
-                                        expiration_mode="age",
-                                        expiration_override_lease_duration=-1000)
+        ss = No_ST_BLOCKS_StorageServer(
+            basedir,
+            b"\x00" * 20,
+            expiration_mode="age",
+            expiration_override_lease_duration=-1000,
+        )
         # a negative expiration_time= means the "configured-"
         # space-recovered counts will be non-zero, since all shares will have
         # expired by then
@@ -1018,8 +1190,10 @@ class LeaseCrawler(unittest.TestCase, pollmixin.PollMixin):
 
         self.make_shares(ss)
         ss.setServiceParent(self.s)
+
         def _wait():
             return bool(lc.get_state()["last-cycle-finished"] is not None)
+
         d = self.poll(_wait)
 
         def _check(ignored):
@@ -1028,12 +1202,15 @@ class LeaseCrawler(unittest.TestCase, pollmixin.PollMixin):
             rec = last["space-recovered"]
             self.failUnlessEqual(rec["configured-buckets"], 4)
             self.failUnlessEqual(rec["configured-shares"], 4)
-            self.failUnless(rec["configured-sharebytes"] > 0,
-                            rec["configured-sharebytes"])
+            self.failUnless(
+                rec["configured-sharebytes"] > 0, rec["configured-sharebytes"]
+            )
             # without the .st_blocks field in os.stat() results, we should be
             # reporting diskbytes==sharebytes
-            self.failUnlessEqual(rec["configured-sharebytes"],
-                                 rec["configured-diskbytes"])
+            self.failUnlessEqual(
+                rec["configured-sharebytes"], rec["configured-diskbytes"]
+            )
+
         d.addCallback(_check)
         return d
 
@@ -1041,7 +1218,7 @@ class LeaseCrawler(unittest.TestCase, pollmixin.PollMixin):
         self._poll_should_ignore_these_errors = [
             UnknownMutableContainerVersionError,
             UnknownImmutableContainerVersionError,
-            ]
+        ]
         basedir = "storage/LeaseCrawler/share_corruption"
         fileutil.make_dirs(basedir)
         ss = InstrumentedStorageServer(basedir, b"\x00" * 20)
@@ -1071,9 +1248,8 @@ class LeaseCrawler(unittest.TestCase, pollmixin.PollMixin):
         # UnknownImmutableContainerVersionError.
 
         # also create an empty bucket
-        empty_si = base32.b2a(b"\x04"*16)
-        empty_bucket_dir = os.path.join(ss.sharedir,
-                                        storage_index_to_dir(empty_si))
+        empty_si = base32.b2a(b"\x04" * 16)
+        empty_bucket_dir = os.path.join(ss.sharedir, storage_index_to_dir(empty_si))
         fileutil.make_dirs(empty_bucket_dir)
 
         ss.setServiceParent(self.s)
@@ -1095,9 +1271,11 @@ class LeaseCrawler(unittest.TestCase, pollmixin.PollMixin):
             [(actual_b32, i)] = so_far["corrupt-shares"]
             actual_b32 = actual_b32.encode("ascii")
             self.failUnlessEqual((actual_b32, i), (first_b32, 0))
+
         d.addCallback(_after_first_bucket)
 
         d.addCallback(lambda ign: renderJSON(w))
+
         def _check_json(raw):
             data = json.loads(raw)
             # grr. json turns all dict keys into strings.
@@ -1107,15 +1285,19 @@ class LeaseCrawler(unittest.TestCase, pollmixin.PollMixin):
             [(actual_b32, i)] = corrupt_shares
             actual_b32 = actual_b32.encode("ascii")
             self.failUnlessEqual([actual_b32, i], [first_b32, 0])
+
         d.addCallback(_check_json)
         d.addCallback(lambda ign: renderDeferred(w))
+
         def _check_html(html):
             s = remove_tags(html)
             self.failUnlessIn(b"Corrupt shares: SI %s shnum 0" % first_b32, s)
+
         d.addCallback(_check_html)
 
         def _wait():
             return bool(lc.get_state()["last-cycle-finished"] is not None)
+
         d.addCallback(lambda ign: self.poll(_wait))
 
         def _after_first_cycle(ignored):
@@ -1127,34 +1309,42 @@ class LeaseCrawler(unittest.TestCase, pollmixin.PollMixin):
             [(actual_b32, i)] = last["corrupt-shares"]
             actual_b32 = actual_b32.encode("ascii")
             self.failUnlessEqual((actual_b32, i), (first_b32, 0))
+
         d.addCallback(_after_first_cycle)
         d.addCallback(lambda ign: renderJSON(w))
+
         def _check_json_history(raw):
             data = json.loads(raw)
             last = data["lease-checker"]["history"]["0"]
             [(actual_b32, i)] = last["corrupt-shares"]
             actual_b32 = actual_b32.encode("ascii")
             self.failUnlessEqual([actual_b32, i], [first_b32, 0])
+
         d.addCallback(_check_json_history)
         d.addCallback(lambda ign: renderDeferred(w))
+
         def _check_html_history(html):
             s = remove_tags(html)
             self.failUnlessIn(b"Corrupt shares: SI %s shnum 0" % first_b32, s)
+
         d.addCallback(_check_html_history)
 
         def _cleanup(res):
-            self.flushLoggedErrors(UnknownMutableContainerVersionError,
-                                   UnknownImmutableContainerVersionError)
+            self.flushLoggedErrors(
+                UnknownMutableContainerVersionError,
+                UnknownImmutableContainerVersionError,
+            )
             return res
+
         d.addBoth(_cleanup)
         return d
 
 
 class WebStatus(unittest.TestCase, pollmixin.PollMixin):
-
     def setUp(self):
         self.s = service.MultiService()
         self.s.startService()
+
     def tearDown(self):
         return self.s.stopService()
 
@@ -1171,15 +1361,18 @@ class WebStatus(unittest.TestCase, pollmixin.PollMixin):
         ss.setServiceParent(self.s)
         w = StorageStatus(ss, "nickname")
         d = renderDeferred(w)
+
         def _check_html(html):
             self.failUnlessIn(b"<h1>Storage Server Status</h1>", html)
             s = remove_tags(html)
             self.failUnlessIn(b"Server Nickname: nickname", s)
-            self.failUnlessIn(b"Server Nodeid: %s"  % base32.b2a(nodeid), s)
+            self.failUnlessIn(b"Server Nodeid: %s" % base32.b2a(nodeid), s)
             self.failUnlessIn(b"Accepting new shares: Yes", s)
             self.failUnlessIn(b"Reserved space: - 0 B (0)", s)
+
         d.addCallback(_check_html)
         d.addCallback(lambda ign: renderJSON(w))
+
         def _check_json(raw):
             data = json.loads(raw)
             s = data["stats"]
@@ -1187,14 +1380,15 @@ class WebStatus(unittest.TestCase, pollmixin.PollMixin):
             self.failUnlessEqual(s["storage_server.reserved_space"], 0)
             self.failUnlessIn("bucket-counter", data)
             self.failUnlessIn("lease-checker", data)
+
         d.addCallback(_check_json)
         return d
-
 
     def test_status_no_disk_stats(self):
         def call_get_disk_stats(whichdir, reserved_space=0):
             raise AttributeError()
-        self.patch(fileutil, 'get_disk_stats', call_get_disk_stats)
+
+        self.patch(fileutil, "get_disk_stats", call_get_disk_stats)
 
         # Some platforms may have no disk stats API. Make sure the code can handle that
         # (test runs on all platforms).
@@ -1214,7 +1408,8 @@ class WebStatus(unittest.TestCase, pollmixin.PollMixin):
     def test_status_bad_disk_stats(self):
         def call_get_disk_stats(whichdir, reserved_space=0):
             raise OSError()
-        self.patch(fileutil, 'get_disk_stats', call_get_disk_stats)
+
+        self.patch(fileutil, "get_disk_stats", call_get_disk_stats)
 
         # If the API to get disk stats exists but a call to it fails, then the status should
         # show that no shares will be accepted, and get_available_space() should be 0.
@@ -1233,10 +1428,10 @@ class WebStatus(unittest.TestCase, pollmixin.PollMixin):
 
     def test_status_right_disk_stats(self):
         GB = 1000000000
-        total            = 5*GB
-        free_for_root    = 4*GB
-        free_for_nonroot = 3*GB
-        reserved         = 1*GB
+        total = 5 * GB
+        free_for_root = 4 * GB
+        free_for_nonroot = 3 * GB
+        reserved = 1 * GB
 
         basedir = "storage/WebStatus/status_right_disk_stats"
         fileutil.make_dirs(basedir)
@@ -1249,13 +1444,14 @@ class WebStatus(unittest.TestCase, pollmixin.PollMixin):
             used = total - free_for_root
             avail = max(free_for_nonroot - reserved_space, 0)
             return {
-              'total': total,
-              'free_for_root': free_for_root,
-              'free_for_nonroot': free_for_nonroot,
-              'used': used,
-              'avail': avail,
+                "total": total,
+                "free_for_root": free_for_root,
+                "free_for_nonroot": free_for_nonroot,
+                "used": used,
+                "avail": avail,
             }
-        self.patch(fileutil, 'get_disk_stats', call_get_disk_stats)
+
+        self.patch(fileutil, "get_disk_stats", call_get_disk_stats)
 
         ss.setServiceParent(self.s)
         w = StorageStatus(ss)
@@ -1269,7 +1465,7 @@ class WebStatus(unittest.TestCase, pollmixin.PollMixin):
         self.failUnlessIn(b"Disk space free (non-root): 3.00 GB", s)
         self.failUnlessIn(b"Reserved space: - 1.00 GB", s)
         self.failUnlessIn(b"Space Available to Tahoe: 2.00 GB", s)
-        self.failUnlessEqual(ss.get_available_space(), 2*GB)
+        self.failUnlessEqual(ss.get_available_space(), 2 * GB)
 
     def test_readonly(self):
         basedir = "storage/WebStatus/readonly"

@@ -7,8 +7,31 @@ from __future__ import division
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 from six import ensure_binary
 
 import os.path, re, time
@@ -60,7 +83,9 @@ from .common import (
 )
 
 from allmydata.interfaces import (
-    IMutableFileNode, SDMF_VERSION, MDMF_VERSION,
+    IMutableFileNode,
+    SDMF_VERSION,
+    MDMF_VERSION,
     FileTooLargeError,
     MustBeReadonlyError,
 )
@@ -81,55 +106,66 @@ from allmydata.client import _Client, SecretHolder
 # create a fake uploader/downloader, and a couple of fake dirnodes, then
 # create a webserver that works against them
 
+
 class FakeStatsProvider(object):
     def get_stats(self):
-        stats = {'stats': {}, 'counters': {}}
+        stats = {"stats": {}, "counters": {}}
         return stats
+
 
 class FakeNodeMaker(NodeMaker):
     encoding_params = {
-        'k': 3,
-        'n': 10,
-        'happy': 7,
-        'max_segment_size':128*1024 # 1024=KiB
+        "k": 3,
+        "n": 10,
+        "happy": 7,
+        "max_segment_size": 128 * 1024,  # 1024=KiB
     }
+
     def _create_lit(self, cap):
         return FakeCHKFileNode(cap, self.all_contents)
+
     def _create_immutable(self, cap):
         return FakeCHKFileNode(cap, self.all_contents)
+
     def _create_mutable(self, cap):
-        return FakeMutableFileNode(None, None,
-                                   self.encoding_params, None,
-                                   self.all_contents).init_from_cap(cap)
-    def create_mutable_file(self, contents=b"", keysize=None,
-                            version=SDMF_VERSION):
-        n = FakeMutableFileNode(None, None, self.encoding_params, None,
-                                self.all_contents)
+        return FakeMutableFileNode(
+            None, None, self.encoding_params, None, self.all_contents
+        ).init_from_cap(cap)
+
+    def create_mutable_file(self, contents=b"", keysize=None, version=SDMF_VERSION):
+        n = FakeMutableFileNode(
+            None, None, self.encoding_params, None, self.all_contents
+        )
         return n.create(contents, version=version)
 
+
 class FakeUploader(service.Service):
-    name = "uploader" # type: ignore # https://twistedmatrix.com/trac/ticket/10135
+    name = "uploader"  # type: ignore # https://twistedmatrix.com/trac/ticket/10135
     helper_furl = None
     helper_connected = False
 
     def upload(self, uploadable, **kw):
         d = uploadable.get_size()
         d.addCallback(lambda size: uploadable.read(size))
+
         def _got_data(datav):
             data = b"".join(datav)
             n = create_chk_filenode(data, self.all_contents)
-            ur = upload.UploadResults(file_size=len(data),
-                                      ciphertext_fetched=0,
-                                      preexisting_shares=0,
-                                      pushed_shares=10,
-                                      sharemap={},
-                                      servermap={},
-                                      timings={},
-                                      uri_extension_data={},
-                                      uri_extension_hash=b"fake",
-                                      verifycapstr=b"fakevcap")
+            ur = upload.UploadResults(
+                file_size=len(data),
+                ciphertext_fetched=0,
+                preexisting_shares=0,
+                pushed_shares=10,
+                sharemap={},
+                servermap={},
+                timings={},
+                uri_extension_data={},
+                uri_extension_hash=b"fake",
+                verifycapstr=b"fakevcap",
+            )
             ur.set_uri(n.get_uri())
             return ur
+
         d.addCallback(_got_data)
         return d
 
@@ -145,14 +181,14 @@ def build_one_ds():
     serverB = StubServer(hashutil.tagged_hash(b"foo", b"serverid_b")[:20])
     storage_index = hashutil.storage_index_hash(b"SI")
     e0 = ds.add_segment_request(0, now)
-    e0.activate(now+0.5)
-    e0.deliver(now+1, 0, 100, 0.5) # when, start,len, decodetime
-    e1 = ds.add_segment_request(1, now+2)
-    e1.error(now+3)
+    e0.activate(now + 0.5)
+    e0.deliver(now + 1, 0, 100, 0.5)  # when, start,len, decodetime
+    e1 = ds.add_segment_request(1, now + 2)
+    e1.error(now + 3)
     # two outstanding requests
-    e2 = ds.add_segment_request(2, now+4)
-    e3 = ds.add_segment_request(3, now+5)
-    del e2,e3 # hush pyflakes
+    e2 = ds.add_segment_request(2, now + 4)
+    e3 = ds.add_segment_request(3, now + 5)
+    del e2, e3  # hush pyflakes
 
     # simulate a segment which gets delivered faster than a system clock tick (ticket #1166)
     e = ds.add_segment_request(4, now)
@@ -160,25 +196,26 @@ def build_one_ds():
     e.deliver(now, 0, 140, 0.5)
 
     e = ds.add_dyhb_request(serverA, now)
-    e.finished([1,2], now+1)
-    e = ds.add_dyhb_request(serverB, now+2) # left unfinished
+    e.finished([1, 2], now + 1)
+    e = ds.add_dyhb_request(serverB, now + 2)  # left unfinished
 
     e = ds.add_read_event(0, 120, now)
-    e.update(60, 0.5, 0.1) # bytes, decrypttime, pausetime
-    e.finished(now+1)
-    e = ds.add_read_event(120, 30, now+2) # left unfinished
+    e.update(60, 0.5, 0.1)  # bytes, decrypttime, pausetime
+    e.finished(now + 1)
+    e = ds.add_read_event(120, 30, now + 2)  # left unfinished
 
     e = ds.add_block_request(serverA, 1, 100, 20, now)
-    e.finished(20, now+1)
-    e = ds.add_block_request(serverB, 1, 120, 30, now+1) # left unfinished
+    e.finished(20, now + 1)
+    e = ds.add_block_request(serverB, 1, 120, 30, now + 1)  # left unfinished
 
     # make sure that add_read_event() can come first too
     ds1 = DownloadStatus(storage_index, 1234)
     e = ds1.add_read_event(0, 120, now)
-    e.update(60, 0.5, 0.1) # bytes, decrypttime, pausetime
-    e.finished(now+1)
+    e.update(60, 0.5, 0.1)  # bytes, decrypttime, pausetime
+    e.finished(now + 1)
 
     return ds
+
 
 class FakeHistory(object):
     _all_upload_status = [upload.UploadStatus()]
@@ -189,56 +226,82 @@ class FakeHistory(object):
 
     def list_all_upload_statuses(self):
         return self._all_upload_status
+
     def list_all_download_statuses(self):
         return self._all_download_status
+
     def list_all_mapupdate_statuses(self):
         return self._all_mapupdate_statuses
+
     def list_all_publish_statuses(self):
         return self._all_publish_statuses
+
     def list_all_retrieve_statuses(self):
         return self._all_retrieve_statuses
+
     def list_all_helper_statuses(self):
         return []
 
+
 class FakeDisplayableServer(StubServer):  # type: ignore  # tahoe-lafs/ticket/3573
-    def __init__(self, serverid, nickname, connected,
-                 last_connect_time, last_loss_time, last_rx_time):
+    def __init__(
+        self,
+        serverid,
+        nickname,
+        connected,
+        last_connect_time,
+        last_loss_time,
+        last_rx_time,
+    ):
         StubServer.__init__(self, serverid)
-        self.announcement = {"my-version": "tahoe-lafs-fake",
-                             "service-name": "storage",
-                             "nickname": nickname}
+        self.announcement = {
+            "my-version": "tahoe-lafs-fake",
+            "service-name": "storage",
+            "nickname": nickname,
+        }
         self.connected = connected
         self.last_loss_time = last_loss_time
         self.last_rx_time = last_rx_time
         self.last_connect_time = last_connect_time
 
-    def on_status_changed(self, cb): # TODO: try to remove me
+    def on_status_changed(self, cb):  # TODO: try to remove me
         cb(self)
-    def is_connected(self): # TODO: remove me
+
+    def is_connected(self):  # TODO: remove me
         return self.connected
+
     def get_version(self):
-        return {
-            b"application-version": b"1.0"
-        }
+        return {b"application-version": b"1.0"}
+
     def get_permutation_seed(self):
         return b""
+
     def get_announcement(self):
         return self.announcement
+
     def get_nickname(self):
         return self.announcement["nickname"]
+
     def get_available_space(self):
         return 123456
+
     def get_connection_status(self):
-        return ConnectionStatus(self.connected, "summary", {},
-                                self.last_connect_time, self.last_rx_time)
+        return ConnectionStatus(
+            self.connected, "summary", {}, self.last_connect_time, self.last_rx_time
+        )
+
 
 class FakeBucketCounter(object):
     def get_state(self):
         return {"last-complete-bucket-count": 0}
+
     def get_progress(self):
-        return {"estimated-time-per-cycle": 0,
-                "cycle-in-progress": False,
-                "remaining-wait-time": 0}
+        return {
+            "estimated-time-per-cycle": 0,
+            "cycle-in-progress": False,
+            "remaining-wait-time": 0,
+        }
+
 
 class FakeLeaseChecker(object):
     def __init__(self):
@@ -246,25 +309,34 @@ class FakeLeaseChecker(object):
         self.mode = "age"
         self.override_lease_duration = None
         self.sharetypes_to_expire = {}
+
     def get_state(self):
         return {"history": None}
+
     def get_progress(self):
-        return {"estimated-time-per-cycle": 0,
-                "cycle-in-progress": False,
-                "remaining-wait-time": 0}
+        return {
+            "estimated-time-per-cycle": 0,
+            "cycle-in-progress": False,
+            "remaining-wait-time": 0,
+        }
+
 
 class FakeStorageServer(service.MultiService):
-    name = 'storage' # type: ignore # https://twistedmatrix.com/trac/ticket/10135
+    name = "storage"  # type: ignore # https://twistedmatrix.com/trac/ticket/10135
+
     def __init__(self, nodeid, nickname):
         service.MultiService.__init__(self)
         self.my_nodeid = nodeid
         self.nickname = nickname
         self.bucket_counter = FakeBucketCounter()
         self.lease_checker = FakeLeaseChecker()
+
     def get_stats(self):
         return {"storage_server.accepting_immutable_shares": False}
+
     def on_status_changed(self, cb):
         cb(self)
+
 
 class FakeClient(_Client):  # type: ignore  # tahoe-lafs/ticket/3573
     def __init__(self):
@@ -273,7 +345,7 @@ class FakeClient(_Client):  # type: ignore  # tahoe-lafs/ticket/3573
         service.MultiService.__init__(self)
         self.all_contents = {}
         self.nodeid = b"fake_nodeid"
-        self.nickname = u"fake_nickname \u263A"
+        self.nickname = "fake_nickname \u263A"
         self.introducer_furls = []
         self.introducer_clients = []
         self.stats_provider = FakeStatsProvider()
@@ -286,50 +358,67 @@ class FakeClient(_Client):  # type: ignore  # tahoe-lafs/ticket/3573
             node_config=EMPTY_CLIENT_CONFIG,
         )
         # fake knowledge of another server
-        self.storage_broker.test_add_server(b"other_nodeid",
+        self.storage_broker.test_add_server(
+            b"other_nodeid",
             FakeDisplayableServer(
-                serverid=b"other_nodeid", nickname=u"other_nickname \u263B", connected = True,
-                last_connect_time = 10, last_loss_time = 20, last_rx_time = 30))
-        self.storage_broker.test_add_server(b"disconnected_nodeid",
+                serverid=b"other_nodeid",
+                nickname="other_nickname \u263B",
+                connected=True,
+                last_connect_time=10,
+                last_loss_time=20,
+                last_rx_time=30,
+            ),
+        )
+        self.storage_broker.test_add_server(
+            b"disconnected_nodeid",
             FakeDisplayableServer(
-                serverid=b"disconnected_nodeid", nickname=u"disconnected_nickname \u263B", connected = False,
-                last_connect_time = None, last_loss_time = 25, last_rx_time = 35))
+                serverid=b"disconnected_nodeid",
+                nickname="disconnected_nickname \u263B",
+                connected=False,
+                last_connect_time=None,
+                last_loss_time=25,
+                last_rx_time=35,
+            ),
+        )
         self.introducer_client = None
         self.history = FakeHistory()
         self.uploader = FakeUploader()
         self.uploader.all_contents = self.all_contents
         self.uploader.setServiceParent(self)
         self.blacklist = None
-        self.nodemaker = FakeNodeMaker(None, self._secret_holder, None,
-                                       self.uploader, None,
-                                       None, None, None)
+        self.nodemaker = FakeNodeMaker(
+            None, self._secret_holder, None, self.uploader, None, None, None, None
+        )
         self.nodemaker.all_contents = self.all_contents
         self.mutable_file_default = SDMF_VERSION
         self.addService(FakeStorageServer(self.nodeid, self.nickname))
 
     def get_long_nodeid(self):
         return b"v0-nodeid"
+
     def get_long_tubid(self):
-        return u"tubid"
+        return "tubid"
 
     def get_auth_token(self):
-        return b'a fake debug auth token'
+        return b"a fake debug auth token"
 
     def startService(self):
         return service.MultiService.startService(self)
+
     def stopService(self):
         return service.MultiService.stopService(self)
 
     MUTABLE_SIZELIMIT = FakeMutableFileNode.MUTABLE_SIZELIMIT
 
+
 class WebMixin(TimezoneMixin):
     def setUp(self):
-        self.setTimezone('UTC-13:00')
+        self.setTimezone("UTC-13:00")
         self.s = FakeClient()
         self.s.startService()
         self.staticdir = self.mktemp()
         self.clock = Clock()
-        self.fakeTime = 86460 # 1d 0h 1m 0s
+        self.fakeTime = 86460  # 1d 0h 1m 0s
         tempdir = FilePath(self.mktemp())
         tempdir.makedirs()
         self.ws = webish.WebishServer(
@@ -338,16 +427,17 @@ class WebMixin(TimezoneMixin):
             tempdir=tempdir.path,
             staticdir=self.staticdir,
             clock=self.clock,
-            now_fn=lambda:self.fakeTime,
+            now_fn=lambda: self.fakeTime,
         )
         self.ws.setServiceParent(self.s)
         self.webish_port = self.ws.getPortnum()
         self.webish_url = self.ws.getURL()
         assert self.webish_url.endswith("/")
-        self.webish_url = self.webish_url[:-1] # these tests add their own /
+        self.webish_url = self.webish_url[:-1]  # these tests add their own /
 
-        l = [ self.s.create_dirnode() for x in range(6) ]
+        l = [self.s.create_dirnode() for x in range(6)]
         d = defer.DeferredList(l)
+
         def _then(res):
             self.public_root = res[0][1]
             assert interfaces.IDirectoryNode.providedBy(self.public_root), res
@@ -361,59 +451,70 @@ class WebMixin(TimezoneMixin):
             self._foo_verifycap = foo.get_verify_cap().to_string()
             # NOTE: we ignore the deferred on all set_uri() calls, because we
             # know the fake nodes do these synchronously
-            self.public_root.set_uri(u"foo", foo.get_uri(),
-                                     foo.get_readonly_uri())
+            self.public_root.set_uri("foo", foo.get_uri(), foo.get_readonly_uri())
 
             self.BAR_CONTENTS, n, self._bar_txt_uri = self.makefile(0)
-            foo.set_uri(u"bar.txt", self._bar_txt_uri, self._bar_txt_uri)
+            foo.set_uri("bar.txt", self._bar_txt_uri, self._bar_txt_uri)
             self._bar_txt_verifycap = n.get_verify_cap().to_string()
 
             # sdmf
             # XXX: Do we ever use this?
-            self.BAZ_CONTENTS, n, self._baz_txt_uri, self._baz_txt_readonly_uri = self.makefile_mutable(0)
+            (
+                self.BAZ_CONTENTS,
+                n,
+                self._baz_txt_uri,
+                self._baz_txt_readonly_uri,
+            ) = self.makefile_mutable(0)
 
-            foo.set_uri(u"baz.txt", self._baz_txt_uri, self._baz_txt_readonly_uri)
+            foo.set_uri("baz.txt", self._baz_txt_uri, self._baz_txt_readonly_uri)
 
             # mdmf
-            self.QUUX_CONTENTS, n, self._quux_txt_uri, self._quux_txt_readonly_uri = self.makefile_mutable(0, mdmf=True)
+            (
+                self.QUUX_CONTENTS,
+                n,
+                self._quux_txt_uri,
+                self._quux_txt_readonly_uri,
+            ) = self.makefile_mutable(0, mdmf=True)
             assert self._quux_txt_uri.startswith(b"URI:MDMF")
-            foo.set_uri(u"quux.txt", self._quux_txt_uri, self._quux_txt_readonly_uri)
+            foo.set_uri("quux.txt", self._quux_txt_uri, self._quux_txt_readonly_uri)
 
-            foo.set_uri(u"empty", res[3][1].get_uri(),
-                        res[3][1].get_readonly_uri())
+            foo.set_uri("empty", res[3][1].get_uri(), res[3][1].get_readonly_uri())
             sub_uri = res[4][1].get_uri()
             self._sub_uri = sub_uri
-            foo.set_uri(u"sub", sub_uri, sub_uri)
+            foo.set_uri("sub", sub_uri, sub_uri)
             sub = self.s.create_node_from_uri(sub_uri)
             self._sub_node = sub
 
             _ign, n, blocking_uri = self.makefile(1)
-            foo.set_uri(u"blockingfile", blocking_uri, blocking_uri)
+            foo.set_uri("blockingfile", blocking_uri, blocking_uri)
 
             # filenode to test for html encoding issues
-            self._htmlname_unicode = u"<&weirdly'named\"file>>>_<iframe />.txt"
-            self._htmlname_raw = self._htmlname_unicode.encode('utf-8')
-            self._htmlname_urlencoded = urlquote(self._htmlname_raw, '')
+            self._htmlname_unicode = "<&weirdly'named\"file>>>_<iframe />.txt"
+            self._htmlname_raw = self._htmlname_unicode.encode("utf-8")
+            self._htmlname_urlencoded = urlquote(self._htmlname_raw, "")
             self.HTMLNAME_CONTENTS, n, self._htmlname_txt_uri = self.makefile(0)
-            foo.set_uri(self._htmlname_unicode, self._htmlname_txt_uri, self._htmlname_txt_uri)
+            foo.set_uri(
+                self._htmlname_unicode, self._htmlname_txt_uri, self._htmlname_txt_uri
+            )
 
-            unicode_filename = u"n\u00fc.txt" # n u-umlaut . t x t
+            unicode_filename = "n\u00fc.txt"  # n u-umlaut . t x t
             # ok, unicode calls it LATIN SMALL LETTER U WITH DIAERESIS but I
             # still think of it as an umlaut
             foo.set_uri(unicode_filename, self._bar_txt_uri, self._bar_txt_uri)
 
             self.SUBBAZ_CONTENTS, n, baz_file = self.makefile(2)
             self._baz_file_uri = baz_file
-            sub.set_uri(u"baz.txt", baz_file, baz_file)
+            sub.set_uri("baz.txt", baz_file, baz_file)
 
             _ign, n, self._bad_file_uri = self.makefile(3)
             # this uri should not be downloadable
             del self.s.all_contents[self._bad_file_uri]
 
             rodir = res[5][1]
-            self.public_root.set_uri(u"reedownlee", rodir.get_readonly_uri(),
-                                     rodir.get_readonly_uri())
-            rodir.set_uri(u"nor", baz_file, baz_file)
+            self.public_root.set_uri(
+                "reedownlee", rodir.get_readonly_uri(), rodir.get_readonly_uri()
+            )
+            rodir.set_uri("nor", baz_file, baz_file)
 
             # public/
             # public/foo/
@@ -429,10 +530,13 @@ class WebMixin(TimezoneMixin):
             # public/reedownlee/nor
             self.NEWFILE_CONTENTS = b"newfile contents\n"
 
-            return foo.get_metadata_for(u"bar.txt")
+            return foo.get_metadata_for("bar.txt")
+
         d.addCallback(_then)
+
         def _got_metadata(metadata):
             self._bar_txt_metadata = metadata
+
         d.addCallback(_got_metadata)
         return d
 
@@ -470,9 +574,11 @@ class WebMixin(TimezoneMixin):
         self.failUnlessEqual(data[0], "filenode")
         self.failUnless(isinstance(data[1], dict))
         self.failIf(data[1]["mutable"])
-        self.failIfIn("rw_uri", data[1]) # immutable
+        self.failIfIn("rw_uri", data[1])  # immutable
         self.failUnlessReallyEqual(to_bytes(data[1]["ro_uri"]), self._bar_txt_uri)
-        self.failUnlessReallyEqual(to_bytes(data[1]["verify_uri"]), self._bar_txt_verifycap)
+        self.failUnlessReallyEqual(
+            to_bytes(data[1]["verify_uri"]), self._bar_txt_verifycap
+        )
         self.failUnlessReallyEqual(data[1]["size"], len(self.BAR_CONTENTS))
 
     def failUnlessIsQuuxJSON(self, res, readonly=False):
@@ -484,15 +590,17 @@ class WebMixin(TimezoneMixin):
         return self.failUnlessIsQuuxDotTxtMetadata(metadata, readonly)
 
     def failUnlessIsQuuxDotTxtMetadata(self, metadata, readonly):
-        self.failUnless(metadata['mutable'])
+        self.failUnless(metadata["mutable"])
         if readonly:
             self.failIfIn("rw_uri", metadata)
         else:
             self.failUnlessIn("rw_uri", metadata)
-            self.failUnlessEqual(metadata['rw_uri'], str(self._quux_txt_uri, "ascii"))
+            self.failUnlessEqual(metadata["rw_uri"], str(self._quux_txt_uri, "ascii"))
         self.failUnlessIn("ro_uri", metadata)
-        self.failUnlessEqual(metadata['ro_uri'], str(self._quux_txt_readonly_uri, "ascii"))
-        self.failUnlessReallyEqual(metadata['size'], len(self.QUUX_CONTENTS))
+        self.failUnlessEqual(
+            metadata["ro_uri"], str(self._quux_txt_readonly_uri, "ascii")
+        )
+        self.failUnlessReallyEqual(metadata["size"], len(self.QUUX_CONTENTS))
 
     def failUnlessIsFooJSON(self, res):
         data = json.loads(res)
@@ -500,52 +608,69 @@ class WebMixin(TimezoneMixin):
         self.failUnlessEqual(data[0], "dirnode", res)
         self.failUnless(isinstance(data[1], dict))
         self.failUnless(data[1]["mutable"])
-        self.failUnlessIn("rw_uri", data[1]) # mutable
+        self.failUnlessIn("rw_uri", data[1])  # mutable
         self.failUnlessReallyEqual(to_bytes(data[1]["rw_uri"]), self._foo_uri)
         self.failUnlessReallyEqual(to_bytes(data[1]["ro_uri"]), self._foo_readonly_uri)
         self.failUnlessReallyEqual(to_bytes(data[1]["verify_uri"]), self._foo_verifycap)
 
         kidnames = sorted([str(n) for n in data[1]["children"]])
-        self.failUnlessEqual(kidnames,
-                             [self._htmlname_unicode, u"bar.txt", u"baz.txt",
-                              u"blockingfile", u"empty", u"n\u00fc.txt", u"quux.txt", u"sub"])
-        kids = dict( [(str(name),value)
-                      for (name,value)
-                      in list(data[1]["children"].items())] )
-        self.failUnlessEqual(kids[u"sub"][0], "dirnode")
-        self.failUnlessIn("metadata", kids[u"sub"][1])
-        self.failUnlessIn("tahoe", kids[u"sub"][1]["metadata"])
-        tahoe_md = kids[u"sub"][1]["metadata"]["tahoe"]
+        self.failUnlessEqual(
+            kidnames,
+            [
+                self._htmlname_unicode,
+                "bar.txt",
+                "baz.txt",
+                "blockingfile",
+                "empty",
+                "n\u00fc.txt",
+                "quux.txt",
+                "sub",
+            ],
+        )
+        kids = dict(
+            [(str(name), value) for (name, value) in list(data[1]["children"].items())]
+        )
+        self.failUnlessEqual(kids["sub"][0], "dirnode")
+        self.failUnlessIn("metadata", kids["sub"][1])
+        self.failUnlessIn("tahoe", kids["sub"][1]["metadata"])
+        tahoe_md = kids["sub"][1]["metadata"]["tahoe"]
         self.failUnlessIn("linkcrtime", tahoe_md)
         self.failUnlessIn("linkmotime", tahoe_md)
-        self.failUnlessEqual(kids[u"bar.txt"][0], "filenode")
-        self.failUnlessReallyEqual(kids[u"bar.txt"][1]["size"], len(self.BAR_CONTENTS))
-        self.failUnlessReallyEqual(to_bytes(kids[u"bar.txt"][1]["ro_uri"]), self._bar_txt_uri)
-        self.failUnlessReallyEqual(to_bytes(kids[u"bar.txt"][1]["verify_uri"]),
-                                   self._bar_txt_verifycap)
-        self.failUnlessIn("metadata", kids[u"bar.txt"][1])
-        self.failUnlessIn("tahoe", kids[u"bar.txt"][1]["metadata"])
-        self.failUnlessReallyEqual(kids[u"bar.txt"][1]["metadata"]["tahoe"]["linkcrtime"],
-                                   self._bar_txt_metadata["tahoe"]["linkcrtime"])
-        self.failUnlessReallyEqual(to_bytes(kids[u"n\u00fc.txt"][1]["ro_uri"]),
-                                   self._bar_txt_uri)
+        self.failUnlessEqual(kids["bar.txt"][0], "filenode")
+        self.failUnlessReallyEqual(kids["bar.txt"][1]["size"], len(self.BAR_CONTENTS))
+        self.failUnlessReallyEqual(
+            to_bytes(kids["bar.txt"][1]["ro_uri"]), self._bar_txt_uri
+        )
+        self.failUnlessReallyEqual(
+            to_bytes(kids["bar.txt"][1]["verify_uri"]), self._bar_txt_verifycap
+        )
+        self.failUnlessIn("metadata", kids["bar.txt"][1])
+        self.failUnlessIn("tahoe", kids["bar.txt"][1]["metadata"])
+        self.failUnlessReallyEqual(
+            kids["bar.txt"][1]["metadata"]["tahoe"]["linkcrtime"],
+            self._bar_txt_metadata["tahoe"]["linkcrtime"],
+        )
+        self.failUnlessReallyEqual(
+            to_bytes(kids["n\u00fc.txt"][1]["ro_uri"]), self._bar_txt_uri
+        )
         self.failUnlessIn("quux.txt", kids)
-        self.failUnlessReallyEqual(to_bytes(kids[u"quux.txt"][1]["rw_uri"]),
-                                   self._quux_txt_uri)
-        self.failUnlessReallyEqual(to_bytes(kids[u"quux.txt"][1]["ro_uri"]),
-                                   self._quux_txt_readonly_uri)
+        self.failUnlessReallyEqual(
+            to_bytes(kids["quux.txt"][1]["rw_uri"]), self._quux_txt_uri
+        )
+        self.failUnlessReallyEqual(
+            to_bytes(kids["quux.txt"][1]["ro_uri"]), self._quux_txt_readonly_uri
+        )
 
     @inlineCallbacks
-    def GET(self, urlpath, followRedirect=False, return_response=False,
-            **kwargs):
+    def GET(self, urlpath, followRedirect=False, return_response=False, **kwargs):
         # if return_response=True, this fires with (data, statuscode,
         # respheaders) instead of just data.
 
         # treq can accept unicode URLs, unlike the old client.getPage
         url = self.webish_url + urlpath
-        response = yield treq.request("get", url, persistent=False,
-                                      allow_redirects=followRedirect,
-                                      **kwargs)
+        response = yield treq.request(
+            "get", url, persistent=False, allow_redirects=followRedirect, **kwargs
+        )
         data = yield response.content()
         if return_response:
             # we emulate the old HTTPClientGetFactory-based response, which
@@ -553,7 +678,7 @@ class WebMixin(TimezoneMixin):
             # code like "200" or "404", and a
             # twisted.web.http_headers.Headers instance). Fortunately treq's
             # response.headers has one.
-            returnValue( (data, str(response.code), response.headers) )
+            returnValue((data, str(response.code), response.headers))
         if 400 <= response.code < 600:
             raise Error(response.code, response=data)
         returnValue(data)
@@ -561,11 +686,10 @@ class WebMixin(TimezoneMixin):
     @inlineCallbacks
     def HEAD(self, urlpath, return_response=False, headers={}):
         url = self.webish_url + urlpath
-        response = yield treq.request("head", url, persistent=False,
-                                      headers=headers)
+        response = yield treq.request("head", url, persistent=False, headers=headers)
         if 400 <= response.code < 600:
             raise Error(response.code, response="")
-        returnValue( ("", response.code, response.headers) )
+        returnValue(("", response.code, response.headers))
 
     def PUT(self, urlpath, data, headers={}):
         url = self.webish_url + urlpath
@@ -581,8 +705,8 @@ class WebMixin(TimezoneMixin):
         form = []
         form.append(sep)
         form.append(b'Content-Disposition: form-data; name="_charset"')
-        form.append(b'')
-        form.append(b'UTF-8')
+        form.append(b"")
+        form.append(b"UTF-8")
         form.append(sep)
         for name, value in list(fields.items()):
             if isinstance(name, str):
@@ -591,11 +715,13 @@ class WebMixin(TimezoneMixin):
                 filename, value = value
                 if isinstance(filename, str):
                     filename = filename.encode("utf-8")
-                form.append(b'Content-Disposition: form-data; name="%s"; '
-                            b'filename="%s"' % (name, filename))
+                form.append(
+                    b'Content-Disposition: form-data; name="%s"; '
+                    b'filename="%s"' % (name, filename)
+                )
             else:
                 form.append(b'Content-Disposition: form-data; name="%s"' % name)
-            form.append(b'')
+            form.append(b"")
             if isinstance(value, str):
                 value = value.encode("utf-8")
             form.append(value)
@@ -605,7 +731,9 @@ class WebMixin(TimezoneMixin):
         headers = {}
         if fields:
             body = b"\r\n".join(form) + b"\r\n"
-            headers["content-type"] = "multipart/form-data; boundary=%s" % str(sepbase, "utf-8")
+            headers["content-type"] = "multipart/form-data; boundary=%s" % str(
+                sepbase, "utf-8"
+            )
         return (body, headers)
 
     def POST(self, urlpath, **fields):
@@ -616,11 +744,13 @@ class WebMixin(TimezoneMixin):
         url = self.webish_url + urlpath
         if isinstance(body, str):
             body = body.encode("utf-8")
-        return do_http("POST", url, allow_redirects=followRedirect,
-                       headers=headers, data=body)
+        return do_http(
+            "POST", url, allow_redirects=followRedirect, headers=headers, data=body
+        )
 
-    def shouldFail(self, res, expected_failure, which,
-                   substring=None, response_substring=None):
+    def shouldFail(
+        self, res, expected_failure, which, substring=None, response_substring=None
+    ):
         if isinstance(res, failure.Failure):
             res.trap(expected_failure)
             if substring:
@@ -628,35 +758,56 @@ class WebMixin(TimezoneMixin):
             if response_substring:
                 self.failUnlessIn(response_substring, res.value.response, which)
         else:
-            self.fail("%r was supposed to raise %s, not get %r" %
-                      (which, expected_failure, res))
+            self.fail(
+                "%r was supposed to raise %s, not get %r"
+                % (which, expected_failure, res)
+            )
 
-    def shouldFail2(self, expected_failure, which, substring,
-                    response_substring,
-                    callable, *args, **kwargs):
+    def shouldFail2(
+        self,
+        expected_failure,
+        which,
+        substring,
+        response_substring,
+        callable,
+        *args,
+        **kwargs
+    ):
         assert substring is None or isinstance(substring, str)
         assert response_substring is None or isinstance(response_substring, str)
         d = defer.maybeDeferred(callable, *args, **kwargs)
+
         def done(res):
             if isinstance(res, failure.Failure):
                 res.trap(expected_failure)
                 if substring:
-                    self.failUnlessIn(substring, str(res),
-                                      "%r not in %r (response is %r) for test %r" % \
-                                      (substring, str(res),
-                                       getattr(res.value, "response", ""),
-                                       which))
+                    self.failUnlessIn(
+                        substring,
+                        str(res),
+                        "%r not in %r (response is %r) for test %r"
+                        % (
+                            substring,
+                            str(res),
+                            getattr(res.value, "response", ""),
+                            which,
+                        ),
+                    )
                 if response_substring:
                     response = res.value.response
                     if isinstance(response, bytes):
                         response = str(response, "utf-8")
-                    self.failUnlessIn(response_substring, response,
-                                      "%r not in %r for test %r" % \
-                                      (response_substring, res.value.response,
-                                       which))
+                    self.failUnlessIn(
+                        response_substring,
+                        response,
+                        "%r not in %r for test %r"
+                        % (response_substring, res.value.response, which),
+                    )
             else:
-                self.fail("%r was supposed to raise %s, not get %r" %
-                          (which, expected_failure, res))
+                self.fail(
+                    "%r was supposed to raise %s, not get %r"
+                    % (which, expected_failure, res)
+                )
+
         d.addBoth(done)
         return d
 
@@ -665,22 +816,21 @@ class WebMixin(TimezoneMixin):
             res.trap(error.Error)
             self.failUnlessReallyEqual(res.value.status, b"404")
         else:
-            self.fail("%s was supposed to Error(404), not get '%s'" %
-                      (which, res))
+            self.fail("%s was supposed to Error(404), not get '%s'" % (which, res))
 
     def should302(self, res, which):
         if isinstance(res, failure.Failure):
             res.trap(error.Error)
             self.failUnlessReallyEqual(res.value.status, b"302")
         else:
-            self.fail("%s was supposed to Error(302), not get '%s'" %
-                      (which, res))
+            self.fail("%s was supposed to Error(302), not get '%s'" % (which, res))
 
 
 class MultiFormatResourceTests(TrialTestCase):
     """
     Tests for ``MultiFormatResource``.
     """
+
     def render(self, resource, **queryargs):
         # Query arguments in real twisted.web requests have byte keys.
         queryargs = {k.encode("utf-8"): v for (k, v) in list(queryargs.items())}
@@ -691,8 +841,8 @@ class MultiFormatResourceTests(TrialTestCase):
         Create and return an instance of a ``MultiFormatResource`` subclass
         with a default HTML format, and two custom formats: ``a`` and ``b``.
         """
-        class Content(MultiFormatResource):
 
+        class Content(MultiFormatResource):
             def render_HTML(self, req):
                 return b"html"
 
@@ -704,7 +854,6 @@ class MultiFormatResourceTests(TrialTestCase):
 
         return Content()
 
-
     def test_select_format(self):
         """
         The ``formatArgument`` attribute of a ``MultiFormatResource`` subclass
@@ -714,7 +863,6 @@ class MultiFormatResourceTests(TrialTestCase):
         resource.formatArgument = "foo"
         self.assertEqual(b"a", self.render(resource, foo=[b"a"]))
 
-
     def test_default_format_argument(self):
         """
         If a ``MultiFormatResource`` subclass does not set ``formatArgument``
@@ -723,7 +871,6 @@ class MultiFormatResourceTests(TrialTestCase):
         resource = self.resource()
         self.assertEqual(b"a", self.render(resource, t=[b"a"]))
 
-
     def test_no_format(self):
         """
         If no value is given for the format argument and no default format has
@@ -731,7 +878,6 @@ class MultiFormatResourceTests(TrialTestCase):
         """
         resource = self.resource()
         self.assertEqual(b"html", self.render(resource))
-
 
     def test_default_format(self):
         """
@@ -743,7 +889,6 @@ class MultiFormatResourceTests(TrialTestCase):
         resource.formatDefault = "b"
         self.assertEqual(b"b", self.render(resource))
 
-
     def test_explicit_none_format_renderer(self):
         """
         If a format is selected which has a renderer set to ``None``, the base
@@ -753,7 +898,6 @@ class MultiFormatResourceTests(TrialTestCase):
         resource.render_FOO = None
         self.assertEqual(b"html", self.render(resource, t=[b"foo"]))
 
-
     def test_unknown_format(self):
         """
         If a format is selected for which there is no renderer, an error is
@@ -762,17 +906,26 @@ class MultiFormatResourceTests(TrialTestCase):
         resource = self.resource()
         response_body = self.render(resource, t=[b"foo"])
         self.assertIn(
-            b"<title>400 - Bad Format</title>", response_body,
+            b"<title>400 - Bad Format</title>",
+            response_body,
         )
         self.assertIn(
-            b"Unknown t value:", response_body,
+            b"Unknown t value:",
+            response_body,
         )
         self.assertIn(
-            b"'foo'", response_body,
+            b"'foo'",
+            response_body,
         )
 
 
-class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixin, TrialTestCase):
+class Web(
+    WebMixin,
+    WebErrorMixin,
+    testutil.StallMixin,
+    testutil.ReallyEqualMixin,
+    TrialTestCase,
+):
     maxDiff = None
 
     def test_create(self):
@@ -790,12 +943,14 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
             header item is found and which fails otherwise.
         """
         d = self.GET("/", return_response=True)
+
         def responded(result):
             _, _, headers = result
             self.assertEqual(
                 values,
                 headers.getRawHeaders(name),
             )
+
         d.addCallback(responded)
         return d
 
@@ -819,30 +974,37 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         ``t`` query argument.
         """
         d = self.GET("/?t=json")
+
         def _check(res):
             decoded = json.loads(res)
             expected = {
-                u'introducers': {
-                    u'statuses': [],
+                "introducers": {
+                    "statuses": [],
                 },
-                u'servers': sorted([
-                    {u"nodeid": u'other_nodeid',
-                     u'available_space': 123456,
-                     u'connection_status': u'summary',
-                     u'last_received_data': 30,
-                     u'nickname': u'other_nickname \u263b',
-                     u'version': u'1.0',
-                    },
-                    {u"nodeid": u'disconnected_nodeid',
-                     u'available_space': 123456,
-                     u'connection_status': u'summary',
-                     u'last_received_data': 35,
-                     u'nickname': u'disconnected_nickname \u263b',
-                     u'version': u'1.0',
-                    },
-                ], key=lambda o: sorted(o.items())),
+                "servers": sorted(
+                    [
+                        {
+                            "nodeid": "other_nodeid",
+                            "available_space": 123456,
+                            "connection_status": "summary",
+                            "last_received_data": 30,
+                            "nickname": "other_nickname \u263b",
+                            "version": "1.0",
+                        },
+                        {
+                            "nodeid": "disconnected_nodeid",
+                            "available_space": 123456,
+                            "connection_status": "summary",
+                            "last_received_data": 35,
+                            "nickname": "disconnected_nickname \u263b",
+                            "version": "1.0",
+                        },
+                    ],
+                    key=lambda o: sorted(o.items()),
+                ),
             }
             self.assertEqual(expected, decoded)
+
         d.addCallback(_check)
         return d
 
@@ -850,6 +1012,7 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         class MockIntroducerClient(object):
             def __init__(self, connected):
                 self.connected = connected
+
             def connection_status(self):
                 return ConnectionStatus(self.connected, "summary", {}, 0, 0)
 
@@ -857,68 +1020,78 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
 
         # introducer not connected, unguessable furl
         def _set_introducer_not_connected_unguessable(ign):
-            self.s.introducer_furls = [ "pb://someIntroducer/secret" ]
-            self.s.introducer_clients = [ MockIntroducerClient(False) ]
+            self.s.introducer_furls = ["pb://someIntroducer/secret"]
+            self.s.introducer_clients = [MockIntroducerClient(False)]
             return self.GET("/")
+
         d.addCallback(_set_introducer_not_connected_unguessable)
+
         def _check_introducer_not_connected_unguessable(res):
-            soup = BeautifulSoup(res, 'html5lib')
-            self.failIfIn(b'pb://someIntroducer/secret', res)
+            soup = BeautifulSoup(res, "html5lib")
+            self.failIfIn(b"pb://someIntroducer/secret", res)
             assert_soup_has_tag_with_attributes(
-                self, soup, u"img",
-                {u"alt": u"Disconnected", u"src": u"img/connected-no.png"}
+                self,
+                soup,
+                "img",
+                {"alt": "Disconnected", "src": "img/connected-no.png"},
             )
             assert_soup_has_tag_with_content(
-                self, soup, u"div",
-                u"No introducers connected"
+                self, soup, "div", "No introducers connected"
             )
+
         d.addCallback(_check_introducer_not_connected_unguessable)
 
         # introducer connected, unguessable furl
         def _set_introducer_connected_unguessable(ign):
-            self.s.introducer_furls = [ "pb://someIntroducer/secret" ]
-            self.s.introducer_clients = [ MockIntroducerClient(True) ]
+            self.s.introducer_furls = ["pb://someIntroducer/secret"]
+            self.s.introducer_clients = [MockIntroducerClient(True)]
             return self.GET("/")
+
         d.addCallback(_set_introducer_connected_unguessable)
+
         def _check_introducer_connected_unguessable(res):
-            soup = BeautifulSoup(res, 'html5lib')
+            soup = BeautifulSoup(res, "html5lib")
             assert_soup_has_tag_with_attributes_and_content(
-                self, soup, u"div",
-                u"summary",
-                { u"class": u"connection-status", u"title": u"(no other hints)" }
+                self,
+                soup,
+                "div",
+                "summary",
+                {"class": "connection-status", "title": "(no other hints)"},
             )
-            self.failIfIn(b'pb://someIntroducer/secret', res)
+            self.failIfIn(b"pb://someIntroducer/secret", res)
             assert_soup_has_tag_with_attributes(
-                self, soup, u"img",
-                { u"alt": u"Connected", u"src": u"img/connected-yes.png" }
+                self, soup, "img", {"alt": "Connected", "src": "img/connected-yes.png"}
             )
             assert_soup_has_tag_with_content(
-                self, soup, u"div",
-                u"1 introducer connected"
+                self, soup, "div", "1 introducer connected"
             )
+
         d.addCallback(_check_introducer_connected_unguessable)
 
         # introducer connected, guessable furl
         def _set_introducer_connected_guessable(ign):
-            self.s.introducer_furls = [ "pb://someIntroducer/introducer" ]
-            self.s.introducer_clients = [ MockIntroducerClient(True) ]
+            self.s.introducer_furls = ["pb://someIntroducer/introducer"]
+            self.s.introducer_clients = [MockIntroducerClient(True)]
             return self.GET("/")
+
         d.addCallback(_set_introducer_connected_guessable)
+
         def _check_introducer_connected_guessable(res):
-            soup = BeautifulSoup(res, 'html5lib')
+            soup = BeautifulSoup(res, "html5lib")
             assert_soup_has_tag_with_attributes_and_content(
-                self, soup, u"div",
-                u"summary",
-                { u"class": u"connection-status", u"title": u"(no other hints)" }
+                self,
+                soup,
+                "div",
+                "summary",
+                {"class": "connection-status", "title": "(no other hints)"},
             )
             assert_soup_has_tag_with_attributes(
-                self, soup, u"img",
-                { u"src": u"img/connected-yes.png", u"alt": u"Connected" }
+                self, soup, "img", {"src": "img/connected-yes.png", "alt": "Connected"}
             )
             assert_soup_has_tag_with_content(
-                self, soup, u"div",
-                u"1 introducer connected"
+                self, soup, "div", "1 introducer connected"
             )
+
         d.addCallback(_check_introducer_connected_guessable)
         return d
 
@@ -929,13 +1102,18 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         def _set_no_helper(ign):
             self.s.uploader.helper_furl = None
             return self.GET("/")
+
         d.addCallback(_set_no_helper)
+
         def _check_no_helper(res):
-            soup = BeautifulSoup(res, 'html5lib')
+            soup = BeautifulSoup(res, "html5lib")
             assert_soup_has_tag_with_attributes(
-                self, soup, u"img",
-                { u"src": u"img/connected-not-configured.png", u"alt": u"Not Configured" }
+                self,
+                soup,
+                "img",
+                {"src": "img/connected-not-configured.png", "alt": "Not Configured"},
             )
+
         d.addCallback(_check_no_helper)
 
         # enable helper, not connected
@@ -943,19 +1121,22 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
             self.s.uploader.helper_furl = "pb://someHelper/secret"
             self.s.uploader.helper_connected = False
             return self.GET("/")
+
         d.addCallback(_set_helper_not_connected)
+
         def _check_helper_not_connected(res):
-            soup = BeautifulSoup(res, 'html5lib')
+            soup = BeautifulSoup(res, "html5lib")
             assert_soup_has_tag_with_attributes_and_content(
-                self, soup, u"div",
-                u"pb://someHelper/[censored]",
-                { u"class": u"furl" }
+                self, soup, "div", "pb://someHelper/[censored]", {"class": "furl"}
             )
-            self.failIfIn(b'pb://someHelper/secret', res)
+            self.failIfIn(b"pb://someHelper/secret", res)
             assert_soup_has_tag_with_attributes(
-                self, soup, u"img",
-                { u"src": u"img/connected-no.png", u"alt": u"Disconnected" }
+                self,
+                soup,
+                "img",
+                {"src": "img/connected-no.png", "alt": "Disconnected"},
             )
+
         d.addCallback(_check_helper_not_connected)
 
         # enable helper, connected
@@ -963,30 +1144,35 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
             self.s.uploader.helper_furl = "pb://someHelper/secret"
             self.s.uploader.helper_connected = True
             return self.GET("/")
+
         d.addCallback(_set_helper_connected)
+
         def _check_helper_connected(res):
-            soup = BeautifulSoup(res, 'html5lib')
+            soup = BeautifulSoup(res, "html5lib")
             assert_soup_has_tag_with_attributes_and_content(
-                self, soup, u"div",
-                u"pb://someHelper/[censored]",
-                { u"class": u"furl" }
+                self, soup, "div", "pb://someHelper/[censored]", {"class": "furl"}
             )
-            self.failIfIn(b'pb://someHelper/secret', res)
+            self.failIfIn(b"pb://someHelper/secret", res)
             assert_soup_has_tag_with_attributes(
-                self, soup, u"img",
-                { u"src": u"img/connected-yes.png", "alt": u"Connected" }
+                self, soup, "img", {"src": "img/connected-yes.png", "alt": "Connected"}
             )
+
         d.addCallback(_check_helper_connected)
         return d
 
     def test_storage(self):
         d = self.GET("/storage")
+
         def _check(res):
-            soup = BeautifulSoup(res, 'html5lib')
-            assert_soup_has_text(self, soup, 'Storage Server Status')
+            soup = BeautifulSoup(res, "html5lib")
+            assert_soup_has_text(self, soup, "Storage Server Status")
             assert_soup_has_favicon(self, soup)
-            res_u = res.decode('utf-8')
-            self.failUnlessIn(u'<li>Server Nickname: <span class="nickname mine">fake_nickname \u263A</span></li>', res_u)
+            res_u = res.decode("utf-8")
+            self.failUnlessIn(
+                '<li>Server Nickname: <span class="nickname mine">fake_nickname \u263A</span></li>',
+                res_u,
+            )
+
         d.addCallback(_check)
         return d
 
@@ -998,29 +1184,36 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         pub_num = h.list_all_publish_statuses()[0].get_counter()
         ret_num = h.list_all_retrieve_statuses()[0].get_counter()
         d = self.GET("/status", followRedirect=True)
+
         def _check(res):
             res = str(res, "utf-8")
-            self.failUnlessIn('Recent and Active Operations', res)
+            self.failUnlessIn("Recent and Active Operations", res)
             self.failUnlessIn('"/status/down-%d"' % dl_num, res)
             self.failUnlessIn('"/status/up-%d"' % ul_num, res)
             self.failUnlessIn('"/status/mapupdate-%d"' % mu_num, res)
             self.failUnlessIn('"/status/publish-%d"' % pub_num, res)
             self.failUnlessIn('"/status/retrieve-%d"' % ret_num, res)
+
         d.addCallback(_check)
         d.addCallback(lambda res: self.GET("/status/?t=json"))
+
         def _check_json(res):
             data = json.loads(res)
             self.failUnless(isinstance(data, dict))
-            #active = data["active"]
+            # active = data["active"]
             # TODO: test more. We need a way to fake an active operation
             # here.
+
         d.addCallback(_check_json)
 
         d.addCallback(lambda res: self.GET("/status/down-%d" % dl_num))
+
         def _check_dl(res):
             self.failUnlessIn(b"File Download Status", res)
+
         d.addCallback(_check_dl)
         d.addCallback(lambda res: self.GET("/status/down-%d/event_json" % dl_num))
+
         def _check_dl_json(res):
             data = json.loads(res)
             self.failUnless(isinstance(data, dict))
@@ -1029,37 +1222,48 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
             self.failUnlessEqual(data["segment"][0]["segment_length"], 100)
             self.failUnlessEqual(data["segment"][2]["segment_number"], 2)
             self.failUnlessEqual(data["segment"][2]["finish_time"], None)
-            phwr_id = str(base32.b2a(hashutil.tagged_hash(b"foo", b"serverid_a")[:20]), "ascii")
-            cmpu_id = str(base32.b2a(hashutil.tagged_hash(b"foo", b"serverid_b")[:20]), "ascii")
+            phwr_id = str(
+                base32.b2a(hashutil.tagged_hash(b"foo", b"serverid_a")[:20]), "ascii"
+            )
+            cmpu_id = str(
+                base32.b2a(hashutil.tagged_hash(b"foo", b"serverid_b")[:20]), "ascii"
+            )
             # serverids[] keys are strings, since that's what JSON does, but
             # we'd really like them to be ints
             self.failUnlessEqual(data["serverids"]["0"], "phwrsjte")
-            self.failUnless("1" in data["serverids"],
-                            str(data["serverids"]))
-            self.failUnlessEqual(data["serverids"]["1"], "cmpuvkjm",
-                                 str(data["serverids"]))
-            self.failUnlessEqual(data["server_info"][phwr_id]["short"],
-                                 "phwrsjte")
-            self.failUnlessEqual(data["server_info"][cmpu_id]["short"],
-                                 "cmpuvkjm")
+            self.failUnless("1" in data["serverids"], str(data["serverids"]))
+            self.failUnlessEqual(
+                data["serverids"]["1"], "cmpuvkjm", str(data["serverids"])
+            )
+            self.failUnlessEqual(data["server_info"][phwr_id]["short"], "phwrsjte")
+            self.failUnlessEqual(data["server_info"][cmpu_id]["short"], "cmpuvkjm")
             self.failUnlessIn("dyhb", data)
             self.failUnlessIn("misc", data)
+
         d.addCallback(_check_dl_json)
         d.addCallback(lambda res: self.GET("/status/up-%d" % ul_num))
+
         def _check_ul(res):
             self.failUnlessIn(b"File Upload Status", res)
+
         d.addCallback(_check_ul)
         d.addCallback(lambda res: self.GET("/status/mapupdate-%d" % mu_num))
+
         def _check_mapupdate(res):
             self.failUnlessIn(b"Mutable File Servermap Update Status", res)
+
         d.addCallback(_check_mapupdate)
         d.addCallback(lambda res: self.GET("/status/publish-%d" % pub_num))
+
         def _check_publish(res):
             self.failUnlessIn(b"Mutable File Publish Status", res)
+
         d.addCallback(_check_publish)
         d.addCallback(lambda res: self.GET("/status/retrieve-%d" % ret_num))
+
         def _check_retrieve(res):
             self.failUnlessIn(b"Mutable File Retrieve Status", res)
+
         d.addCallback(_check_retrieve)
 
         return d
@@ -1069,65 +1273,74 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         Expect an error, because path is expected to be of the form
         "/status/{up,down,..}-%number", with a hyphen.
         """
-        return self.shouldFail2(error.Error,
-                                "test_status_path_nodash",
-                                "400 Bad Request",
-                                "no '-' in 'nodash'",
-                                self.GET,
-                                "/status/nodash")
+        return self.shouldFail2(
+            error.Error,
+            "test_status_path_nodash",
+            "400 Bad Request",
+            "no '-' in 'nodash'",
+            self.GET,
+            "/status/nodash",
+        )
 
     def test_status_page_contains_links(self):
         """
         Check that the rendered `/status` page contains all the
         expected links.
         """
+
         def _check_status_page_links(response):
             (body, status, _) = response
 
             self.failUnlessReallyEqual(int(status), 200)
 
-            soup = BeautifulSoup(body, 'html5lib')
+            soup = BeautifulSoup(body, "html5lib")
             h = self.s.get_history()
 
             # Check for `<a href="/status/retrieve-0">Not started</a>`
             ret_num = h.list_all_retrieve_statuses()[0].get_counter()
             assert_soup_has_tag_with_attributes_and_content(
-                self, soup, u"a",
-                u"Not started",
-                {u"href": u"/status/retrieve-{}".format(ret_num)}
+                self,
+                soup,
+                "a",
+                "Not started",
+                {"href": "/status/retrieve-{}".format(ret_num)},
             )
 
             # Check for `<a href="/status/publish-0">Not started</a></td>`
             pub_num = h.list_all_publish_statuses()[0].get_counter()
             assert_soup_has_tag_with_attributes_and_content(
-                self, soup, u"a",
-                u"Not started",
-                {u"href": u"/status/publish-{}".format(pub_num)}
+                self,
+                soup,
+                "a",
+                "Not started",
+                {"href": "/status/publish-{}".format(pub_num)},
             )
 
             # Check for `<a href="/status/mapupdate-0">Not started</a>`
             mu_num = h.list_all_mapupdate_statuses()[0].get_counter()
             assert_soup_has_tag_with_attributes_and_content(
-                self, soup, u"a",
-                u"Not started",
-                {u"href": u"/status/mapupdate-{}".format(mu_num)}
+                self,
+                soup,
+                "a",
+                "Not started",
+                {"href": "/status/mapupdate-{}".format(mu_num)},
             )
 
             # Check for `<a href="/status/down-0">fetching segments
             # 2,3; errors on segment 1</a>`: see build_one_ds() above.
             dl_num = h.list_all_download_statuses()[0].get_counter()
             assert_soup_has_tag_with_attributes_and_content(
-                self, soup, u"a",
-                u"fetching segments 2,3; errors on segment 1",
-                {u"href": u"/status/down-{}".format(dl_num)}
+                self,
+                soup,
+                "a",
+                "fetching segments 2,3; errors on segment 1",
+                {"href": "/status/down-{}".format(dl_num)},
             )
 
             # Check for `<a href="/status/up-0">Not started</a>`
             ul_num = h.list_all_upload_statuses()[0].get_counter()
             assert_soup_has_tag_with_attributes_and_content(
-                self, soup, u"a",
-                u"Not started",
-                {u"href": u"/status/up-{}".format(ul_num)}
+                self, soup, "a", "Not started", {"href": "/status/up-{}".format(ul_num)}
             )
 
         d = self.GET("/status", return_response=True)
@@ -1140,16 +1353,16 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         alike, but reject any additional trailing slashes and other
         non-existent child nodes.
         """
+
         def _check_status(response):
             (body, status, _) = response
 
             self.failUnlessReallyEqual(int(status), 200)
 
-            soup = BeautifulSoup(body, 'html5lib')
+            soup = BeautifulSoup(body, "html5lib")
             assert_soup_has_favicon(self, soup)
             assert_soup_has_tag_with_content(
-                self, soup, u"title",
-                u"Tahoe-LAFS - Recent and Active Operations"
+                self, soup, "title", "Tahoe-LAFS - Recent and Active Operations"
             )
 
         d = self.GET("/status", return_response=True)
@@ -1158,19 +1371,23 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         d = self.GET("/status/", return_response=True)
         d.addCallback(_check_status)
 
-        d =  self.shouldFail2(error.Error,
-                              "test_status_path_trailing_slashes",
-                              "400 Bad Request",
-                              "no '-' in ''",
-                              self.GET,
-                              "/status//")
+        d = self.shouldFail2(
+            error.Error,
+            "test_status_path_trailing_slashes",
+            "400 Bad Request",
+            "no '-' in ''",
+            self.GET,
+            "/status//",
+        )
 
-        d =  self.shouldFail2(error.Error,
-                              "test_status_path_trailing_slashes",
-                              "400 Bad Request",
-                              "no '-' in ''",
-                              self.GET,
-                              "/status////////")
+        d = self.shouldFail2(
+            error.Error,
+            "test_status_path_trailing_slashes",
+            "400 Bad Request",
+            "no '-' in ''",
+            self.GET,
+            "/status////////",
+        )
 
         return d
 
@@ -1207,11 +1424,9 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         """
         body, status, _ = result
         self.failUnlessReallyEqual(int(status), 200)
-        soup = BeautifulSoup(body, 'html5lib')
+        soup = BeautifulSoup(body, "html5lib")
         assert_soup_has_favicon(self, soup)
-        assert_soup_has_tag_with_content(
-            self, soup, u"title", expected_title
-        )
+        assert_soup_has_tag_with_content(self, soup, "title", expected_title)
 
     def test_status_up_subpath(self):
         """
@@ -1220,8 +1435,9 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         h = self.s.get_history()
         ul_num = h.list_all_upload_statuses()[0].get_counter()
         d = self.GET("/status/up-{}".format(ul_num), return_response=True)
-        d.addCallback(self._check_status_subpath_result,
-                      u"Tahoe-LAFS - File Upload Status")
+        d.addCallback(
+            self._check_status_subpath_result, "Tahoe-LAFS - File Upload Status"
+        )
         return d
 
     def test_status_down_subpath(self):
@@ -1231,8 +1447,9 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         h = self.s.get_history()
         dl_num = h.list_all_download_statuses()[0].get_counter()
         d = self.GET("/status/down-{}".format(dl_num), return_response=True)
-        d.addCallback(self._check_status_subpath_result,
-                      u"Tahoe-LAFS - File Download Status")
+        d.addCallback(
+            self._check_status_subpath_result, "Tahoe-LAFS - File Download Status"
+        )
         return d
 
     def test_status_mapupdate_subpath(self):
@@ -1242,8 +1459,10 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         h = self.s.get_history()
         mu_num = h.list_all_mapupdate_statuses()[0].get_counter()
         d = self.GET("/status/mapupdate-{}".format(mu_num), return_response=True)
-        d.addCallback(self._check_status_subpath_result,
-                      u"Tahoe-LAFS - Mutable File Servermap Update Status")
+        d.addCallback(
+            self._check_status_subpath_result,
+            "Tahoe-LAFS - Mutable File Servermap Update Status",
+        )
         return d
 
     def test_status_publish_subpath(self):
@@ -1253,8 +1472,10 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         h = self.s.get_history()
         pub_num = h.list_all_publish_statuses()[0].get_counter()
         d = self.GET("/status/publish-{}".format(pub_num), return_response=True)
-        d.addCallback(self._check_status_subpath_result,
-                      u"Tahoe-LAFS - Mutable File Publish Status")
+        d.addCallback(
+            self._check_status_subpath_result,
+            "Tahoe-LAFS - Mutable File Publish Status",
+        )
         return d
 
     def test_status_retrieve_subpath(self):
@@ -1264,8 +1485,10 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         h = self.s.get_history()
         ret_num = h.list_all_retrieve_statuses()[0].get_counter()
         d = self.GET("/status/retrieve-{}".format(ret_num), return_response=True)
-        d.addCallback(self._check_status_subpath_result,
-                      u"Tahoe-LAFS - Mutable File Retrieve Status")
+        d.addCallback(
+            self._check_status_subpath_result,
+            "Tahoe-LAFS - Mutable File Retrieve Status",
+        )
         return d
 
     def test_GET_FILEURL(self):
@@ -1275,129 +1498,174 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
 
     def test_GET_FILEURL_range(self):
         headers = {"range": "bytes=1-10"}
-        d = self.GET(self.public_url + "/foo/bar.txt", headers=headers,
-                     return_response=True)
+        d = self.GET(
+            self.public_url + "/foo/bar.txt", headers=headers, return_response=True
+        )
+
         def _got(res_and_status_and_headers):
             (res, status, headers) = res_and_status_and_headers
             self.failUnlessReallyEqual(int(status), 206)
             self.failUnless(headers.hasHeader("content-range"))
-            self.failUnlessReallyEqual(headers.getRawHeaders("content-range")[0],
-                                       "bytes 1-10/%d" % len(self.BAR_CONTENTS))
+            self.failUnlessReallyEqual(
+                headers.getRawHeaders("content-range")[0],
+                "bytes 1-10/%d" % len(self.BAR_CONTENTS),
+            )
             self.failUnlessReallyEqual(res, self.BAR_CONTENTS[1:11])
+
         d.addCallback(_got)
         return d
 
     def test_GET_FILEURL_partial_range(self):
         headers = {"range": "bytes=5-"}
-        length  = len(self.BAR_CONTENTS)
-        d = self.GET(self.public_url + "/foo/bar.txt", headers=headers,
-                     return_response=True)
+        length = len(self.BAR_CONTENTS)
+        d = self.GET(
+            self.public_url + "/foo/bar.txt", headers=headers, return_response=True
+        )
+
         def _got(res_and_status_and_headers):
             (res, status, headers) = res_and_status_and_headers
             self.failUnlessReallyEqual(int(status), 206)
             self.failUnless(headers.hasHeader("content-range"))
-            self.failUnlessReallyEqual(headers.getRawHeaders("content-range")[0],
-                                       "bytes 5-%d/%d" % (length-1, length))
+            self.failUnlessReallyEqual(
+                headers.getRawHeaders("content-range")[0],
+                "bytes 5-%d/%d" % (length - 1, length),
+            )
             self.failUnlessReallyEqual(res, self.BAR_CONTENTS[5:])
+
         d.addCallback(_got)
         return d
 
     def test_GET_FILEURL_partial_end_range(self):
         headers = {"range": "bytes=-5"}
-        length  = len(self.BAR_CONTENTS)
-        d = self.GET(self.public_url + "/foo/bar.txt", headers=headers,
-                     return_response=True)
+        length = len(self.BAR_CONTENTS)
+        d = self.GET(
+            self.public_url + "/foo/bar.txt", headers=headers, return_response=True
+        )
+
         def _got(res_and_status_and_headers):
             (res, status, headers) = res_and_status_and_headers
             self.failUnlessReallyEqual(int(status), 206)
             self.failUnless(headers.hasHeader("content-range"))
-            self.failUnlessReallyEqual(headers.getRawHeaders("content-range")[0],
-                                       "bytes %d-%d/%d" % (length-5, length-1, length))
+            self.failUnlessReallyEqual(
+                headers.getRawHeaders("content-range")[0],
+                "bytes %d-%d/%d" % (length - 5, length - 1, length),
+            )
             self.failUnlessReallyEqual(res, self.BAR_CONTENTS[-5:])
+
         d.addCallback(_got)
         return d
 
     def test_GET_FILEURL_partial_range_overrun(self):
         headers = {"range": "bytes=100-200"}
-        d = self.shouldFail2(error.Error, "test_GET_FILEURL_range_overrun",
-                             "416 Requested Range not satisfiable",
-                             "First beyond end of file",
-                             self.GET, self.public_url + "/foo/bar.txt",
-                             headers=headers)
+        d = self.shouldFail2(
+            error.Error,
+            "test_GET_FILEURL_range_overrun",
+            "416 Requested Range not satisfiable",
+            "First beyond end of file",
+            self.GET,
+            self.public_url + "/foo/bar.txt",
+            headers=headers,
+        )
         return d
 
     def test_HEAD_FILEURL_range(self):
         headers = {"range": "bytes=1-10"}
-        d = self.HEAD(self.public_url + "/foo/bar.txt", headers=headers,
-                     return_response=True)
+        d = self.HEAD(
+            self.public_url + "/foo/bar.txt", headers=headers, return_response=True
+        )
+
         def _got(res_and_status_and_headers):
             (res, status, headers) = res_and_status_and_headers
             self.failUnlessReallyEqual(res, "")
             self.failUnlessReallyEqual(int(status), 206)
             self.failUnless(headers.hasHeader("content-range"))
-            self.failUnlessReallyEqual(headers.getRawHeaders("content-range")[0],
-                                       "bytes 1-10/%d" % len(self.BAR_CONTENTS))
+            self.failUnlessReallyEqual(
+                headers.getRawHeaders("content-range")[0],
+                "bytes 1-10/%d" % len(self.BAR_CONTENTS),
+            )
+
         d.addCallback(_got)
         return d
 
     def test_HEAD_FILEURL_partial_range(self):
         headers = {"range": "bytes=5-"}
-        length  = len(self.BAR_CONTENTS)
-        d = self.HEAD(self.public_url + "/foo/bar.txt", headers=headers,
-                     return_response=True)
+        length = len(self.BAR_CONTENTS)
+        d = self.HEAD(
+            self.public_url + "/foo/bar.txt", headers=headers, return_response=True
+        )
+
         def _got(res_and_status_and_headers):
             (res, status, headers) = res_and_status_and_headers
             self.failUnlessReallyEqual(int(status), 206)
             self.failUnless(headers.hasHeader("content-range"))
-            self.failUnlessReallyEqual(headers.getRawHeaders("content-range")[0],
-                                       "bytes 5-%d/%d" % (length-1, length))
+            self.failUnlessReallyEqual(
+                headers.getRawHeaders("content-range")[0],
+                "bytes 5-%d/%d" % (length - 1, length),
+            )
+
         d.addCallback(_got)
         return d
 
     def test_HEAD_FILEURL_partial_end_range(self):
         headers = {"range": "bytes=-5"}
-        length  = len(self.BAR_CONTENTS)
-        d = self.HEAD(self.public_url + "/foo/bar.txt", headers=headers,
-                     return_response=True)
+        length = len(self.BAR_CONTENTS)
+        d = self.HEAD(
+            self.public_url + "/foo/bar.txt", headers=headers, return_response=True
+        )
+
         def _got(res_and_status_and_headers):
             (res, status, headers) = res_and_status_and_headers
             self.failUnlessReallyEqual(int(status), 206)
             self.failUnless(headers.hasHeader("content-range"))
-            self.failUnlessReallyEqual(headers.getRawHeaders("content-range")[0],
-                                       "bytes %d-%d/%d" % (length-5, length-1, length))
+            self.failUnlessReallyEqual(
+                headers.getRawHeaders("content-range")[0],
+                "bytes %d-%d/%d" % (length - 5, length - 1, length),
+            )
+
         d.addCallback(_got)
         return d
 
     def test_HEAD_FILEURL_partial_range_overrun(self):
         headers = {"range": "bytes=100-200"}
-        d = self.shouldFail2(error.Error, "test_HEAD_FILEURL_range_overrun",
-                             "416 Requested Range not satisfiable",
-                             "",
-                             self.HEAD, self.public_url + "/foo/bar.txt",
-                             headers=headers)
+        d = self.shouldFail2(
+            error.Error,
+            "test_HEAD_FILEURL_range_overrun",
+            "416 Requested Range not satisfiable",
+            "",
+            self.HEAD,
+            self.public_url + "/foo/bar.txt",
+            headers=headers,
+        )
         return d
 
     def test_GET_FILEURL_range_bad(self):
         headers = {"range": "BOGUS=fizbop-quarnak"}
-        d = self.GET(self.public_url + "/foo/bar.txt", headers=headers,
-                     return_response=True)
+        d = self.GET(
+            self.public_url + "/foo/bar.txt", headers=headers, return_response=True
+        )
+
         def _got(res_and_status_and_headers):
             (res, status, headers) = res_and_status_and_headers
             self.failUnlessReallyEqual(int(status), 200)
             self.failUnless(not headers.hasHeader("content-range"))
             self.failUnlessReallyEqual(res, self.BAR_CONTENTS)
+
         d.addCallback(_got)
         return d
 
     def test_HEAD_FILEURL(self):
         d = self.HEAD(self.public_url + "/foo/bar.txt", return_response=True)
+
         def _got(res_and_status_and_headers):
             (res, status, headers) = res_and_status_and_headers
             self.failUnlessReallyEqual(res, "")
-            self.failUnlessReallyEqual(int(headers.getRawHeaders("content-length")[0]),
-                                       len(self.BAR_CONTENTS))
-            self.failUnlessReallyEqual(headers.getRawHeaders("content-type"),
-                                       ["text/plain"])
+            self.failUnlessReallyEqual(
+                int(headers.getRawHeaders("content-length")[0]), len(self.BAR_CONTENTS)
+            )
+            self.failUnlessReallyEqual(
+                headers.getRawHeaders("content-type"), ["text/plain"]
+            )
+
         d.addCallback(_got)
         return d
 
@@ -1414,36 +1682,48 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         d.addCallback(self.failUnlessIsBarDotTxt)
         save_url = base + "?save=true&filename=blah.txt"
         d.addCallback(lambda res: self.GET(save_url))
-        d.addCallback(self.failUnlessIsBarDotTxt) # TODO: check headers
-        u_filename = u"n\u00e9wer.txt" # n e-acute w e r . t x t
+        d.addCallback(self.failUnlessIsBarDotTxt)  # TODO: check headers
+        u_filename = "n\u00e9wer.txt"  # n e-acute w e r . t x t
         u_fn_e = urlquote(u_filename.encode("utf-8"))
         u_url = base + "?save=true&filename=" + u_fn_e
         d.addCallback(lambda res: self.GET(u_url))
-        d.addCallback(self.failUnlessIsBarDotTxt) # TODO: check headers
+        d.addCallback(self.failUnlessIsBarDotTxt)  # TODO: check headers
         return d
 
     def test_PUT_FILEURL_named_bad(self):
         base = "/file/%s" % urlquote(self._bar_txt_uri)
-        d = self.shouldFail2(error.Error, "test_PUT_FILEURL_named_bad",
-                             "400 Bad Request",
-                             "/file can only be used with GET or HEAD",
-                             self.PUT, base + "/@@name=/blah.txt", "")
+        d = self.shouldFail2(
+            error.Error,
+            "test_PUT_FILEURL_named_bad",
+            "400 Bad Request",
+            "/file can only be used with GET or HEAD",
+            self.PUT,
+            base + "/@@name=/blah.txt",
+            "",
+        )
         return d
-
 
     def test_GET_DIRURL_named_bad(self):
         base = "/file/%s" % urlquote(self._foo_uri)
-        d = self.shouldFail2(error.Error, "test_PUT_DIRURL_named_bad",
-                             "400 Bad Request",
-                             "is not a file-cap",
-                             self.GET, base + "/@@name=/blah.txt")
+        d = self.shouldFail2(
+            error.Error,
+            "test_PUT_DIRURL_named_bad",
+            "400 Bad Request",
+            "is not a file-cap",
+            self.GET,
+            base + "/@@name=/blah.txt",
+        )
         return d
 
     def test_GET_slash_file_bad(self):
-        d = self.shouldFail2(error.Error, "test_GET_slash_file_bad",
-                             "404 Not Found",
-                             "/file must be followed by a file-cap and a name",
-                             self.GET, "/file")
+        d = self.shouldFail2(
+            error.Error,
+            "test_GET_slash_file_bad",
+            "404 Not Found",
+            "/file must be followed by a file-cap and a name",
+            self.GET,
+            "/file",
+        )
         return d
 
     def test_GET_unhandled_URI_named(self):
@@ -1451,9 +1731,14 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         verifier_cap = n.get_verify_cap().to_string()
         base = "/file/%s" % urlquote(verifier_cap)
         # client.create_node_from_uri() can't handle verify-caps
-        d = self.shouldFail2(error.Error, "GET_unhandled_URI_named",
-                             "400 Bad Request", "is not a file-cap",
-                             self.GET, base)
+        d = self.shouldFail2(
+            error.Error,
+            "GET_unhandled_URI_named",
+            "400 Bad Request",
+            "is not a file-cap",
+            self.GET,
+            base,
+        )
         return d
 
     def test_GET_unhandled_URI(self):
@@ -1461,10 +1746,14 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         verifier_cap = n.get_verify_cap().to_string()
         base = "/uri/%s" % urlquote(verifier_cap)
         # client.create_node_from_uri() can't handle verify-caps
-        d = self.shouldFail2(error.Error, "test_GET_unhandled_URI",
-                             "400 Bad Request",
-                             "GET unknown URI type: can only do t=info",
-                             self.GET, base)
+        d = self.shouldFail2(
+            error.Error,
+            "test_GET_unhandled_URI",
+            "400 Bad Request",
+            "GET unknown URI type: can only do t=info",
+            self.GET,
+            base,
+        )
         return d
 
     def test_GET_FILE_URI(self):
@@ -1494,102 +1783,130 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
     def test_GET_FILE_URI_badchild(self):
         base = "/uri/%s/boguschild" % urlquote(str(self._bar_txt_uri, "ascii"))
         errmsg = "Files have no children named 'boguschild'"
-        d = self.shouldFail2(error.Error, "test_GET_FILE_URI_badchild",
-                             "400 Bad Request", errmsg,
-                             self.GET, base)
+        d = self.shouldFail2(
+            error.Error,
+            "test_GET_FILE_URI_badchild",
+            "400 Bad Request",
+            errmsg,
+            self.GET,
+            base,
+        )
         return d
 
     def test_PUT_FILE_URI_badchild(self):
         base = "/uri/%s/boguschild" % urlquote(str(self._bar_txt_uri, "ascii"))
         errmsg = "Cannot create directory 'boguschild', because its parent is a file, not a directory"
-        d = self.shouldFail2(error.Error, "test_GET_FILE_URI_badchild",
-                             "409 Conflict", errmsg,
-                             self.PUT, base, "")
+        d = self.shouldFail2(
+            error.Error,
+            "test_GET_FILE_URI_badchild",
+            "409 Conflict",
+            errmsg,
+            self.PUT,
+            base,
+            "",
+        )
         return d
 
     def test_PUT_FILE_URI_mdmf(self):
         base = "/uri/%s" % urlquote(str(self._quux_txt_uri, "ascii"))
         self._quux_new_contents = b"new_contents"
         d = self.GET(base)
-        d.addCallback(lambda res:
-            self.failUnlessIsQuuxDotTxt(res))
-        d.addCallback(lambda ignored:
-            self.PUT(base, self._quux_new_contents))
-        d.addCallback(lambda ignored:
-            self.GET(base))
-        d.addCallback(lambda res:
-            self.failUnlessReallyEqual(res, self._quux_new_contents))
+        d.addCallback(lambda res: self.failUnlessIsQuuxDotTxt(res))
+        d.addCallback(lambda ignored: self.PUT(base, self._quux_new_contents))
+        d.addCallback(lambda ignored: self.GET(base))
+        d.addCallback(
+            lambda res: self.failUnlessReallyEqual(res, self._quux_new_contents)
+        )
         return d
 
     def test_PUT_FILE_URI_mdmf_extensions(self):
-        base = "/uri/%s" % urlquote("%s:EXTENSIONSTUFF" % str(self._quux_txt_uri, "ascii"))
+        base = "/uri/%s" % urlquote(
+            "%s:EXTENSIONSTUFF" % str(self._quux_txt_uri, "ascii")
+        )
         self._quux_new_contents = b"new_contents"
         d = self.GET(base)
         d.addCallback(lambda res: self.failUnlessIsQuuxDotTxt(res))
         d.addCallback(lambda ignored: self.PUT(base, self._quux_new_contents))
         d.addCallback(lambda ignored: self.GET(base))
-        d.addCallback(lambda res: self.failUnlessEqual(self._quux_new_contents,
-                                                       res))
+        d.addCallback(lambda res: self.failUnlessEqual(self._quux_new_contents, res))
         return d
 
     def test_PUT_FILE_URI_mdmf_readonly(self):
         # We're not allowed to PUT things to a readonly cap.
         base = "/uri/%s" % str(self._quux_txt_readonly_uri, "ascii")
         d = self.GET(base)
-        d.addCallback(lambda res:
-            self.failUnlessIsQuuxDotTxt(res))
+        d.addCallback(lambda res: self.failUnlessIsQuuxDotTxt(res))
         # What should we get here? We get a 500 error now; that's not right.
-        d.addCallback(lambda ignored:
-            self.shouldFail2(error.Error, "test_PUT_FILE_URI_mdmf_readonly",
-                             "400 Bad Request", "read-only cap",
-                             self.PUT, base, b"new data"))
+        d.addCallback(
+            lambda ignored: self.shouldFail2(
+                error.Error,
+                "test_PUT_FILE_URI_mdmf_readonly",
+                "400 Bad Request",
+                "read-only cap",
+                self.PUT,
+                base,
+                b"new data",
+            )
+        )
         return d
 
     def test_PUT_FILE_URI_sdmf_readonly(self):
         # We're not allowed to put things to a readonly cap.
         base = "/uri/%s" % str(self._baz_txt_readonly_uri, "ascii")
         d = self.GET(base)
-        d.addCallback(lambda res:
-            self.failUnlessIsBazDotTxt(res))
-        d.addCallback(lambda ignored:
-            self.shouldFail2(error.Error, "test_PUT_FILE_URI_sdmf_readonly",
-                             "400 Bad Request", "read-only cap",
-                             self.PUT, base, b"new_data"))
+        d.addCallback(lambda res: self.failUnlessIsBazDotTxt(res))
+        d.addCallback(
+            lambda ignored: self.shouldFail2(
+                error.Error,
+                "test_PUT_FILE_URI_sdmf_readonly",
+                "400 Bad Request",
+                "read-only cap",
+                self.PUT,
+                base,
+                b"new_data",
+            )
+        )
         return d
 
     def test_GET_etags(self):
-
         def _check_etags(uri):
             d1 = _get_etag(uri)
-            d2 = _get_etag(uri, 'json')
+            d2 = _get_etag(uri, "json")
             d = defer.DeferredList([d1, d2], consumeErrors=True)
+
             def _check(results):
                 # All deferred must succeed
                 self.failUnless(all([r[0] for r in results]))
                 # the etag for the t=json form should be just like the etag
                 # fo the default t='' form, but with a 'json' suffix
-                self.failUnlessEqual(results[0][1] + 'json', results[1][1])
+                self.failUnlessEqual(results[0][1] + "json", results[1][1])
+
             d.addCallback(_check)
             return d
 
-        def _get_etag(uri, t=''):
+        def _get_etag(uri, t=""):
             targetbase = "/uri/%s?t=%s" % (urlquote(uri.strip()), t)
             d = self.GET(targetbase, return_response=True, followRedirect=True)
+
             def _just_the_etag(result):
                 data, response, headers = result
-                etag = headers.getRawHeaders('etag')[0]
-                if uri.startswith(b'URI:DIR'):
-                    self.failUnless(etag.startswith('DIR:'), etag)
+                etag = headers.getRawHeaders("etag")[0]
+                if uri.startswith(b"URI:DIR"):
+                    self.failUnless(etag.startswith("DIR:"), etag)
                 return etag
+
             return d.addCallback(_just_the_etag)
 
         # Check that etags work with immutable directories
         (newkids, caps) = self._create_immutable_children()
-        d = self.POST2(self.public_url + "/foo/newdir?t=mkdir-immutable",
-                       json.dumps(newkids))
+        d = self.POST2(
+            self.public_url + "/foo/newdir?t=mkdir-immutable", json.dumps(newkids)
+        )
+
         def _stash_immdir_uri(uri):
             self._immdir_uri = uri
             return uri
+
         d.addCallback(_stash_immdir_uri)
         d.addCallback(_check_etags)
 
@@ -1601,29 +1918,43 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
             uri = "/uri/%s" % str(self._bar_txt_uri, "ascii")
             d = self.GET(uri, return_response=True)
             # extract the ETag
-            d.addCallback(lambda data_code_headers:
-                          data_code_headers[2].getRawHeaders('etag')[0])
+            d.addCallback(
+                lambda data_code_headers: data_code_headers[2].getRawHeaders("etag")[0]
+            )
             # do a GET that's supposed to match the ETag
-            d.addCallback(lambda etag:
-                          self.GET(uri, return_response=True,
-                                   headers={"If-None-Match": etag}))
+            d.addCallback(
+                lambda etag: self.GET(
+                    uri, return_response=True, headers={"If-None-Match": etag}
+                )
+            )
             # make sure it short-circuited (304 instead of 200)
-            d.addCallback(lambda data_code_headers:
-                          self.failUnlessEqual(int(data_code_headers[1]), http.NOT_MODIFIED))
+            d.addCallback(
+                lambda data_code_headers: self.failUnlessEqual(
+                    int(data_code_headers[1]), http.NOT_MODIFIED
+                )
+            )
             return d
+
         d.addCallback(_check_match)
 
         def _no_etag(uri, t):
             target = "/uri/%s?t=%s" % (str(uri, "ascii"), t)
             d = self.GET(target, return_response=True, followRedirect=True)
-            d.addCallback(lambda data_code_headers:
-                          self.failIf(data_code_headers[2].hasHeader("etag"), target))
+            d.addCallback(
+                lambda data_code_headers: self.failIf(
+                    data_code_headers[2].hasHeader("etag"), target
+                )
+            )
             return d
+
         def _yes_etag(uri, t):
             target = "/uri/%s?t=%s" % (str(uri, "ascii"), t)
             d = self.GET(target, return_response=True, followRedirect=True)
-            d.addCallback(lambda data_code_headers:
-                          self.failUnless(data_code_headers[2].hasHeader("etag"), target))
+            d.addCallback(
+                lambda data_code_headers: self.failUnless(
+                    data_code_headers[2].hasHeader("etag"), target
+                )
+            )
             return d
 
         d.addCallback(lambda ign: _yes_etag(self._bar_txt_uri, ""))
@@ -1643,13 +1974,20 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
 
     # TODO: version of this with a Unicode filename
     def test_GET_FILEURL_save(self):
-        d = self.GET(self.public_url + "/foo/bar.txt?filename=bar.txt&save=true",
-                     return_response=True)
+        d = self.GET(
+            self.public_url + "/foo/bar.txt?filename=bar.txt&save=true",
+            return_response=True,
+        )
+
         def _got(res_and_status_and_headers):
             (res, statuscode, headers) = res_and_status_and_headers
             content_disposition = headers.getRawHeaders("content-disposition")[0]
-            self.failUnless(content_disposition == 'attachment; filename="bar.txt"', content_disposition)
+            self.failUnless(
+                content_disposition == 'attachment; filename="bar.txt"',
+                content_disposition,
+            )
             self.failUnlessIsBarDotTxt(res)
+
         d.addCallback(_got)
         return d
 
@@ -1660,36 +1998,44 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
 
     def test_GET_FILEURL_info_mdmf(self):
         d = self.GET("/uri/%s?t=info" % str(self._quux_txt_uri, "ascii"))
+
         def _got(res):
             self.failUnlessIn(b"mutable file (mdmf)", res)
             self.failUnlessIn(self._quux_txt_uri, res)
             self.failUnlessIn(self._quux_txt_readonly_uri, res)
+
         d.addCallback(_got)
         return d
 
     def test_GET_FILEURL_info_mdmf_readonly(self):
         d = self.GET("/uri/%s?t=info" % str(self._quux_txt_readonly_uri, "ascii"))
+
         def _got(res):
             self.failUnlessIn(b"mutable file (mdmf)", res)
             self.failIfIn(self._quux_txt_uri, res)
             self.failUnlessIn(self._quux_txt_readonly_uri, res)
+
         d.addCallback(_got)
         return d
 
     def test_GET_FILEURL_info_sdmf(self):
         d = self.GET("/uri/%s?t=info" % str(self._baz_txt_uri, "ascii"))
+
         def _got(res):
             self.failUnlessIn(b"mutable file (sdmf)", res)
             self.failUnlessIn(self._baz_txt_uri, res)
+
         d.addCallback(_got)
         return d
 
     def test_GET_FILEURL_info_mdmf_extensions(self):
         d = self.GET("/uri/%s:STUFF?t=info" % str(self._quux_txt_uri, "ascii"))
+
         def _got(res):
             self.failUnlessIn(b"mutable file (mdmf)", res)
             self.failUnlessIn(self._quux_txt_uri, res)
             self.failUnlessIn(self._quux_txt_readonly_uri, res)
+
         d.addCallback(_got)
         return d
 
@@ -1697,167 +2043,222 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         # create a directory, put a file in that directory.
         contents, n, filecap = self.makefile(8)
         d = self.PUT(self.public_url + "/foo/dir?t=mkdir", "")
-        d.addCallback(lambda res:
-            self.PUT(self.public_url + "/foo/dir/file1.txt",
-                     self.NEWFILE_CONTENTS))
+        d.addCallback(
+            lambda res: self.PUT(
+                self.public_url + "/foo/dir/file1.txt", self.NEWFILE_CONTENTS
+            )
+        )
         # try to overwrite the file with replace=only-files
         # (this should work)
-        d.addCallback(lambda res:
-            self.PUT(self.public_url + "/foo/dir/file1.txt?t=uri&replace=only-files",
-                     filecap))
-        d.addCallback(lambda res:
-            self.shouldFail2(error.Error, "PUT_bad_t", "409 Conflict",
-                 "There was already a child by that name, and you asked me "
-                 "to not replace it",
-                 self.PUT, self.public_url + "/foo/dir?t=uri&replace=only-files",
-                 filecap))
+        d.addCallback(
+            lambda res: self.PUT(
+                self.public_url + "/foo/dir/file1.txt?t=uri&replace=only-files", filecap
+            )
+        )
+        d.addCallback(
+            lambda res: self.shouldFail2(
+                error.Error,
+                "PUT_bad_t",
+                "409 Conflict",
+                "There was already a child by that name, and you asked me "
+                "to not replace it",
+                self.PUT,
+                self.public_url + "/foo/dir?t=uri&replace=only-files",
+                filecap,
+            )
+        )
         return d
 
     def test_PUT_NEWFILEURL(self):
         d = self.PUT(self.public_url + "/foo/new.txt", self.NEWFILE_CONTENTS)
         # TODO: we lose the response code, so we can't check this
-        #self.failUnlessReallyEqual(responsecode, 201)
-        d.addCallback(self.failUnlessURIMatchesROChild, self._foo_node, u"new.txt")
-        d.addCallback(lambda res:
-                      self.failUnlessChildContentsAre(self._foo_node, u"new.txt",
-                                                      self.NEWFILE_CONTENTS))
+        # self.failUnlessReallyEqual(responsecode, 201)
+        d.addCallback(self.failUnlessURIMatchesROChild, self._foo_node, "new.txt")
+        d.addCallback(
+            lambda res: self.failUnlessChildContentsAre(
+                self._foo_node, "new.txt", self.NEWFILE_CONTENTS
+            )
+        )
         return d
 
     def test_PUT_NEWFILEURL_not_mutable(self):
-        d = self.PUT(self.public_url + "/foo/new.txt?mutable=false",
-                     self.NEWFILE_CONTENTS)
+        d = self.PUT(
+            self.public_url + "/foo/new.txt?mutable=false", self.NEWFILE_CONTENTS
+        )
         # TODO: we lose the response code, so we can't check this
-        #self.failUnlessReallyEqual(responsecode, 201)
-        d.addCallback(self.failUnlessURIMatchesROChild, self._foo_node, u"new.txt")
-        d.addCallback(lambda res:
-                      self.failUnlessChildContentsAre(self._foo_node, u"new.txt",
-                                                      self.NEWFILE_CONTENTS))
+        # self.failUnlessReallyEqual(responsecode, 201)
+        d.addCallback(self.failUnlessURIMatchesROChild, self._foo_node, "new.txt")
+        d.addCallback(
+            lambda res: self.failUnlessChildContentsAre(
+                self._foo_node, "new.txt", self.NEWFILE_CONTENTS
+            )
+        )
         return d
 
     def test_PUT_NEWFILEURL_unlinked_mdmf(self):
         # this should get us a few segments of an MDMF mutable file,
         # which we can then test for.
         contents = self.NEWFILE_CONTENTS * 300000
-        d = self.PUT("/uri?format=mdmf",
-                     contents)
+        d = self.PUT("/uri?format=mdmf", contents)
+
         def _got_filecap(filecap):
             self.failUnless(filecap.startswith(b"URI:MDMF"))
             return filecap
+
         d.addCallback(_got_filecap)
-        d.addCallback(lambda filecap: self.GET("/uri/%s?t=json" % str(filecap, "utf-8")))
+        d.addCallback(
+            lambda filecap: self.GET("/uri/%s?t=json" % str(filecap, "utf-8"))
+        )
         d.addCallback(lambda json: self.failUnlessIn(b"MDMF", json))
         return d
 
     def test_PUT_NEWFILEURL_unlinked_sdmf(self):
         contents = self.NEWFILE_CONTENTS * 300000
-        d = self.PUT("/uri?format=sdmf",
-                     contents)
-        d.addCallback(lambda filecap: self.GET("/uri/%s?t=json" % str(filecap, "utf-8")))
+        d = self.PUT("/uri?format=sdmf", contents)
+        d.addCallback(
+            lambda filecap: self.GET("/uri/%s?t=json" % str(filecap, "utf-8"))
+        )
         d.addCallback(lambda json: self.failUnlessIn(b"SDMF", json))
         return d
 
     @inlineCallbacks
     def test_PUT_NEWFILEURL_unlinked_bad_format(self):
         contents = self.NEWFILE_CONTENTS * 300000
-        yield self.assertHTTPError(self.webish_url + "/uri?format=foo", 400,
-                                   "Unknown format: foo",
-                                   method="put", data=contents)
+        yield self.assertHTTPError(
+            self.webish_url + "/uri?format=foo",
+            400,
+            "Unknown format: foo",
+            method="put",
+            data=contents,
+        )
 
     def test_PUT_NEWFILEURL_range_bad(self):
         headers = {"content-range": "bytes 1-10/%d" % len(self.NEWFILE_CONTENTS)}
         target = self.public_url + "/foo/new.txt"
-        d = self.shouldFail2(error.Error, "test_PUT_NEWFILEURL_range_bad",
-                             "501 Not Implemented",
-                             "Content-Range in PUT not yet supported",
-                             # (and certainly not for immutable files)
-                             self.PUT, target, self.NEWFILE_CONTENTS[1:11],
-                             headers=headers)
-        d.addCallback(lambda res:
-                      self.failIfNodeHasChild(self._foo_node, u"new.txt"))
+        d = self.shouldFail2(
+            error.Error,
+            "test_PUT_NEWFILEURL_range_bad",
+            "501 Not Implemented",
+            "Content-Range in PUT not yet supported",
+            # (and certainly not for immutable files)
+            self.PUT,
+            target,
+            self.NEWFILE_CONTENTS[1:11],
+            headers=headers,
+        )
+        d.addCallback(lambda res: self.failIfNodeHasChild(self._foo_node, "new.txt"))
         return d
 
     def test_PUT_NEWFILEURL_mutable(self):
-        d = self.PUT(self.public_url + "/foo/new.txt?mutable=true",
-                     self.NEWFILE_CONTENTS)
+        d = self.PUT(
+            self.public_url + "/foo/new.txt?mutable=true", self.NEWFILE_CONTENTS
+        )
         # TODO: we lose the response code, so we can't check this
-        #self.failUnlessReallyEqual(responsecode, 201)
+        # self.failUnlessReallyEqual(responsecode, 201)
         def _check_uri(res):
             u = uri.from_string_mutable_filenode(res)
             self.failUnless(u.is_mutable())
             self.failIf(u.is_readonly())
             return res
+
         d.addCallback(_check_uri)
-        d.addCallback(self.failUnlessURIMatchesRWChild, self._foo_node, u"new.txt")
-        d.addCallback(lambda res:
-                      self.failUnlessMutableChildContentsAre(self._foo_node,
-                                                             u"new.txt",
-                                                             self.NEWFILE_CONTENTS))
+        d.addCallback(self.failUnlessURIMatchesRWChild, self._foo_node, "new.txt")
+        d.addCallback(
+            lambda res: self.failUnlessMutableChildContentsAre(
+                self._foo_node, "new.txt", self.NEWFILE_CONTENTS
+            )
+        )
         return d
 
     def test_PUT_NEWFILEURL_mutable_toobig(self):
         # It is okay to upload large mutable files, so we should be able
         # to do that.
-        d = self.PUT(self.public_url + "/foo/new.txt?mutable=true",
-                     b"b" * (self.s.MUTABLE_SIZELIMIT + 1))
+        d = self.PUT(
+            self.public_url + "/foo/new.txt?mutable=true",
+            b"b" * (self.s.MUTABLE_SIZELIMIT + 1),
+        )
         return d
 
     def test_PUT_NEWFILEURL_replace(self):
         d = self.PUT(self.public_url + "/foo/bar.txt", self.NEWFILE_CONTENTS)
         # TODO: we lose the response code, so we can't check this
-        #self.failUnlessReallyEqual(responsecode, 200)
-        d.addCallback(self.failUnlessURIMatchesROChild, self._foo_node, u"bar.txt")
-        d.addCallback(lambda res:
-                      self.failUnlessChildContentsAre(self._foo_node, u"bar.txt",
-                                                      self.NEWFILE_CONTENTS))
+        # self.failUnlessReallyEqual(responsecode, 200)
+        d.addCallback(self.failUnlessURIMatchesROChild, self._foo_node, "bar.txt")
+        d.addCallback(
+            lambda res: self.failUnlessChildContentsAre(
+                self._foo_node, "bar.txt", self.NEWFILE_CONTENTS
+            )
+        )
         return d
 
     def test_PUT_NEWFILEURL_bad_t(self):
-        d = self.shouldFail2(error.Error, "PUT_bad_t", "400 Bad Request",
-                             "PUT to a file: bad t=bogus",
-                             self.PUT, self.public_url + "/foo/bar.txt?t=bogus",
-                             b"contents")
+        d = self.shouldFail2(
+            error.Error,
+            "PUT_bad_t",
+            "400 Bad Request",
+            "PUT to a file: bad t=bogus",
+            self.PUT,
+            self.public_url + "/foo/bar.txt?t=bogus",
+            b"contents",
+        )
         return d
 
     def test_PUT_NEWFILEURL_no_replace(self):
-        d = self.PUT(self.public_url + "/foo/bar.txt?replace=false",
-                     self.NEWFILE_CONTENTS)
-        d.addBoth(self.shouldFail, error.Error, "PUT_NEWFILEURL_no_replace",
-                  "409 Conflict",
-                  "There was already a child by that name, and you asked me "
-                  "to not replace it")
+        d = self.PUT(
+            self.public_url + "/foo/bar.txt?replace=false", self.NEWFILE_CONTENTS
+        )
+        d.addBoth(
+            self.shouldFail,
+            error.Error,
+            "PUT_NEWFILEURL_no_replace",
+            "409 Conflict",
+            "There was already a child by that name, and you asked me "
+            "to not replace it",
+        )
         return d
 
     def test_PUT_NEWFILEURL_mkdirs(self):
         d = self.PUT(self.public_url + "/foo/newdir/new.txt", self.NEWFILE_CONTENTS)
         fn = self._foo_node
-        d.addCallback(self.failUnlessURIMatchesROChild, fn, u"newdir/new.txt")
-        d.addCallback(lambda res: self.failIfNodeHasChild(fn, u"new.txt"))
-        d.addCallback(lambda res: self.failUnlessNodeHasChild(fn, u"newdir"))
-        d.addCallback(lambda res:
-                      self.failUnlessChildContentsAre(fn, u"newdir/new.txt",
-                                                      self.NEWFILE_CONTENTS))
+        d.addCallback(self.failUnlessURIMatchesROChild, fn, "newdir/new.txt")
+        d.addCallback(lambda res: self.failIfNodeHasChild(fn, "new.txt"))
+        d.addCallback(lambda res: self.failUnlessNodeHasChild(fn, "newdir"))
+        d.addCallback(
+            lambda res: self.failUnlessChildContentsAre(
+                fn, "newdir/new.txt", self.NEWFILE_CONTENTS
+            )
+        )
         return d
 
     def test_PUT_NEWFILEURL_blocked(self):
-        d = self.PUT(self.public_url + "/foo/blockingfile/new.txt",
-                     self.NEWFILE_CONTENTS)
-        d.addBoth(self.shouldFail, error.Error, "PUT_NEWFILEURL_blocked",
-                  "409 Conflict",
-                  "Unable to create directory 'blockingfile': a file was in the way")
+        d = self.PUT(
+            self.public_url + "/foo/blockingfile/new.txt", self.NEWFILE_CONTENTS
+        )
+        d.addBoth(
+            self.shouldFail,
+            error.Error,
+            "PUT_NEWFILEURL_blocked",
+            "409 Conflict",
+            "Unable to create directory 'blockingfile': a file was in the way",
+        )
         return d
 
     def test_PUT_NEWFILEURL_emptyname(self):
         # an empty pathname component (i.e. a double-slash) is disallowed
-        d = self.shouldFail2(error.Error, "test_PUT_NEWFILEURL_emptyname",
-                             "400 Bad Request",
-                             "The webapi does not allow empty pathname components",
-                             self.PUT, self.public_url + "/foo//new.txt", "")
+        d = self.shouldFail2(
+            error.Error,
+            "test_PUT_NEWFILEURL_emptyname",
+            "400 Bad Request",
+            "The webapi does not allow empty pathname components",
+            self.PUT,
+            self.public_url + "/foo//new.txt",
+            "",
+        )
         return d
 
     def test_DELETE_FILEURL(self):
         d = self.DELETE(self.public_url + "/foo/bar.txt")
-        d.addCallback(lambda res:
-                      self.failIfNodeHasChild(self._foo_node, u"bar.txt"))
+        d.addCallback(lambda res: self.failIfNodeHasChild(self._foo_node, "bar.txt"))
         return d
 
     def test_DELETE_FILEURL_missing(self):
@@ -1877,8 +2278,10 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         self.failUnlessIn("tahoe", data[1]["metadata"])
         self.failUnlessIn("linkcrtime", data[1]["metadata"]["tahoe"])
         self.failUnlessIn("linkmotime", data[1]["metadata"]["tahoe"])
-        self.failUnlessReallyEqual(data[1]["metadata"]["tahoe"]["linkcrtime"],
-                                   self._bar_txt_metadata["tahoe"]["linkcrtime"])
+        self.failUnlessReallyEqual(
+            data[1]["metadata"]["tahoe"]["linkcrtime"],
+            self._bar_txt_metadata["tahoe"]["linkcrtime"],
+        )
 
     def test_GET_FILEURL_json(self):
         # twisted.web.http.parse_qs ignores any query args without an '=', so
@@ -1886,19 +2289,23 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         # instead. This may make it tricky to emulate the S3 interface
         # completely.
         d = self.GET(self.public_url + "/foo/bar.txt?t=json")
+
         def _check1(data):
             self.failUnlessIsBarJSON(data)
             self.failUnlessHasBarDotTxtMetadata(data)
             return
+
         d.addCallback(_check1)
         return d
 
     def test_GET_FILEURL_json_mutable_type(self):
         # The JSON should include format, which says whether the
         # file is SDMF or MDMF
-        d = self.PUT("/uri?format=mdmf",
-                     self.NEWFILE_CONTENTS * 300000)
-        d.addCallback(lambda filecap: self.GET("/uri/%s?t=json" % str(filecap, "ascii")))
+        d = self.PUT("/uri?format=mdmf", self.NEWFILE_CONTENTS * 300000)
+        d.addCallback(
+            lambda filecap: self.GET("/uri/%s?t=json" % str(filecap, "ascii"))
+        )
+
         def _got_json(raw, version):
             data = json.loads(raw)
             assert "filenode" == data[0]
@@ -1910,10 +2317,12 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
 
         d.addCallback(_got_json, "MDMF")
         # Now make an SDMF file and check that it is reported correctly.
-        d.addCallback(lambda ignored:
-            self.PUT("/uri?format=sdmf",
-                      self.NEWFILE_CONTENTS * 300000))
-        d.addCallback(lambda filecap: self.GET("/uri/%s?t=json" % str(filecap, "ascii")))
+        d.addCallback(
+            lambda ignored: self.PUT("/uri?format=sdmf", self.NEWFILE_CONTENTS * 300000)
+        )
+        d.addCallback(
+            lambda filecap: self.GET("/uri/%s?t=json" % str(filecap, "ascii"))
+        )
         d.addCallback(_got_json, "SDMF")
         return d
 
@@ -1929,14 +2338,19 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
 
     def test_GET_FILEURL_uri(self):
         d = self.GET(self.public_url + "/foo/bar.txt?t=uri")
+
         def _check(res):
             self.failUnlessReallyEqual(res, self._bar_txt_uri)
+
         d.addCallback(_check)
-        d.addCallback(lambda res:
-                      self.GET(self.public_url + "/foo/bar.txt?t=readonly-uri"))
+        d.addCallback(
+            lambda res: self.GET(self.public_url + "/foo/bar.txt?t=readonly-uri")
+        )
+
         def _check2(res):
             # for now, for files, uris and readonly-uris are the same
             self.failUnlessReallyEqual(res, self._bar_txt_uri)
+
         d.addCallback(_check2)
         return d
 
@@ -1947,9 +2361,14 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
 
     def test_CSS_FILE(self):
         d = self.GET("/tahoe.css", followRedirect=True)
+
         def _check(res):
-            CSS_STYLE=re.compile(b'toolbar\s{.+text-align:\scenter.+toolbar-item.+display:\sinline',re.DOTALL)
+            CSS_STYLE = re.compile(
+                b"toolbar\s{.+text-align:\scenter.+toolbar-item.+display:\sinline",
+                re.DOTALL,
+            )
             self.failUnless(CSS_STYLE.search(res), res)
+
         d.addCallback(_check)
         return d
 
@@ -1966,102 +2385,101 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         """
         found = []
         desired_ids = (
-            u"upload-chk",
-            u"upload-sdmf",
-            u"upload-mdmf",
-            u"mkdir-sdmf",
-            u"mkdir-mdmf",
+            "upload-chk",
+            "upload-sdmf",
+            "upload-mdmf",
+            "mkdir-sdmf",
+            "mkdir-mdmf",
         )
-        for input_tag in soup.find_all(u"input"):
-            if input_tag.get(u"id", u"") in desired_ids:
+        for input_tag in soup.find_all("input"):
+            if input_tag.get("id", "") in desired_ids:
                 found.append(input_tag)
             else:
-                if input_tag.get(u"name", u"") == u"t" and input_tag.get(u"type", u"") == u"hidden":
-                    if input_tag[u"value"] == u"upload":
+                if (
+                    input_tag.get("name", "") == "t"
+                    and input_tag.get("type", "") == "hidden"
+                ):
+                    if input_tag["value"] == "upload":
                         found.append(input_tag)
-                    elif input_tag[u"value"] == u"mkdir":
+                    elif input_tag["value"] == "mkdir":
                         found.append(input_tag)
-        self.assertEqual(len(found), 7, u"Failed to find all 7 <input> tags")
+        self.assertEqual(len(found), 7, "Failed to find all 7 <input> tags")
         assert_soup_has_favicon(self, soup)
 
     @inlineCallbacks
     def test_GET_DIRECTORY_html(self):
         data = yield self.GET(self.public_url + "/foo", followRedirect=True)
-        soup = BeautifulSoup(data, 'html5lib')
+        soup = BeautifulSoup(data, "html5lib")
         self._check_upload_and_mkdir_forms(soup)
-        toolbars = soup.find_all(u"li", {u"class": u"toolbar-item"})
-        self.assertTrue(any(li.text == u"Return to Welcome page" for li in toolbars))
+        toolbars = soup.find_all("li", {"class": "toolbar-item"})
+        self.assertTrue(any(li.text == "Return to Welcome page" for li in toolbars))
         self.failUnlessIn(b"quux", data)
 
     @inlineCallbacks
     def test_GET_DIRECTORY_html_filenode_encoding(self):
         data = yield self.GET(self.public_url + "/foo", followRedirect=True)
-        soup = BeautifulSoup(data, 'html5lib')
+        soup = BeautifulSoup(data, "html5lib")
         # Check if encoded entries are there
-        target_ref = u'@@named=/{}'.format(self._htmlname_urlencoded)
+        target_ref = "@@named=/{}".format(self._htmlname_urlencoded)
         # at least one <a> tag has our weirdly-named file properly
         # encoded (or else BeautifulSoup would produce an error)
         self.assertTrue(
             any(
-                a.text == self._htmlname_unicode and a[u"href"].endswith(target_ref)
-                for a in soup.find_all(u"a", {u"rel": u"noreferrer"})
+                a.text == self._htmlname_unicode and a["href"].endswith(target_ref)
+                for a in soup.find_all("a", {"rel": "noreferrer"})
             )
         )
 
     @inlineCallbacks
     def test_GET_root_html(self):
         data = yield self.GET("/")
-        soup = BeautifulSoup(data, 'html5lib')
+        soup = BeautifulSoup(data, "html5lib")
         self._check_upload_and_mkdir_forms(soup)
 
     @inlineCallbacks
     def test_GET_DIRURL(self):
         data = yield self.GET(self.public_url + "/foo", followRedirect=True)
-        soup = BeautifulSoup(data, 'html5lib')
+        soup = BeautifulSoup(data, "html5lib")
 
         # from /uri/$URI/foo/ , we need ../../../ to get back to the root
-        root = u"../../.."
+        root = "../../.."
         self.assertTrue(
             any(
-                a.text == u"Return to Welcome page"
-                for a in soup.find_all(u"a", {u"href": root})
+                a.text == "Return to Welcome page"
+                for a in soup.find_all("a", {"href": root})
             )
         )
 
         # the FILE reference points to a URI, but it should end in bar.txt
-        bar_url = "{}/file/{}/@@named=/bar.txt".format(root, urlquote(self._bar_txt_uri))
+        bar_url = "{}/file/{}/@@named=/bar.txt".format(
+            root, urlquote(self._bar_txt_uri)
+        )
         self.assertTrue(
-            any(
-                a.text == u"bar.txt"
-                for a in soup.find_all(u"a", {u"href": bar_url})
-            )
+            any(a.text == "bar.txt" for a in soup.find_all("a", {"href": bar_url}))
         )
         self.assertTrue(
             any(
-                td.text == u"{}".format(len(self.BAR_CONTENTS))
-                for td in soup.find_all(u"td", {u"align": u"right"})
+                td.text == "{}".format(len(self.BAR_CONTENTS))
+                for td in soup.find_all("td", {"align": "right"})
             )
         )
         foo_url = urlquote("{}/uri/{}/".format(root, str(self._foo_uri, "ascii")))
-        forms = soup.find_all(u"form", {u"action": foo_url})
+        forms = soup.find_all("form", {"action": foo_url})
         found = []
         for form in forms:
-            if form.find_all(u"input", {u"name": u"name", u"value": u"bar.txt"}):
-                kind = form.find_all(u"input", {u"type": u"submit"})[0][u"value"]
+            if form.find_all("input", {"name": "name", "value": "bar.txt"}):
+                kind = form.find_all("input", {"type": "submit"})[0]["value"]
                 found.append(kind)
-                if kind == u"unlink":
-                    self.assertTrue(form[u"method"] == u"post")
-        self.assertEqual(
-            set(found),
-            {u"unlink", u"rename/relink"}
-        )
+                if kind == "unlink":
+                    self.assertTrue(form["method"] == "post")
+        self.assertEqual(set(found), {"unlink", "rename/relink"})
 
         sub_url = "{}/uri/{}/".format(root, urlquote(self._sub_uri))
         self.assertTrue(
             any(
-                td.findNextSibling()(u"a")[0][u"href"] == sub_url
-                for td in soup.find_all(u"td")
-                if td.text == u"DIR"
+                td.findNextSibling()("a")[0]["href"] == sub_url
+                for td in soup.find_all("td")
+                if td.text == "DIR"
             )
         )
 
@@ -2076,44 +2494,50 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
     def test_GET_DIRURL_readonly_dir(self):
         # look at a directory that contains a readonly directory
         data = yield self.GET(self.public_url, followRedirect=True)
-        soup = BeautifulSoup(data, 'html5lib')
+        soup = BeautifulSoup(data, "html5lib")
         ro_links = list(
-            td.findNextSibling()(u"a")[0]
-            for td in soup.find_all(u"td")
-            if td.text == u"DIR-RO"
+            td.findNextSibling()("a")[0]
+            for td in soup.find_all("td")
+            if td.text == "DIR-RO"
         )
         self.assertEqual(1, len(ro_links))
-        self.assertEqual(u"reedownlee", ro_links[0].text)
-        self.assertTrue(u"URI%3ADIR2-RO%3A" in ro_links[0][u"href"])
+        self.assertEqual("reedownlee", ro_links[0].text)
+        self.assertTrue("URI%3ADIR2-RO%3A" in ro_links[0]["href"])
 
     @inlineCallbacks
     def test_GET_DIRURL_empty(self):
         # look at an empty directory
         data = yield self.GET(self.public_url + "/foo/empty")
-        soup = BeautifulSoup(data, 'html5lib')
+        soup = BeautifulSoup(data, "html5lib")
         self.failUnlessIn(b"directory is empty", data)
-        mkdir_inputs = soup.find_all(u"input", {u"type": u"hidden", u"name": u"t", u"value": u"mkdir"})
+        mkdir_inputs = soup.find_all(
+            "input", {"type": "hidden", "name": "t", "value": "mkdir"}
+        )
         self.assertEqual(1, len(mkdir_inputs))
         self.assertEqual(
-            u"Create a new directory in this directory",
-            mkdir_inputs[0].parent(u"legend")[0].text
+            "Create a new directory in this directory",
+            mkdir_inputs[0].parent("legend")[0].text,
         )
 
     @inlineCallbacks
     def test_GET_DIRURL_literal(self):
         # look at a literal directory
-        tiny_litdir_uri = "URI:DIR2-LIT:gqytunj2onug64tufqzdcosvkjetutcjkq5gw4tvm5vwszdgnz5hgyzufqydulbshj5x2lbm" # contains one child which is itself also LIT
+        tiny_litdir_uri = "URI:DIR2-LIT:gqytunj2onug64tufqzdcosvkjetutcjkq5gw4tvm5vwszdgnz5hgyzufqydulbshj5x2lbm"  # contains one child which is itself also LIT
         data = yield self.GET("/uri/" + tiny_litdir_uri, followRedirect=True)
-        soup = BeautifulSoup(data, 'html5lib')
-        self.failUnlessIn(b'(immutable)', data)
+        soup = BeautifulSoup(data, "html5lib")
+        self.failUnlessIn(b"(immutable)", data)
         file_links = list(
-            td.findNextSibling()(u"a")[0]
-            for td in soup.find_all(u"td")
-            if td.text == u"FILE"
+            td.findNextSibling()("a")[0]
+            for td in soup.find_all("td")
+            if td.text == "FILE"
         )
         self.assertEqual(1, len(file_links))
-        self.assertEqual(u"short", file_links[0].text)
-        self.assertTrue(file_links[0][u"href"].endswith(u"/file/URI%3ALIT%3Akrugkidfnzsc4/@@named=/short"))
+        self.assertEqual("short", file_links[0].text)
+        self.assertTrue(
+            file_links[0]["href"].endswith(
+                "/file/URI%3ALIT%3Akrugkidfnzsc4/@@named=/short"
+            )
+        )
 
     @inlineCallbacks
     def test_GET_DIRURL_badtype(self):
@@ -2126,60 +2550,72 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         return d
 
     def test_GET_DIRURL_json_format(self):
-        d = self.PUT(self.public_url + \
-                     "/foo/sdmf.txt?format=sdmf",
-                     self.NEWFILE_CONTENTS * 300000)
-        d.addCallback(lambda ignored:
-            self.PUT(self.public_url + \
-                     "/foo/mdmf.txt?format=mdmf",
-                     self.NEWFILE_CONTENTS * 300000))
+        d = self.PUT(
+            self.public_url + "/foo/sdmf.txt?format=sdmf",
+            self.NEWFILE_CONTENTS * 300000,
+        )
+        d.addCallback(
+            lambda ignored: self.PUT(
+                self.public_url + "/foo/mdmf.txt?format=mdmf",
+                self.NEWFILE_CONTENTS * 300000,
+            )
+        )
         # Now we have an MDMF and SDMF file in the directory. If we GET
         # its JSON, we should see their encodings.
-        d.addCallback(lambda ignored:
-            self.GET(self.public_url + "/foo?t=json"))
+        d.addCallback(lambda ignored: self.GET(self.public_url + "/foo?t=json"))
+
         def _got_json(raw):
             data = json.loads(raw)
             assert data[0] == "dirnode"
 
             data = data[1]
-            kids = data['children']
+            kids = data["children"]
 
-            mdmf_data = kids['mdmf.txt'][1]
+            mdmf_data = kids["mdmf.txt"][1]
             self.failUnlessIn("format", mdmf_data)
             self.failUnlessEqual(mdmf_data["format"], "MDMF")
 
-            sdmf_data = kids['sdmf.txt'][1]
+            sdmf_data = kids["sdmf.txt"][1]
             self.failUnlessIn("format", sdmf_data)
             self.failUnlessEqual(sdmf_data["format"], "SDMF")
+
         d.addCallback(_got_json)
         return d
 
-
     def test_POST_DIRURL_manifest_no_ophandle(self):
-        d = self.shouldFail2(error.Error,
-                             "test_POST_DIRURL_manifest_no_ophandle",
-                             "400 Bad Request",
-                             "slow operation requires ophandle=",
-                             self.POST, self.public_url, t="start-manifest")
+        d = self.shouldFail2(
+            error.Error,
+            "test_POST_DIRURL_manifest_no_ophandle",
+            "400 Bad Request",
+            "slow operation requires ophandle=",
+            self.POST,
+            self.public_url,
+            t="start-manifest",
+        )
         return d
 
     def test_POST_DIRURL_manifest(self):
         d = defer.succeed(None)
+
         def getman(ignored, output):
-            url = self.webish_url + self.public_url + "/foo?t=start-manifest&ophandle=125"
-            d = do_http("post", url, allow_redirects=True,
-                        browser_like_redirects=True)
+            url = (
+                self.webish_url + self.public_url + "/foo?t=start-manifest&ophandle=125"
+            )
+            d = do_http("post", url, allow_redirects=True, browser_like_redirects=True)
             d.addCallback(self.wait_for_operation, "125")
             d.addCallback(self.get_operation_results, "125", output)
             return d
+
         d.addCallback(getman, None)
+
         def _got_html(manifest):
-            soup = BeautifulSoup(manifest, 'html5lib')
+            soup = BeautifulSoup(manifest, "html5lib")
             assert_soup_has_text(self, soup, "Manifest of SI=")
             assert_soup_has_text(self, soup, "sub")
             assert_soup_has_text(self, soup, str(self._sub_uri, "ascii"))
             assert_soup_has_text(self, soup, "sub/baz.txt")
             assert_soup_has_favicon(self, soup)
+
         d.addCallback(_got_html)
 
         # both t=status and unadorned GET should be identical
@@ -2189,97 +2625,117 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         d.addCallback(getman, "html")
         d.addCallback(_got_html)
         d.addCallback(getman, "text")
+
         def _got_text(manifest):
             self.failUnlessIn(b"\nsub " + self._sub_uri + b"\n", manifest)
             self.failUnlessIn(b"\nsub/baz.txt URI:CHK:", manifest)
+
         d.addCallback(_got_text)
         d.addCallback(getman, "JSON")
+
         def _got_json(res):
             data = res["manifest"]
             got = {}
             for (path_list, cap) in data:
                 got[tuple(path_list)] = cap
-            self.failUnlessReallyEqual(to_bytes(got[(u"sub",)]), self._sub_uri)
-            self.failUnlessIn((u"sub", u"baz.txt"), got)
+            self.failUnlessReallyEqual(to_bytes(got[("sub",)]), self._sub_uri)
+            self.failUnlessIn(("sub", "baz.txt"), got)
             self.failUnlessIn("finished", res)
             self.failUnlessIn("origin", res)
             self.failUnlessIn("storage-index", res)
             self.failUnlessIn("verifycaps", res)
             self.failUnlessIn("stats", res)
+
         d.addCallback(_got_json)
         return d
 
     def test_POST_DIRURL_deepsize_no_ophandle(self):
-        d = self.shouldFail2(error.Error,
-                             "test_POST_DIRURL_deepsize_no_ophandle",
-                             "400 Bad Request",
-                             "slow operation requires ophandle=",
-                             self.POST, self.public_url, t="start-deep-size")
+        d = self.shouldFail2(
+            error.Error,
+            "test_POST_DIRURL_deepsize_no_ophandle",
+            "400 Bad Request",
+            "slow operation requires ophandle=",
+            self.POST,
+            self.public_url,
+            t="start-deep-size",
+        )
         return d
 
     def test_POST_DIRURL_deepsize(self):
         url = self.webish_url + self.public_url + "/foo?t=start-deep-size&ophandle=126"
-        d = do_http("post", url, allow_redirects=True,
-                    browser_like_redirects=True)
+        d = do_http("post", url, allow_redirects=True, browser_like_redirects=True)
         d.addCallback(self.wait_for_operation, "126")
         d.addCallback(self.get_operation_results, "126", "json")
+
         def _got_json(data):
             self.failUnlessReallyEqual(data["finished"], True)
             size = data["size"]
             # Match calculation of text value size below:
             self.failUnless(
-                size.get("size-directories", 0) + size.get("size-mutable-files", 0) +
-                size.get("size-immutable-files", 0) > 1000)
+                size.get("size-directories", 0)
+                + size.get("size-mutable-files", 0)
+                + size.get("size-immutable-files", 0)
+                > 1000
+            )
+
         d.addCallback(_got_json)
         d.addCallback(self.get_operation_results, "126", "text")
+
         def _got_text(res):
-            mo = re.search(br'^size: (\d+)$', res, re.M)
+            mo = re.search(br"^size: (\d+)$", res, re.M)
             self.failUnless(mo, res)
             size = int(mo.group(1))
             # with directories, the size varies.
             self.failUnless(size > 1000)
+
         d.addCallback(_got_text)
         return d
 
     def test_POST_DIRURL_deepstats_no_ophandle(self):
-        d = self.shouldFail2(error.Error,
-                             "test_POST_DIRURL_deepstats_no_ophandle",
-                             "400 Bad Request",
-                             "slow operation requires ophandle=",
-                             self.POST, self.public_url, t="start-deep-stats")
+        d = self.shouldFail2(
+            error.Error,
+            "test_POST_DIRURL_deepstats_no_ophandle",
+            "400 Bad Request",
+            "slow operation requires ophandle=",
+            self.POST,
+            self.public_url,
+            t="start-deep-stats",
+        )
         return d
 
     def test_POST_DIRURL_deepstats(self):
         url = self.webish_url + self.public_url + "/foo?t=start-deep-stats&ophandle=127"
-        d = do_http("post", url,
-                    allow_redirects=True, browser_like_redirects=True)
+        d = do_http("post", url, allow_redirects=True, browser_like_redirects=True)
         d.addCallback(self.wait_for_operation, "127")
         d.addCallback(self.get_operation_results, "127", "json")
+
         def _got_json(stats):
-            expected = {"count-immutable-files": 4,
-                        "count-mutable-files": 2,
-                        "count-literal-files": 0,
-                        "count-files": 6,
-                        "count-directories": 3,
-                        "size-immutable-files": 76,
-                        "size-literal-files": 0,
-                        #"size-directories": 1912, # varies
-                        #"largest-directory": 1590,
-                        "largest-directory-children": 8,
-                        "largest-immutable-file": 19,
-                        "api-version": 1,
-                        }
-            for k,v in list(expected.items()):
-                self.failUnlessReallyEqual(stats[k], v,
-                                           "stats[%s] was %s, not %s" %
-                                           (k, stats[k], v))
-            self.failUnlessReallyEqual(stats["size-files-histogram"],
-                                       [ [11, 31, 4] ])
+            expected = {
+                "count-immutable-files": 4,
+                "count-mutable-files": 2,
+                "count-literal-files": 0,
+                "count-files": 6,
+                "count-directories": 3,
+                "size-immutable-files": 76,
+                "size-literal-files": 0,
+                # "size-directories": 1912, # varies
+                # "largest-directory": 1590,
+                "largest-directory-children": 8,
+                "largest-immutable-file": 19,
+                "api-version": 1,
+            }
+            for k, v in list(expected.items()):
+                self.failUnlessReallyEqual(
+                    stats[k], v, "stats[%s] was %s, not %s" % (k, stats[k], v)
+                )
+            self.failUnlessReallyEqual(stats["size-files-histogram"], [[11, 31, 4]])
+
         d.addCallback(_got_json)
         return d
 
     def test_POST_DIRURL_stream_manifest(self):
         d = self.POST(self.public_url + "/foo?t=stream-manifest")
+
         def _check(res):
             self.failUnless(res.endswith(b"\n"))
             units = [json.loads(t) for t in res[:-1].split(b"\n")]
@@ -2296,96 +2752,102 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
             self.failIfEqual(baz["repaircap"], None)
             # XXX: Add quux and baz to this test.
             return
+
         d.addCallback(_check)
         return d
 
     def test_GET_DIRURL_uri(self):
         d = self.GET(self.public_url + "/foo?t=uri")
+
         def _check(res):
             self.failUnlessReallyEqual(to_bytes(res), self._foo_uri)
+
         d.addCallback(_check)
         return d
 
     def test_GET_DIRURL_readonly_uri(self):
         d = self.GET(self.public_url + "/foo?t=readonly-uri")
+
         def _check(res):
             self.failUnlessReallyEqual(to_bytes(res), self._foo_readonly_uri)
+
         d.addCallback(_check)
         return d
 
     def test_PUT_NEWDIRURL(self):
         d = self.PUT(self.public_url + "/foo/newdir?t=mkdir", "")
-        d.addCallback(lambda res:
-                      self.failUnlessNodeHasChild(self._foo_node, u"newdir"))
-        d.addCallback(lambda res: self._foo_node.get(u"newdir"))
+        d.addCallback(lambda res: self.failUnlessNodeHasChild(self._foo_node, "newdir"))
+        d.addCallback(lambda res: self._foo_node.get("newdir"))
         d.addCallback(self.failUnlessNodeKeysAre, [])
         return d
 
     def test_PUT_NEWDIRURL_mdmf(self):
         d = self.PUT(self.public_url + "/foo/newdir?t=mkdir&format=mdmf", "")
-        d.addCallback(lambda res:
-                      self.failUnlessNodeHasChild(self._foo_node, u"newdir"))
-        d.addCallback(lambda res: self._foo_node.get(u"newdir"))
-        d.addCallback(lambda node:
-            self.failUnlessEqual(node._node.get_version(), MDMF_VERSION))
+        d.addCallback(lambda res: self.failUnlessNodeHasChild(self._foo_node, "newdir"))
+        d.addCallback(lambda res: self._foo_node.get("newdir"))
+        d.addCallback(
+            lambda node: self.failUnlessEqual(node._node.get_version(), MDMF_VERSION)
+        )
         return d
 
     def test_PUT_NEWDIRURL_sdmf(self):
-        d = self.PUT(self.public_url + "/foo/newdir?t=mkdir&format=sdmf",
-                     "")
-        d.addCallback(lambda res:
-                      self.failUnlessNodeHasChild(self._foo_node, u"newdir"))
-        d.addCallback(lambda res: self._foo_node.get(u"newdir"))
-        d.addCallback(lambda node:
-            self.failUnlessEqual(node._node.get_version(), SDMF_VERSION))
+        d = self.PUT(self.public_url + "/foo/newdir?t=mkdir&format=sdmf", "")
+        d.addCallback(lambda res: self.failUnlessNodeHasChild(self._foo_node, "newdir"))
+        d.addCallback(lambda res: self._foo_node.get("newdir"))
+        d.addCallback(
+            lambda node: self.failUnlessEqual(node._node.get_version(), SDMF_VERSION)
+        )
         return d
 
     @inlineCallbacks
     def test_PUT_NEWDIRURL_bad_format(self):
-        url = (self.webish_url + self.public_url +
-               "/foo/newdir=?t=mkdir&format=foo")
-        yield self.assertHTTPError(url, 400, "Unknown format: foo",
-                                   method="put", data="")
+        url = self.webish_url + self.public_url + "/foo/newdir=?t=mkdir&format=foo"
+        yield self.assertHTTPError(
+            url, 400, "Unknown format: foo", method="put", data=""
+        )
 
     def test_POST_NEWDIRURL(self):
         d = self.POST2(self.public_url + "/foo/newdir?t=mkdir", "")
-        d.addCallback(lambda res:
-                      self.failUnlessNodeHasChild(self._foo_node, u"newdir"))
-        d.addCallback(lambda res: self._foo_node.get(u"newdir"))
+        d.addCallback(lambda res: self.failUnlessNodeHasChild(self._foo_node, "newdir"))
+        d.addCallback(lambda res: self._foo_node.get("newdir"))
         d.addCallback(self.failUnlessNodeKeysAre, [])
         return d
 
     def test_POST_NEWDIRURL_mdmf(self):
         d = self.POST2(self.public_url + "/foo/newdir?t=mkdir&format=mdmf", "")
-        d.addCallback(lambda res:
-                      self.failUnlessNodeHasChild(self._foo_node, u"newdir"))
-        d.addCallback(lambda res: self._foo_node.get(u"newdir"))
-        d.addCallback(lambda node:
-            self.failUnlessEqual(node._node.get_version(), MDMF_VERSION))
+        d.addCallback(lambda res: self.failUnlessNodeHasChild(self._foo_node, "newdir"))
+        d.addCallback(lambda res: self._foo_node.get("newdir"))
+        d.addCallback(
+            lambda node: self.failUnlessEqual(node._node.get_version(), MDMF_VERSION)
+        )
         return d
 
     def test_POST_NEWDIRURL_sdmf(self):
         d = self.POST2(self.public_url + "/foo/newdir?t=mkdir&format=sdmf", "")
-        d.addCallback(lambda res:
-            self.failUnlessNodeHasChild(self._foo_node, u"newdir"))
-        d.addCallback(lambda res: self._foo_node.get(u"newdir"))
-        d.addCallback(lambda node:
-            self.failUnlessEqual(node._node.get_version(), SDMF_VERSION))
+        d.addCallback(lambda res: self.failUnlessNodeHasChild(self._foo_node, "newdir"))
+        d.addCallback(lambda res: self._foo_node.get("newdir"))
+        d.addCallback(
+            lambda node: self.failUnlessEqual(node._node.get_version(), SDMF_VERSION)
+        )
         return d
 
     @inlineCallbacks
     def test_POST_NEWDIRURL_bad_format(self):
-        url = (self.webish_url + self.public_url +
-               "/foo/newdir?t=mkdir&format=foo")
-        yield self.assertHTTPError(url, 400, "Unknown format: foo",
-                                   method="post", data="")
+        url = self.webish_url + self.public_url + "/foo/newdir?t=mkdir&format=foo"
+        yield self.assertHTTPError(
+            url, 400, "Unknown format: foo", method="post", data=""
+        )
 
     def test_POST_NEWDIRURL_emptyname(self):
         # an empty pathname component (i.e. a double-slash) is disallowed
-        d = self.shouldFail2(error.Error, "POST_NEWDIRURL_emptyname",
-                             "400 Bad Request",
-                             "The webapi does not allow empty pathname components, i.e. a double slash",
-                             self.POST, self.public_url + "//?t=mkdir")
+        d = self.shouldFail2(
+            error.Error,
+            "POST_NEWDIRURL_emptyname",
+            "400 Bad Request",
+            "The webapi does not allow empty pathname components, i.e. a double slash",
+            self.POST,
+            self.public_url + "//?t=mkdir",
+        )
         return d
 
     def _do_POST_NEWDIRURL_initial_children_test(self, version=None):
@@ -2396,48 +2858,64 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         elif version == SDMF_VERSION:
             query += "&format=sdmf"
         else:
-            version = SDMF_VERSION # for later
-        d = self.POST2(self.public_url + query,
-                       json.dumps(newkids))
+            version = SDMF_VERSION  # for later
+        d = self.POST2(self.public_url + query, json.dumps(newkids))
+
         def _check(uri):
             n = self.s.create_node_from_uri(uri.strip())
             d2 = self.failUnlessNodeKeysAre(n, list(newkids.keys()))
             self.failUnlessEqual(n._node.get_version(), version)
-            d2.addCallback(lambda ign:
-                           self.failUnlessROChildURIIs(n, u"child-imm",
-                                                       caps['filecap1']))
-            d2.addCallback(lambda ign:
-                           self.failUnlessRWChildURIIs(n, u"child-mutable",
-                                                       caps['filecap2']))
-            d2.addCallback(lambda ign:
-                           self.failUnlessROChildURIIs(n, u"child-mutable-ro",
-                                                       caps['filecap3']))
-            d2.addCallback(lambda ign:
-                           self.failUnlessROChildURIIs(n, u"unknownchild-ro",
-                                                       caps['unknown_rocap']))
-            d2.addCallback(lambda ign:
-                           self.failUnlessRWChildURIIs(n, u"unknownchild-rw",
-                                                       caps['unknown_rwcap']))
-            d2.addCallback(lambda ign:
-                           self.failUnlessROChildURIIs(n, u"unknownchild-imm",
-                                                       caps['unknown_immcap']))
-            d2.addCallback(lambda ign:
-                           self.failUnlessRWChildURIIs(n, u"dirchild",
-                                                       caps['dircap']))
-            d2.addCallback(lambda ign:
-                           self.failUnlessROChildURIIs(n, u"dirchild-lit",
-                                                       caps['litdircap']))
-            d2.addCallback(lambda ign:
-                           self.failUnlessROChildURIIs(n, u"dirchild-empty",
-                                                       caps['emptydircap']))
+            d2.addCallback(
+                lambda ign: self.failUnlessROChildURIIs(
+                    n, "child-imm", caps["filecap1"]
+                )
+            )
+            d2.addCallback(
+                lambda ign: self.failUnlessRWChildURIIs(
+                    n, "child-mutable", caps["filecap2"]
+                )
+            )
+            d2.addCallback(
+                lambda ign: self.failUnlessROChildURIIs(
+                    n, "child-mutable-ro", caps["filecap3"]
+                )
+            )
+            d2.addCallback(
+                lambda ign: self.failUnlessROChildURIIs(
+                    n, "unknownchild-ro", caps["unknown_rocap"]
+                )
+            )
+            d2.addCallback(
+                lambda ign: self.failUnlessRWChildURIIs(
+                    n, "unknownchild-rw", caps["unknown_rwcap"]
+                )
+            )
+            d2.addCallback(
+                lambda ign: self.failUnlessROChildURIIs(
+                    n, "unknownchild-imm", caps["unknown_immcap"]
+                )
+            )
+            d2.addCallback(
+                lambda ign: self.failUnlessRWChildURIIs(n, "dirchild", caps["dircap"])
+            )
+            d2.addCallback(
+                lambda ign: self.failUnlessROChildURIIs(
+                    n, "dirchild-lit", caps["litdircap"]
+                )
+            )
+            d2.addCallback(
+                lambda ign: self.failUnlessROChildURIIs(
+                    n, "dirchild-empty", caps["emptydircap"]
+                )
+            )
             return d2
+
         d.addCallback(_check)
-        d.addCallback(lambda res:
-                      self.failUnlessNodeHasChild(self._foo_node, u"newdir"))
-        d.addCallback(lambda res: self._foo_node.get(u"newdir"))
+        d.addCallback(lambda res: self.failUnlessNodeHasChild(self._foo_node, "newdir"))
+        d.addCallback(lambda res: self._foo_node.get("newdir"))
         d.addCallback(self.failUnlessNodeKeysAre, list(newkids.keys()))
-        d.addCallback(lambda res: self._foo_node.get(u"newdir"))
-        d.addCallback(self.failUnlessROChildURIIs, u"child-imm", caps['filecap1'])
+        d.addCallback(lambda res: self._foo_node.get("newdir"))
+        d.addCallback(self.failUnlessROChildURIIs, "child-imm", caps["filecap1"])
         return d
 
     def test_POST_NEWDIRURL_initial_children(self):
@@ -2452,146 +2930,181 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
     @inlineCallbacks
     def test_POST_NEWDIRURL_initial_children_bad_format(self):
         (newkids, caps) = self._create_initial_children()
-        url = (self.webish_url + self.public_url +
-               "/foo/newdir?t=mkdir-with-children&format=foo")
-        yield self.assertHTTPError(url, 400, "Unknown format: foo",
-                                   method="post", data=json.dumps(newkids).encode("utf-8"))
+        url = (
+            self.webish_url
+            + self.public_url
+            + "/foo/newdir?t=mkdir-with-children&format=foo"
+        )
+        yield self.assertHTTPError(
+            url,
+            400,
+            "Unknown format: foo",
+            method="post",
+            data=json.dumps(newkids).encode("utf-8"),
+        )
 
     def test_POST_NEWDIRURL_immutable(self):
         (newkids, caps) = self._create_immutable_children()
-        d = self.POST2(self.public_url + "/foo/newdir?t=mkdir-immutable",
-                       json.dumps(newkids))
+        d = self.POST2(
+            self.public_url + "/foo/newdir?t=mkdir-immutable", json.dumps(newkids)
+        )
+
         def _check(uri):
             n = self.s.create_node_from_uri(uri.strip())
             d2 = self.failUnlessNodeKeysAre(n, list(newkids.keys()))
-            d2.addCallback(lambda ign:
-                           self.failUnlessROChildURIIs(n, u"child-imm",
-                                                       caps['filecap1']))
-            d2.addCallback(lambda ign:
-                           self.failUnlessROChildURIIs(n, u"unknownchild-imm",
-                                                       caps['unknown_immcap']))
-            d2.addCallback(lambda ign:
-                           self.failUnlessROChildURIIs(n, u"dirchild-imm",
-                                                       caps['immdircap']))
-            d2.addCallback(lambda ign:
-                           self.failUnlessROChildURIIs(n, u"dirchild-lit",
-                                                       caps['litdircap']))
-            d2.addCallback(lambda ign:
-                           self.failUnlessROChildURIIs(n, u"dirchild-empty",
-                                                       caps['emptydircap']))
+            d2.addCallback(
+                lambda ign: self.failUnlessROChildURIIs(
+                    n, "child-imm", caps["filecap1"]
+                )
+            )
+            d2.addCallback(
+                lambda ign: self.failUnlessROChildURIIs(
+                    n, "unknownchild-imm", caps["unknown_immcap"]
+                )
+            )
+            d2.addCallback(
+                lambda ign: self.failUnlessROChildURIIs(
+                    n, "dirchild-imm", caps["immdircap"]
+                )
+            )
+            d2.addCallback(
+                lambda ign: self.failUnlessROChildURIIs(
+                    n, "dirchild-lit", caps["litdircap"]
+                )
+            )
+            d2.addCallback(
+                lambda ign: self.failUnlessROChildURIIs(
+                    n, "dirchild-empty", caps["emptydircap"]
+                )
+            )
             return d2
+
         d.addCallback(_check)
-        d.addCallback(lambda res:
-                      self.failUnlessNodeHasChild(self._foo_node, u"newdir"))
-        d.addCallback(lambda res: self._foo_node.get(u"newdir"))
+        d.addCallback(lambda res: self.failUnlessNodeHasChild(self._foo_node, "newdir"))
+        d.addCallback(lambda res: self._foo_node.get("newdir"))
         d.addCallback(self.failUnlessNodeKeysAre, list(newkids.keys()))
-        d.addCallback(lambda res: self._foo_node.get(u"newdir"))
-        d.addCallback(self.failUnlessROChildURIIs, u"child-imm", caps['filecap1'])
-        d.addCallback(lambda res: self._foo_node.get(u"newdir"))
-        d.addCallback(self.failUnlessROChildURIIs, u"unknownchild-imm", caps['unknown_immcap'])
-        d.addCallback(lambda res: self._foo_node.get(u"newdir"))
-        d.addCallback(self.failUnlessROChildURIIs, u"dirchild-imm", caps['immdircap'])
-        d.addCallback(lambda res: self._foo_node.get(u"newdir"))
-        d.addCallback(self.failUnlessROChildURIIs, u"dirchild-lit", caps['litdircap'])
-        d.addCallback(lambda res: self._foo_node.get(u"newdir"))
-        d.addCallback(self.failUnlessROChildURIIs, u"dirchild-empty", caps['emptydircap'])
+        d.addCallback(lambda res: self._foo_node.get("newdir"))
+        d.addCallback(self.failUnlessROChildURIIs, "child-imm", caps["filecap1"])
+        d.addCallback(lambda res: self._foo_node.get("newdir"))
+        d.addCallback(
+            self.failUnlessROChildURIIs, "unknownchild-imm", caps["unknown_immcap"]
+        )
+        d.addCallback(lambda res: self._foo_node.get("newdir"))
+        d.addCallback(self.failUnlessROChildURIIs, "dirchild-imm", caps["immdircap"])
+        d.addCallback(lambda res: self._foo_node.get("newdir"))
+        d.addCallback(self.failUnlessROChildURIIs, "dirchild-lit", caps["litdircap"])
+        d.addCallback(lambda res: self._foo_node.get("newdir"))
+        d.addCallback(
+            self.failUnlessROChildURIIs, "dirchild-empty", caps["emptydircap"]
+        )
         d.addErrback(self.explain_web_error)
         return d
 
     def test_POST_NEWDIRURL_immutable_bad(self):
         (newkids, caps) = self._create_initial_children()
-        d = self.shouldFail2(error.Error, "test_POST_NEWDIRURL_immutable_bad",
-                             "400 Bad Request",
-                             "needed to be immutable but was not",
-                             self.POST2,
-                             self.public_url + "/foo/newdir?t=mkdir-immutable",
-                             json.dumps(newkids))
+        d = self.shouldFail2(
+            error.Error,
+            "test_POST_NEWDIRURL_immutable_bad",
+            "400 Bad Request",
+            "needed to be immutable but was not",
+            self.POST2,
+            self.public_url + "/foo/newdir?t=mkdir-immutable",
+            json.dumps(newkids),
+        )
         return d
 
     def test_PUT_NEWDIRURL_exists(self):
         d = self.PUT(self.public_url + "/foo/sub?t=mkdir", "")
-        d.addCallback(lambda res:
-                      self.failUnlessNodeHasChild(self._foo_node, u"sub"))
-        d.addCallback(lambda res: self._foo_node.get(u"sub"))
-        d.addCallback(self.failUnlessNodeKeysAre, [u"baz.txt"])
+        d.addCallback(lambda res: self.failUnlessNodeHasChild(self._foo_node, "sub"))
+        d.addCallback(lambda res: self._foo_node.get("sub"))
+        d.addCallback(self.failUnlessNodeKeysAre, ["baz.txt"])
         return d
 
     def test_PUT_NEWDIRURL_blocked(self):
-        d = self.shouldFail2(error.Error, "PUT_NEWDIRURL_blocked",
-                             "409 Conflict", "Unable to create directory 'bar.txt': a file was in the way",
-                             self.PUT,
-                             self.public_url + "/foo/bar.txt/sub?t=mkdir", "")
-        d.addCallback(lambda res:
-                      self.failUnlessNodeHasChild(self._foo_node, u"sub"))
-        d.addCallback(lambda res: self._foo_node.get(u"sub"))
-        d.addCallback(self.failUnlessNodeKeysAre, [u"baz.txt"])
+        d = self.shouldFail2(
+            error.Error,
+            "PUT_NEWDIRURL_blocked",
+            "409 Conflict",
+            "Unable to create directory 'bar.txt': a file was in the way",
+            self.PUT,
+            self.public_url + "/foo/bar.txt/sub?t=mkdir",
+            "",
+        )
+        d.addCallback(lambda res: self.failUnlessNodeHasChild(self._foo_node, "sub"))
+        d.addCallback(lambda res: self._foo_node.get("sub"))
+        d.addCallback(self.failUnlessNodeKeysAre, ["baz.txt"])
         return d
 
     def test_PUT_NEWDIRURL_mkdirs(self):
         d = self.PUT(self.public_url + "/foo/subdir/newdir?t=mkdir", "")
-        d.addCallback(lambda res:
-                      self.failIfNodeHasChild(self._foo_node, u"newdir"))
-        d.addCallback(lambda res:
-                      self.failUnlessNodeHasChild(self._foo_node, u"subdir"))
-        d.addCallback(lambda res:
-                      self._foo_node.get_child_at_path(u"subdir/newdir"))
+        d.addCallback(lambda res: self.failIfNodeHasChild(self._foo_node, "newdir"))
+        d.addCallback(lambda res: self.failUnlessNodeHasChild(self._foo_node, "subdir"))
+        d.addCallback(lambda res: self._foo_node.get_child_at_path("subdir/newdir"))
         d.addCallback(self.failUnlessNodeKeysAre, [])
         return d
 
     def test_PUT_NEWDIRURL_mkdirs_mdmf(self):
         d = self.PUT(self.public_url + "/foo/subdir/newdir?t=mkdir&format=mdmf", "")
-        d.addCallback(lambda ignored:
-            self.failUnlessNodeHasChild(self._foo_node, u"subdir"))
-        d.addCallback(lambda ignored:
-            self.failIfNodeHasChild(self._foo_node, u"newdir"))
-        d.addCallback(lambda ignored:
-            self._foo_node.get_child_at_path(u"subdir"))
+        d.addCallback(
+            lambda ignored: self.failUnlessNodeHasChild(self._foo_node, "subdir")
+        )
+        d.addCallback(lambda ignored: self.failIfNodeHasChild(self._foo_node, "newdir"))
+        d.addCallback(lambda ignored: self._foo_node.get_child_at_path("subdir"))
+
         def _got_subdir(subdir):
             # XXX: What we want?
-            #self.failUnlessEqual(subdir._node.get_version(), MDMF_VERSION)
-            self.failUnlessNodeHasChild(subdir, u"newdir")
-            return subdir.get_child_at_path(u"newdir")
+            # self.failUnlessEqual(subdir._node.get_version(), MDMF_VERSION)
+            self.failUnlessNodeHasChild(subdir, "newdir")
+            return subdir.get_child_at_path("newdir")
+
         d.addCallback(_got_subdir)
-        d.addCallback(lambda newdir:
-            self.failUnlessEqual(newdir._node.get_version(), MDMF_VERSION))
+        d.addCallback(
+            lambda newdir: self.failUnlessEqual(
+                newdir._node.get_version(), MDMF_VERSION
+            )
+        )
         return d
 
     def test_PUT_NEWDIRURL_mkdirs_sdmf(self):
         d = self.PUT(self.public_url + "/foo/subdir/newdir?t=mkdir&format=sdmf", "")
-        d.addCallback(lambda ignored:
-            self.failUnlessNodeHasChild(self._foo_node, u"subdir"))
-        d.addCallback(lambda ignored:
-            self.failIfNodeHasChild(self._foo_node, u"newdir"))
-        d.addCallback(lambda ignored:
-            self._foo_node.get_child_at_path(u"subdir"))
+        d.addCallback(
+            lambda ignored: self.failUnlessNodeHasChild(self._foo_node, "subdir")
+        )
+        d.addCallback(lambda ignored: self.failIfNodeHasChild(self._foo_node, "newdir"))
+        d.addCallback(lambda ignored: self._foo_node.get_child_at_path("subdir"))
+
         def _got_subdir(subdir):
             # XXX: What we want?
-            #self.failUnlessEqual(subdir._node.get_version(), MDMF_VERSION)
-            self.failUnlessNodeHasChild(subdir, u"newdir")
-            return subdir.get_child_at_path(u"newdir")
+            # self.failUnlessEqual(subdir._node.get_version(), MDMF_VERSION)
+            self.failUnlessNodeHasChild(subdir, "newdir")
+            return subdir.get_child_at_path("newdir")
+
         d.addCallback(_got_subdir)
-        d.addCallback(lambda newdir:
-            self.failUnlessEqual(newdir._node.get_version(), SDMF_VERSION))
+        d.addCallback(
+            lambda newdir: self.failUnlessEqual(
+                newdir._node.get_version(), SDMF_VERSION
+            )
+        )
         return d
 
     @inlineCallbacks
     def test_PUT_NEWDIRURL_mkdirs_bad_format(self):
-        url = (self.webish_url + self.public_url +
-               "/foo/subdir/newdir?t=mkdir&format=foo")
-        yield self.assertHTTPError(url, 400, "Unknown format: foo",
-                                   method="put", data="")
+        url = (
+            self.webish_url + self.public_url + "/foo/subdir/newdir?t=mkdir&format=foo"
+        )
+        yield self.assertHTTPError(
+            url, 400, "Unknown format: foo", method="put", data=""
+        )
 
     def test_DELETE_DIRURL(self):
         d = self.DELETE(self.public_url + "/foo")
-        d.addCallback(lambda res:
-                      self.failIfNodeHasChild(self.public_root, u"foo"))
+        d.addCallback(lambda res: self.failIfNodeHasChild(self.public_root, "foo"))
         return d
 
     def test_DELETE_DIRURL_missing(self):
         d = self.DELETE(self.public_url + "/foo/missing")
         d.addBoth(self.should404, "test_DELETE_DIRURL_missing")
-        d.addCallback(lambda res:
-                      self.failUnlessNodeHasChild(self.public_root, u"foo"))
+        d.addCallback(lambda res: self.failUnlessNodeHasChild(self.public_root, "foo"))
         return d
 
     def test_DELETE_DIRURL_missing2(self):
@@ -2602,8 +3115,10 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
     def dump_root(self):
         print("NODEWALK")
         w = webish.DirnodeWalkerMixin()
+
         def visitor(childpath, childnode, metadata):
             print(childpath)
+
         d = w.walk(self.public_root, visitor)
         return d
 
@@ -2611,22 +3126,30 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         for k in expected_keys:
             assert isinstance(k, str)
         d = node.list()
+
         def _check(children):
             self.failUnlessReallyEqual(sorted(children.keys()), sorted(expected_keys))
+
         d.addCallback(_check)
         return d
+
     def failUnlessNodeHasChild(self, node, name):
         assert isinstance(name, str)
         d = node.list()
+
         def _check(children):
             self.failUnlessIn(name, children)
+
         d.addCallback(_check)
         return d
+
     def failIfNodeHasChild(self, node, name):
         assert isinstance(name, str)
         d = node.list()
+
         def _check(children):
             self.failIfIn(name, children)
+
         d.addCallback(_check)
         return d
 
@@ -2634,8 +3157,10 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         assert isinstance(name, str)
         d = node.get_child_at_path(name)
         d.addCallback(lambda node: download_to_data(node))
+
         def _check(contents):
             self.failUnlessReallyEqual(contents, expected_contents)
+
         d.addCallback(_check)
         return d
 
@@ -2643,56 +3168,76 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         assert isinstance(name, str)
         d = node.get_child_at_path(name)
         d.addCallback(lambda node: node.download_best_version())
+
         def _check(contents):
             self.failUnlessReallyEqual(contents, expected_contents)
+
         d.addCallback(_check)
         return d
 
     def failUnlessRWChildURIIs(self, node, name, expected_uri):
         assert isinstance(name, str)
         d = node.get_child_at_path(name)
+
         def _check(child):
             self.failUnless(child.is_unknown() or not child.is_readonly())
             self.failUnlessReallyEqual(child.get_uri(), expected_uri.strip())
             self.failUnlessReallyEqual(child.get_write_uri(), expected_uri.strip())
             expected_ro_uri = self._make_readonly(expected_uri)
             if expected_ro_uri:
-                self.failUnlessReallyEqual(child.get_readonly_uri(), expected_ro_uri.strip())
+                self.failUnlessReallyEqual(
+                    child.get_readonly_uri(), expected_ro_uri.strip()
+                )
+
         d.addCallback(_check)
         return d
 
     def failUnlessROChildURIIs(self, node, name, expected_uri):
         assert isinstance(name, str)
         d = node.get_child_at_path(name)
+
         def _check(child):
             self.failUnless(child.is_unknown() or child.is_readonly())
             self.failUnlessReallyEqual(child.get_write_uri(), None)
-            self.failUnlessReallyEqual(child.get_uri(), ensure_binary(expected_uri.strip()))
-            self.failUnlessReallyEqual(child.get_readonly_uri(), ensure_binary(expected_uri.strip()))
+            self.failUnlessReallyEqual(
+                child.get_uri(), ensure_binary(expected_uri.strip())
+            )
+            self.failUnlessReallyEqual(
+                child.get_readonly_uri(), ensure_binary(expected_uri.strip())
+            )
+
         d.addCallback(_check)
         return d
 
     def failUnlessURIMatchesRWChild(self, got_uri, node, name):
         assert isinstance(name, str)
         d = node.get_child_at_path(name)
+
         def _check(child):
             self.failUnless(child.is_unknown() or not child.is_readonly())
             self.failUnlessReallyEqual(child.get_uri(), ensure_binary(got_uri.strip()))
-            self.failUnlessReallyEqual(child.get_write_uri(), ensure_binary(got_uri.strip()))
+            self.failUnlessReallyEqual(
+                child.get_write_uri(), ensure_binary(got_uri.strip())
+            )
             expected_ro_uri = self._make_readonly(got_uri)
             if expected_ro_uri:
-                self.failUnlessReallyEqual(child.get_readonly_uri(), expected_ro_uri.strip())
+                self.failUnlessReallyEqual(
+                    child.get_readonly_uri(), expected_ro_uri.strip()
+                )
+
         d.addCallback(_check)
         return d
 
     def failUnlessURIMatchesROChild(self, got_uri, node, name):
         assert isinstance(name, str)
         d = node.get_child_at_path(name)
+
         def _check(child):
             self.failUnless(child.is_unknown() or child.is_readonly())
             self.failUnlessReallyEqual(child.get_write_uri(), None)
             self.failUnlessReallyEqual(got_uri.strip(), child.get_uri())
             self.failUnlessReallyEqual(got_uri.strip(), child.get_readonly_uri())
+
         d.addCallback(_check)
         return d
 
@@ -2702,51 +3247,68 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         self.failUnless(self.get_all_contents()[got_uri] == contents)
 
     def test_POST_upload(self):
-        d = self.POST(self.public_url + "/foo", t="upload",
-                      file=("new.txt", self.NEWFILE_CONTENTS))
+        d = self.POST(
+            self.public_url + "/foo",
+            t="upload",
+            file=("new.txt", self.NEWFILE_CONTENTS),
+        )
         fn = self._foo_node
-        d.addCallback(self.failUnlessURIMatchesROChild, fn, u"new.txt")
-        d.addCallback(lambda res:
-                      self.failUnlessChildContentsAre(fn, u"new.txt",
-                                                      self.NEWFILE_CONTENTS))
+        d.addCallback(self.failUnlessURIMatchesROChild, fn, "new.txt")
+        d.addCallback(
+            lambda res: self.failUnlessChildContentsAre(
+                fn, "new.txt", self.NEWFILE_CONTENTS
+            )
+        )
         return d
 
     def test_POST_upload_unicode(self):
-        filename = u"n\u00e9wer.txt" # n e-acute w e r . t x t
-        d = self.POST(self.public_url + "/foo", t="upload",
-                      file=(filename, self.NEWFILE_CONTENTS))
+        filename = "n\u00e9wer.txt"  # n e-acute w e r . t x t
+        d = self.POST(
+            self.public_url + "/foo", t="upload", file=(filename, self.NEWFILE_CONTENTS)
+        )
         fn = self._foo_node
         d.addCallback(self.failUnlessURIMatchesROChild, fn, filename)
-        d.addCallback(lambda res:
-                      self.failUnlessChildContentsAre(fn, filename,
-                                                      self.NEWFILE_CONTENTS))
-        target_url = self.public_url + u"/foo/" + filename
+        d.addCallback(
+            lambda res: self.failUnlessChildContentsAre(
+                fn, filename, self.NEWFILE_CONTENTS
+            )
+        )
+        target_url = self.public_url + "/foo/" + filename
         d.addCallback(lambda res: self.GET(target_url))
-        d.addCallback(lambda contents: self.failUnlessReallyEqual(contents,
-                                                                  self.NEWFILE_CONTENTS,
-                                                                  contents))
+        d.addCallback(
+            lambda contents: self.failUnlessReallyEqual(
+                contents, self.NEWFILE_CONTENTS, contents
+            )
+        )
         return d
 
     def test_POST_upload_unicode_named(self):
-        filename = u"n\u00e9wer.txt" # n e-acute w e r . t x t
-        d = self.POST(self.public_url + "/foo", t="upload",
-                      name=filename,
-                      file=("overridden", self.NEWFILE_CONTENTS))
+        filename = "n\u00e9wer.txt"  # n e-acute w e r . t x t
+        d = self.POST(
+            self.public_url + "/foo",
+            t="upload",
+            name=filename,
+            file=("overridden", self.NEWFILE_CONTENTS),
+        )
         fn = self._foo_node
         d.addCallback(self.failUnlessURIMatchesROChild, fn, filename)
-        d.addCallback(lambda res:
-                      self.failUnlessChildContentsAre(fn, filename,
-                                                      self.NEWFILE_CONTENTS))
-        target_url = self.public_url + u"/foo/" + filename
+        d.addCallback(
+            lambda res: self.failUnlessChildContentsAre(
+                fn, filename, self.NEWFILE_CONTENTS
+            )
+        )
+        target_url = self.public_url + "/foo/" + filename
         d.addCallback(lambda res: self.GET(target_url))
-        d.addCallback(lambda contents: self.failUnlessReallyEqual(contents,
-                                                                  self.NEWFILE_CONTENTS,
-                                                                  contents))
+        d.addCallback(
+            lambda contents: self.failUnlessReallyEqual(
+                contents, self.NEWFILE_CONTENTS, contents
+            )
+        )
         return d
 
     def test_POST_upload_no_link(self):
-        d = self.POST("/uri", t="upload",
-                      file=("new.txt", self.NEWFILE_CONTENTS))
+        d = self.POST("/uri", t="upload", file=("new.txt", self.NEWFILE_CONTENTS))
+
         def _check_upload_results(page):
             page = str(page, "utf-8")
             # this should be a page which describes the results of the upload
@@ -2758,36 +3320,49 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
             self.failUnless(mo, page)
             new_uri = mo.group(1)
             return new_uri
+
         d.addCallback(_check_upload_results)
         d.addCallback(self.failUnlessCHKURIHasContents, self.NEWFILE_CONTENTS)
         return d
 
     @inlineCallbacks
     def test_POST_upload_no_link_whendone(self):
-        body, headers = self.build_form(t="upload", when_done="/",
-                                        file=("new.txt", self.NEWFILE_CONTENTS))
-        yield self.shouldRedirectTo(self.webish_url + "/uri",
-                                    self.webish_url + "/",
-                                    method="post", data=body, headers=headers,
-                                    code=http.FOUND)
+        body, headers = self.build_form(
+            t="upload", when_done="/", file=("new.txt", self.NEWFILE_CONTENTS)
+        )
+        yield self.shouldRedirectTo(
+            self.webish_url + "/uri",
+            self.webish_url + "/",
+            method="post",
+            data=body,
+            headers=headers,
+            code=http.FOUND,
+        )
 
     @inlineCallbacks
     def test_POST_upload_no_link_whendone_results(self):
         # We encode "uri" as "%75ri" to exercise a case affected by ticket #1860
-        body, headers = self.build_form(t="upload",
-                                        when_done="/%75ri/%(uri)s",
-                                        file=("new.txt", self.NEWFILE_CONTENTS),
-                                        )
-        redir_url = yield self.shouldRedirectTo(self.webish_url + "/uri", None,
-                                                method="post",
-                                                data=body, headers=headers,
-                                                code=http.FOUND)
+        body, headers = self.build_form(
+            t="upload",
+            when_done="/%75ri/%(uri)s",
+            file=("new.txt", self.NEWFILE_CONTENTS),
+        )
+        redir_url = yield self.shouldRedirectTo(
+            self.webish_url + "/uri",
+            None,
+            method="post",
+            data=body,
+            headers=headers,
+            code=http.FOUND,
+        )
         res = yield do_http("get", redir_url)
         self.failUnlessReallyEqual(res, self.NEWFILE_CONTENTS)
 
     def test_POST_upload_no_link_mutable(self):
-        d = self.POST("/uri", t="upload", mutable="true",
-                      file=("new.txt", self.NEWFILE_CONTENTS))
+        d = self.POST(
+            "/uri", t="upload", mutable="true", file=("new.txt", self.NEWFILE_CONTENTS)
+        )
+
         def _check(filecap):
             filecap = filecap.strip()
             self.failUnless(filecap.startswith(b"URI:SSK:"), filecap)
@@ -2796,17 +3371,24 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
             self.failUnlessIn(u.get_storage_index(), self.get_all_contents())
             n = self.s.create_node_from_uri(filecap)
             return n.download_best_version()
+
         d.addCallback(_check)
+
         def _check2(data):
             self.failUnlessReallyEqual(data, self.NEWFILE_CONTENTS)
             return self.GET("/uri/%s" % urlquote(self.filecap))
+
         d.addCallback(_check2)
+
         def _check3(data):
             self.failUnlessReallyEqual(data, self.NEWFILE_CONTENTS)
             return self.GET("/file/%s" % urlquote(self.filecap))
+
         d.addCallback(_check3)
+
         def _check4(data):
             self.failUnlessReallyEqual(data, self.NEWFILE_CONTENTS)
+
         d.addCallback(_check4)
         return d
 
@@ -2814,16 +3396,22 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         # The SDMF size limit is no longer in place, so we should be
         # able to upload mutable files that are as large as we want them
         # to be.
-        d = self.POST("/uri", t="upload", mutable="true",
-                      file=("new.txt", b"b" * (self.s.MUTABLE_SIZELIMIT + 1)))
+        d = self.POST(
+            "/uri",
+            t="upload",
+            mutable="true",
+            file=("new.txt", b"b" * (self.s.MUTABLE_SIZELIMIT + 1)),
+        )
         return d
-
 
     def test_POST_upload_format_unlinked(self):
         def _check_upload_unlinked(ign, format, uri_prefix):
             filename = format + ".txt"
-            d = self.POST("/uri?t=upload&format=" + format,
-                          file=(filename, self.NEWFILE_CONTENTS * 300000))
+            d = self.POST(
+                "/uri?t=upload&format=" + format,
+                file=(filename, self.NEWFILE_CONTENTS * 300000),
+            )
+
             def _got_results(results):
                 if format.upper() in ("SDMF", "MDMF"):
                     # webapi.rst says this returns a filecap
@@ -2832,19 +3420,22 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
                     # for immutable, it returns an "upload results page", and
                     # the filecap is buried inside
                     line = [l for l in results.split(b"\n") if b"URI: " in l][0]
-                    mo = re.search(br'<span>([^<]+)</span>', line)
+                    mo = re.search(br"<span>([^<]+)</span>", line)
                     filecap = mo.group(1)
-                self.failUnless(filecap.startswith(uri_prefix),
-                                (uri_prefix, filecap))
+                self.failUnless(filecap.startswith(uri_prefix), (uri_prefix, filecap))
                 return self.GET("/uri/%s?t=json" % str(filecap, "utf-8"))
+
             d.addCallback(_got_results)
+
             def _got_json(raw):
                 data = json.loads(raw)
                 data = data[1]
                 self.failUnlessIn("format", data)
                 self.failUnlessEqual(data["format"], format.upper())
+
             d.addCallback(_got_json)
             return d
+
         d = defer.succeed(None)
         d.addCallback(_check_upload_unlinked, "chk", b"URI:CHK")
         d.addCallback(_check_upload_unlinked, "CHK", b"URI:CHK")
@@ -2855,29 +3446,36 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
     @inlineCallbacks
     def test_POST_upload_bad_format_unlinked(self):
         url = self.webish_url + "/uri?t=upload&format=foo"
-        body, headers = self.build_form(file=("foo.txt", self.NEWFILE_CONTENTS * 300000))
-        yield self.assertHTTPError(url, 400,
-                                   "Unknown format: foo",
-                                   method="post", data=body, headers=headers)
+        body, headers = self.build_form(
+            file=("foo.txt", self.NEWFILE_CONTENTS * 300000)
+        )
+        yield self.assertHTTPError(
+            url, 400, "Unknown format: foo", method="post", data=body, headers=headers
+        )
 
     def test_POST_upload_format(self):
         def _check_upload(ign, format, uri_prefix, fn=None):
             filename = format + ".txt"
-            d = self.POST(self.public_url +
-                          "/foo?t=upload&format=" + format,
-                          file=(filename, self.NEWFILE_CONTENTS * 300000))
+            d = self.POST(
+                self.public_url + "/foo?t=upload&format=" + format,
+                file=(filename, self.NEWFILE_CONTENTS * 300000),
+            )
+
             def _got_filecap(filecap):
                 if fn is not None:
                     filenameu = str(filename)
                     self.failUnlessURIMatchesRWChild(filecap, fn, filenameu)
                 self.failUnless(filecap.startswith(uri_prefix))
                 return self.GET(self.public_url + "/foo/%s?t=json" % filename)
+
             d.addCallback(_got_filecap)
+
             def _got_json(raw):
                 data = json.loads(raw)
                 data = data[1]
                 self.failUnlessIn("format", data)
                 self.failUnlessEqual(data["format"], format.upper())
+
             d.addCallback(_got_json)
             return d
 
@@ -2891,97 +3489,130 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
     @inlineCallbacks
     def test_POST_upload_bad_format(self):
         url = self.webish_url + self.public_url + "/foo?t=upload&format=foo"
-        body, headers = self.build_form(file=("foo.txt", self.NEWFILE_CONTENTS * 300000))
-        yield self.assertHTTPError(url, 400, "Unknown format: foo",
-                                   method="post", data=body, headers=headers)
+        body, headers = self.build_form(
+            file=("foo.txt", self.NEWFILE_CONTENTS * 300000)
+        )
+        yield self.assertHTTPError(
+            url, 400, "Unknown format: foo", method="post", data=body, headers=headers
+        )
 
     def test_POST_upload_mutable(self):
         # this creates a mutable file
-        d = self.POST(self.public_url + "/foo", t="upload", mutable="true",
-                      file=("new.txt", self.NEWFILE_CONTENTS))
+        d = self.POST(
+            self.public_url + "/foo",
+            t="upload",
+            mutable="true",
+            file=("new.txt", self.NEWFILE_CONTENTS),
+        )
         fn = self._foo_node
-        d.addCallback(self.failUnlessURIMatchesRWChild, fn, u"new.txt")
-        d.addCallback(lambda res:
-                      self.failUnlessMutableChildContentsAre(fn, u"new.txt",
-                                                             self.NEWFILE_CONTENTS))
-        d.addCallback(lambda res: self._foo_node.get(u"new.txt"))
+        d.addCallback(self.failUnlessURIMatchesRWChild, fn, "new.txt")
+        d.addCallback(
+            lambda res: self.failUnlessMutableChildContentsAre(
+                fn, "new.txt", self.NEWFILE_CONTENTS
+            )
+        )
+        d.addCallback(lambda res: self._foo_node.get("new.txt"))
+
         def _got(newnode):
             self.failUnless(IMutableFileNode.providedBy(newnode))
             self.failUnless(newnode.is_mutable())
             self.failIf(newnode.is_readonly())
             self._mutable_node = newnode
             self._mutable_uri = newnode.get_uri()
+
         d.addCallback(_got)
 
         # now upload it again and make sure that the URI doesn't change
         NEWER_CONTENTS = self.NEWFILE_CONTENTS + b"newer\n"
-        d.addCallback(lambda res:
-                      self.POST(self.public_url + "/foo", t="upload",
-                                mutable="true",
-                                file=("new.txt", NEWER_CONTENTS)))
-        d.addCallback(self.failUnlessURIMatchesRWChild, fn, u"new.txt")
-        d.addCallback(lambda res:
-                      self.failUnlessMutableChildContentsAre(fn, u"new.txt",
-                                                             NEWER_CONTENTS))
-        d.addCallback(lambda res: self._foo_node.get(u"new.txt"))
+        d.addCallback(
+            lambda res: self.POST(
+                self.public_url + "/foo",
+                t="upload",
+                mutable="true",
+                file=("new.txt", NEWER_CONTENTS),
+            )
+        )
+        d.addCallback(self.failUnlessURIMatchesRWChild, fn, "new.txt")
+        d.addCallback(
+            lambda res: self.failUnlessMutableChildContentsAre(
+                fn, "new.txt", NEWER_CONTENTS
+            )
+        )
+        d.addCallback(lambda res: self._foo_node.get("new.txt"))
+
         def _got2(newnode):
             self.failUnless(IMutableFileNode.providedBy(newnode))
             self.failUnless(newnode.is_mutable())
             self.failIf(newnode.is_readonly())
             self.failUnlessReallyEqual(self._mutable_uri, newnode.get_uri())
+
         d.addCallback(_got2)
 
         # upload a second time, using PUT instead of POST
         NEW2_CONTENTS = NEWER_CONTENTS + b"overwrite with PUT\n"
-        d.addCallback(lambda res:
-                      self.PUT(self.public_url + "/foo/new.txt", NEW2_CONTENTS))
-        d.addCallback(self.failUnlessURIMatchesRWChild, fn, u"new.txt")
-        d.addCallback(lambda res:
-                      self.failUnlessMutableChildContentsAre(fn, u"new.txt",
-                                                             NEW2_CONTENTS))
+        d.addCallback(
+            lambda res: self.PUT(self.public_url + "/foo/new.txt", NEW2_CONTENTS)
+        )
+        d.addCallback(self.failUnlessURIMatchesRWChild, fn, "new.txt")
+        d.addCallback(
+            lambda res: self.failUnlessMutableChildContentsAre(
+                fn, "new.txt", NEW2_CONTENTS
+            )
+        )
 
         # finally list the directory, since mutable files are displayed
         # slightly differently
 
-        d.addCallback(lambda res:
-                      self.GET(self.public_url + "/foo",
-                               followRedirect=True))
+        d.addCallback(
+            lambda res: self.GET(self.public_url + "/foo", followRedirect=True)
+        )
+
         def _check_page(res):
             # TODO: assert more about the contents
             self.failUnlessIn(b"SSK", res)
             return res
+
         d.addCallback(_check_page)
 
-        d.addCallback(lambda res: self._foo_node.get(u"new.txt"))
+        d.addCallback(lambda res: self._foo_node.get("new.txt"))
+
         def _got3(newnode):
             self.failUnless(IMutableFileNode.providedBy(newnode))
             self.failUnless(newnode.is_mutable())
             self.failIf(newnode.is_readonly())
             self.failUnlessReallyEqual(self._mutable_uri, newnode.get_uri())
+
         d.addCallback(_got3)
 
         # look at the JSON form of the enclosing directory
-        d.addCallback(lambda res:
-                      self.GET(self.public_url + "/foo?t=json",
-                               followRedirect=True))
+        d.addCallback(
+            lambda res: self.GET(self.public_url + "/foo?t=json", followRedirect=True)
+        )
+
         def _check_page_json(res):
             parsed = json.loads(res)
             self.failUnlessEqual(parsed[0], "dirnode")
-            children = dict( [(str(name),value)
-                              for (name,value)
-                              in list(parsed[1]["children"].items())] )
-            self.failUnlessIn(u"new.txt", children)
-            new_json = children[u"new.txt"]
+            children = dict(
+                [
+                    (str(name), value)
+                    for (name, value) in list(parsed[1]["children"].items())
+                ]
+            )
+            self.failUnlessIn("new.txt", children)
+            new_json = children["new.txt"]
             self.failUnlessEqual(new_json[0], "filenode")
             self.failUnless(new_json[1]["mutable"])
-            self.failUnlessReallyEqual(to_bytes(new_json[1]["rw_uri"]), self._mutable_uri)
+            self.failUnlessReallyEqual(
+                to_bytes(new_json[1]["rw_uri"]), self._mutable_uri
+            )
             ro_uri = self._mutable_node.get_readonly().to_string()
             self.failUnlessReallyEqual(to_bytes(new_json[1]["ro_uri"]), ro_uri)
+
         d.addCallback(_check_page_json)
 
         # and the JSON form of the file
-        d.addCallback(lambda res:
-                      self.GET(self.public_url + "/foo/new.txt?t=json"))
+        d.addCallback(lambda res: self.GET(self.public_url + "/foo/new.txt?t=json"))
+
         def _check_file_json(res):
             parsed = json.loads(res)
             self.failUnlessEqual(parsed[0], "filenode")
@@ -2989,44 +3620,54 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
             self.failUnlessReallyEqual(to_bytes(parsed[1]["rw_uri"]), self._mutable_uri)
             ro_uri = self._mutable_node.get_readonly().to_string()
             self.failUnlessReallyEqual(to_bytes(parsed[1]["ro_uri"]), ro_uri)
+
         d.addCallback(_check_file_json)
 
         # and look at t=uri and t=readonly-uri
-        d.addCallback(lambda res:
-                      self.GET(self.public_url + "/foo/new.txt?t=uri"))
+        d.addCallback(lambda res: self.GET(self.public_url + "/foo/new.txt?t=uri"))
         d.addCallback(lambda res: self.failUnlessReallyEqual(res, self._mutable_uri))
-        d.addCallback(lambda res:
-                      self.GET(self.public_url + "/foo/new.txt?t=readonly-uri"))
+        d.addCallback(
+            lambda res: self.GET(self.public_url + "/foo/new.txt?t=readonly-uri")
+        )
+
         def _check_ro_uri(res):
             ro_uri = self._mutable_node.get_readonly().to_string()
             self.failUnlessReallyEqual(res, ro_uri)
+
         d.addCallback(_check_ro_uri)
 
         # make sure we can get to it from /uri/URI
-        d.addCallback(lambda res:
-                      self.GET("/uri/%s" % urlquote(self._mutable_uri)))
-        d.addCallback(lambda res:
-                      self.failUnlessReallyEqual(res, NEW2_CONTENTS))
+        d.addCallback(lambda res: self.GET("/uri/%s" % urlquote(self._mutable_uri)))
+        d.addCallback(lambda res: self.failUnlessReallyEqual(res, NEW2_CONTENTS))
 
         # and that HEAD computes the size correctly
-        d.addCallback(lambda res:
-                      self.HEAD(self.public_url + "/foo/new.txt",
-                                return_response=True))
+        d.addCallback(
+            lambda res: self.HEAD(
+                self.public_url + "/foo/new.txt", return_response=True
+            )
+        )
+
         def _got_headers(res_and_status_and_headers):
             (res, status, headers) = res_and_status_and_headers
             self.failUnlessReallyEqual(res, "")
-            self.failUnlessReallyEqual(int(headers.getRawHeaders("content-length")[0]),
-                                       len(NEW2_CONTENTS))
-            self.failUnlessReallyEqual(headers.getRawHeaders("content-type"),
-                                       ["text/plain"])
+            self.failUnlessReallyEqual(
+                int(headers.getRawHeaders("content-length")[0]), len(NEW2_CONTENTS)
+            )
+            self.failUnlessReallyEqual(
+                headers.getRawHeaders("content-type"), ["text/plain"]
+            )
+
         d.addCallback(_got_headers)
 
         # make sure that outdated size limits aren't enforced anymore.
-        d.addCallback(lambda ignored:
-            self.POST(self.public_url + "/foo", t="upload",
-                      mutable="true",
-                      file=("new.txt",
-                            b"b" * (self.s.MUTABLE_SIZELIMIT+1))))
+        d.addCallback(
+            lambda ignored: self.POST(
+                self.public_url + "/foo",
+                t="upload",
+                mutable="true",
+                file=("new.txt", b"b" * (self.s.MUTABLE_SIZELIMIT + 1)),
+            )
+        )
         d.addErrback(self.dump_error)
         return d
 
@@ -3036,9 +3677,12 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         # encounter errors when trying to upload large mutable files,
         # since there should be no coded prohibitions regarding large
         # mutable files.
-        d = self.POST(self.public_url + "/foo",
-                      t="upload", mutable="true",
-                      file=("new.txt", b"b" * (self.s.MUTABLE_SIZELIMIT + 1)))
+        d = self.POST(
+            self.public_url + "/foo",
+            t="upload",
+            mutable="true",
+            file=("new.txt", b"b" * (self.s.MUTABLE_SIZELIMIT + 1)),
+        )
         return d
 
     def dump_error(self, f):
@@ -3055,84 +3699,127 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         return f
 
     def test_POST_upload_replace(self):
-        d = self.POST(self.public_url + "/foo", t="upload",
-                      file=("bar.txt", self.NEWFILE_CONTENTS))
+        d = self.POST(
+            self.public_url + "/foo",
+            t="upload",
+            file=("bar.txt", self.NEWFILE_CONTENTS),
+        )
         fn = self._foo_node
-        d.addCallback(self.failUnlessURIMatchesROChild, fn, u"bar.txt")
-        d.addCallback(lambda res:
-                      self.failUnlessChildContentsAre(fn, u"bar.txt",
-                                                      self.NEWFILE_CONTENTS))
+        d.addCallback(self.failUnlessURIMatchesROChild, fn, "bar.txt")
+        d.addCallback(
+            lambda res: self.failUnlessChildContentsAre(
+                fn, "bar.txt", self.NEWFILE_CONTENTS
+            )
+        )
         return d
 
     def test_POST_upload_no_replace_ok(self):
-        d = self.POST(self.public_url + "/foo?replace=false", t="upload",
-                      file=("new.txt", self.NEWFILE_CONTENTS))
+        d = self.POST(
+            self.public_url + "/foo?replace=false",
+            t="upload",
+            file=("new.txt", self.NEWFILE_CONTENTS),
+        )
         d.addCallback(lambda res: self.GET(self.public_url + "/foo/new.txt"))
-        d.addCallback(lambda res: self.failUnlessReallyEqual(res,
-                                                             self.NEWFILE_CONTENTS))
+        d.addCallback(
+            lambda res: self.failUnlessReallyEqual(res, self.NEWFILE_CONTENTS)
+        )
         return d
 
     def test_POST_upload_no_replace_queryarg(self):
-        d = self.POST(self.public_url + "/foo?replace=false", t="upload",
-                      file=("bar.txt", self.NEWFILE_CONTENTS))
-        d.addBoth(self.shouldFail, error.Error,
-                  "POST_upload_no_replace_queryarg",
-                  "409 Conflict",
-                  "There was already a child by that name, and you asked me "
-                  "to not replace it")
+        d = self.POST(
+            self.public_url + "/foo?replace=false",
+            t="upload",
+            file=("bar.txt", self.NEWFILE_CONTENTS),
+        )
+        d.addBoth(
+            self.shouldFail,
+            error.Error,
+            "POST_upload_no_replace_queryarg",
+            "409 Conflict",
+            "There was already a child by that name, and you asked me "
+            "to not replace it",
+        )
         d.addCallback(lambda res: self.GET(self.public_url + "/foo/bar.txt"))
         d.addCallback(self.failUnlessIsBarDotTxt)
         return d
 
     def test_POST_upload_no_replace_field(self):
-        d = self.POST(self.public_url + "/foo", t="upload", replace="false",
-                      file=("bar.txt", self.NEWFILE_CONTENTS))
-        d.addBoth(self.shouldFail, error.Error, "POST_upload_no_replace_field",
-                  "409 Conflict",
-                  "There was already a child by that name, and you asked me "
-                  "to not replace it")
+        d = self.POST(
+            self.public_url + "/foo",
+            t="upload",
+            replace="false",
+            file=("bar.txt", self.NEWFILE_CONTENTS),
+        )
+        d.addBoth(
+            self.shouldFail,
+            error.Error,
+            "POST_upload_no_replace_field",
+            "409 Conflict",
+            "There was already a child by that name, and you asked me "
+            "to not replace it",
+        )
         d.addCallback(lambda res: self.GET(self.public_url + "/foo/bar.txt"))
         d.addCallback(self.failUnlessIsBarDotTxt)
         return d
 
     @inlineCallbacks
     def test_POST_upload_whendone(self):
-        body, headers = self.build_form(t="upload", when_done="/THERE",
-                                        file=("new.txt", self.NEWFILE_CONTENTS))
-        yield self.shouldRedirectTo(self.webish_url + self.public_url + "/foo",
-                                    "/THERE",
-                                    method="post", data=body, headers=headers,
-                                    code=http.FOUND)
+        body, headers = self.build_form(
+            t="upload", when_done="/THERE", file=("new.txt", self.NEWFILE_CONTENTS)
+        )
+        yield self.shouldRedirectTo(
+            self.webish_url + self.public_url + "/foo",
+            "/THERE",
+            method="post",
+            data=body,
+            headers=headers,
+            code=http.FOUND,
+        )
         fn = self._foo_node
-        yield self.failUnlessChildContentsAre(fn, u"new.txt",
-                                              self.NEWFILE_CONTENTS)
+        yield self.failUnlessChildContentsAre(fn, "new.txt", self.NEWFILE_CONTENTS)
 
     def test_POST_upload_named(self):
         NEWFILE_CONTENTS = self.NEWFILE_CONTENTS + b"\xFF\x00\xFF"
         fn = self._foo_node
-        d = self.POST(self.public_url + "/foo", t="upload",
-                      name="new.txt", file=NEWFILE_CONTENTS)
-        d.addCallback(self.failUnlessURIMatchesROChild, fn, u"new.txt")
-        d.addCallback(lambda res:
-                      self.failUnlessChildContentsAre(fn, u"new.txt",
-                                                      NEWFILE_CONTENTS))
+        d = self.POST(
+            self.public_url + "/foo", t="upload", name="new.txt", file=NEWFILE_CONTENTS
+        )
+        d.addCallback(self.failUnlessURIMatchesROChild, fn, "new.txt")
+        d.addCallback(
+            lambda res: self.failUnlessChildContentsAre(fn, "new.txt", NEWFILE_CONTENTS)
+        )
         return d
 
     def test_POST_upload_named_badfilename(self):
-        d = self.POST(self.public_url + "/foo", t="upload",
-                      name="slashes/are/bad.txt", file=self.NEWFILE_CONTENTS)
-        d.addBoth(self.shouldFail, error.Error,
-                  "test_POST_upload_named_badfilename",
-                  "400 Bad Request",
-                  "name= may not contain a slash",
-                  )
+        d = self.POST(
+            self.public_url + "/foo",
+            t="upload",
+            name="slashes/are/bad.txt",
+            file=self.NEWFILE_CONTENTS,
+        )
+        d.addBoth(
+            self.shouldFail,
+            error.Error,
+            "test_POST_upload_named_badfilename",
+            "400 Bad Request",
+            "name= may not contain a slash",
+        )
         # make sure that nothing was added
-        d.addCallback(lambda res:
-                      self.failUnlessNodeKeysAre(self._foo_node,
-                                                 [self._htmlname_unicode,
-                                                  u"bar.txt", u"baz.txt", u"blockingfile",
-                                                  u"empty", u"n\u00fc.txt", u"quux.txt",
-                                                  u"sub"]))
+        d.addCallback(
+            lambda res: self.failUnlessNodeKeysAre(
+                self._foo_node,
+                [
+                    self._htmlname_unicode,
+                    "bar.txt",
+                    "baz.txt",
+                    "blockingfile",
+                    "empty",
+                    "n\u00fc.txt",
+                    "quux.txt",
+                    "sub",
+                ],
+            )
+        )
         return d
 
     @inlineCallbacks
@@ -3143,9 +3830,14 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
 
         redir_url = "http://allmydata.org/TARGET"
         body, headers = self.build_form(t="check", when_done=redir_url)
-        yield self.shouldRedirectTo(self.webish_url + bar_url, redir_url,
-                                    method="post", data=body, headers=headers,
-                                    code=http.FOUND)
+        yield self.shouldRedirectTo(
+            self.webish_url + bar_url,
+            redir_url,
+            method="post",
+            data=body,
+            headers=headers,
+            code=http.FOUND,
+        )
 
         res = yield self.POST(bar_url, t="check", return_to=redir_url)
         res = str(res, "utf-8")
@@ -3165,11 +3857,15 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         self.failUnlessIn(b"Healthy :", res)
 
         redir_url = "http://allmydata.org/TARGET"
-        body, headers = self.build_form(t="check", repair="true",
-                                        when_done=redir_url)
-        yield self.shouldRedirectTo(self.webish_url + bar_url, redir_url,
-                                    method="post", data=body, headers=headers,
-                                    code=http.FOUND)
+        body, headers = self.build_form(t="check", repair="true", when_done=redir_url)
+        yield self.shouldRedirectTo(
+            self.webish_url + bar_url,
+            redir_url,
+            method="post",
+            data=body,
+            headers=headers,
+            code=http.FOUND,
+        )
 
         res = yield self.POST(bar_url, t="check", return_to=redir_url)
         res = str(res, "utf-8")
@@ -3185,9 +3881,14 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
 
         redir_url = "http://allmydata.org/TARGET"
         body, headers = self.build_form(t="check", when_done=redir_url)
-        yield self.shouldRedirectTo(self.webish_url + foo_url, redir_url,
-                                    method="post", data=body, headers=headers,
-                                    code=http.FOUND)
+        yield self.shouldRedirectTo(
+            self.webish_url + foo_url,
+            redir_url,
+            method="post",
+            data=body,
+            headers=headers,
+            code=http.FOUND,
+        )
 
         res = yield self.POST(foo_url, t="check", return_to=redir_url)
         res = str(res, "utf-8")
@@ -3207,11 +3908,15 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         self.failUnlessIn(b"Healthy :", res)
 
         redir_url = "http://allmydata.org/TARGET"
-        body, headers = self.build_form(t="check", repair="true",
-                                        when_done=redir_url)
-        yield self.shouldRedirectTo(self.webish_url + foo_url, redir_url,
-                                    method="post", data=body, headers=headers,
-                                    code=http.FOUND)
+        body, headers = self.build_form(t="check", repair="true", when_done=redir_url)
+        yield self.shouldRedirectTo(
+            self.webish_url + foo_url,
+            redir_url,
+            method="post",
+            data=body,
+            headers=headers,
+            code=http.FOUND,
+        )
         res = yield self.POST(foo_url, t="check", return_to=redir_url)
         res = str(res, "utf-8")
         self.failUnlessIn("Healthy :", res)
@@ -3221,24 +3926,32 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
     def test_POST_FILEURL_mdmf_check(self):
         quux_url = "/uri/%s" % urlquote(self._quux_txt_uri)
         d = self.POST(quux_url, t="check")
+
         def _check(res):
             self.failUnlessIn(b"Healthy", res)
+
         d.addCallback(_check)
-        quux_extension_url = "/uri/%s" % urlquote("%s:3:131073" % str(self._quux_txt_uri, "utf-8"))
-        d.addCallback(lambda ignored:
-                      self.POST(quux_extension_url, t="check"))
+        quux_extension_url = "/uri/%s" % urlquote(
+            "%s:3:131073" % str(self._quux_txt_uri, "utf-8")
+        )
+        d.addCallback(lambda ignored: self.POST(quux_extension_url, t="check"))
         d.addCallback(_check)
         return d
 
     def test_POST_FILEURL_mdmf_check_and_repair(self):
         quux_url = "/uri/%s" % urlquote(self._quux_txt_uri)
         d = self.POST(quux_url, t="check", repair="true")
+
         def _check(res):
             self.failUnlessIn(b"Healthy", res)
+
         d.addCallback(_check)
-        quux_extension_url = "/uri/%s" % urlquote("%s:3:131073" % str(self._quux_txt_uri, "ascii"))
-        d.addCallback(lambda ignored:
-                      self.POST(quux_extension_url, t="check", repair="true"))
+        quux_extension_url = "/uri/%s" % urlquote(
+            "%s:3:131073" % str(self._quux_txt_uri, "ascii")
+        )
+        d.addCallback(
+            lambda ignored: self.POST(quux_extension_url, t="check", repair="true")
+        )
         d.addCallback(_check)
         return d
 
@@ -3246,6 +3959,7 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         url = "/operations/" + ophandle
         url += "?t=status&output=JSON"
         d = self.GET(url)
+
         def _got(res):
             data = json.loads(res)
             if not data["finished"]:
@@ -3253,6 +3967,7 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
                 d.addCallback(self.wait_for_operation, ophandle)
                 return d
             return data
+
         d.addCallback(_got)
         return d
 
@@ -3262,28 +3977,38 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         if output:
             url += "&output=" + output
         d = self.GET(url)
+
         def _got(res):
             if output and output.lower() == "json":
                 return json.loads(res)
             return res
+
         d.addCallback(_got)
         return d
 
     def test_POST_DIRURL_deepcheck_no_ophandle(self):
-        d = self.shouldFail2(error.Error,
-                             "test_POST_DIRURL_deepcheck_no_ophandle",
-                             "400 Bad Request",
-                             "slow operation requires ophandle=",
-                             self.POST, self.public_url, t="start-deep-check")
+        d = self.shouldFail2(
+            error.Error,
+            "test_POST_DIRURL_deepcheck_no_ophandle",
+            "400 Bad Request",
+            "slow operation requires ophandle=",
+            self.POST,
+            self.public_url,
+            t="start-deep-check",
+        )
         return d
 
     @inlineCallbacks
     def test_POST_DIRURL_deepcheck(self):
         body, headers = self.build_form(t="start-deep-check", ophandle="123")
-        yield self.shouldRedirectTo(self.webish_url + self.public_url,
-                                    self.webish_url + "/operations/123",
-                                    method="post", data=body, headers=headers,
-                                    code=http.FOUND)
+        yield self.shouldRedirectTo(
+            self.webish_url + self.public_url,
+            self.webish_url + "/operations/123",
+            method="post",
+            data=body,
+            headers=headers,
+            code=http.FOUND,
+        )
 
         data = yield self.wait_for_operation(None, "123")
         self.failUnlessReallyEqual(data["finished"], True)
@@ -3293,19 +4018,24 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         res = yield self.get_operation_results(None, "123", "html")
         self.failUnlessIn(b"Objects Checked: <span>11</span>", res)
         self.failUnlessIn(b"Objects Healthy: <span>11</span>", res)
-        soup = BeautifulSoup(res, 'html5lib')
+        soup = BeautifulSoup(res, "html5lib")
         assert_soup_has_favicon(self, soup)
 
         res = yield self.GET("/operations/123/")
         # should be the same as without the slash
         self.failUnlessIn(b"Objects Checked: <span>11</span>", res)
         self.failUnlessIn(b"Objects Healthy: <span>11</span>", res)
-        soup = BeautifulSoup(res, 'html5lib')
+        soup = BeautifulSoup(res, "html5lib")
         assert_soup_has_favicon(self, soup)
 
-        yield self.shouldFail2(error.Error, "one", "404 Not Found",
-                               "No detailed results for SI bogus",
-                               self.GET, "/operations/123/bogus")
+        yield self.shouldFail2(
+            error.Error,
+            "one",
+            "404 Not Found",
+            "No detailed results for SI bogus",
+            self.GET,
+            "/operations/123/bogus",
+        )
 
         foo_si = self._foo_node.get_storage_index()
         foo_si_s = base32.b2a(foo_si)
@@ -3316,12 +4046,19 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
 
     def test_POST_DIRURL_deepcheck_and_repair(self):
         url = self.webish_url + self.public_url
-        body, headers = self.build_form(t="start-deep-check", repair="true",
-                                        ophandle="124", output="json")
-        d = do_http("post", url, data=body, headers=headers,
-                    allow_redirects=True,
-                    browser_like_redirects=True)
+        body, headers = self.build_form(
+            t="start-deep-check", repair="true", ophandle="124", output="json"
+        )
+        d = do_http(
+            "post",
+            url,
+            data=body,
+            headers=headers,
+            allow_redirects=True,
+            browser_like_redirects=True,
+        )
         d.addCallback(self.wait_for_operation, "124")
+
         def _check_json(data):
             self.failUnlessReallyEqual(data["finished"], True)
             self.failUnlessReallyEqual(data["count-objects-checked"], 11)
@@ -3334,8 +4071,10 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
             self.failUnlessReallyEqual(data["count-objects-healthy-post-repair"], 11)
             self.failUnlessReallyEqual(data["count-objects-unhealthy-post-repair"], 0)
             self.failUnlessReallyEqual(data["count-corrupt-shares-post-repair"], 0)
+
         d.addCallback(_check_json)
         d.addCallback(self.get_operation_results, "124", "html")
+
         def _check_html(res):
             res = str(res, "utf-8")
             self.failUnlessIn("Objects Checked: <span>11</span>", res)
@@ -3352,181 +4091,205 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
             self.failUnlessIn("Objects Unhealthy (after repair): <span>0</span>", res)
             self.failUnlessIn("Corrupt Shares (after repair): <span>0</span>", res)
 
-            soup = BeautifulSoup(res, 'html5lib')
+            soup = BeautifulSoup(res, "html5lib")
             assert_soup_has_favicon(self, soup)
+
         d.addCallback(_check_html)
         return d
 
     def test_POST_FILEURL_bad_t(self):
-        d = self.shouldFail2(error.Error, "POST_bad_t", "400 Bad Request",
-                             "POST to file: bad t=bogus",
-                             self.POST, self.public_url + "/foo/bar.txt",
-                             t="bogus")
+        d = self.shouldFail2(
+            error.Error,
+            "POST_bad_t",
+            "400 Bad Request",
+            "POST to file: bad t=bogus",
+            self.POST,
+            self.public_url + "/foo/bar.txt",
+            t="bogus",
+        )
         return d
 
-    def test_POST_mkdir(self): # return value?
+    def test_POST_mkdir(self):  # return value?
         d = self.POST(self.public_url + "/foo", t="mkdir", name="newdir")
-        d.addCallback(lambda res: self._foo_node.get(u"newdir"))
+        d.addCallback(lambda res: self._foo_node.get("newdir"))
         d.addCallback(self.failUnlessNodeKeysAre, [])
         return d
 
     def test_POST_mkdir_mdmf(self):
         d = self.POST(self.public_url + "/foo?t=mkdir&name=newdir&format=mdmf")
-        d.addCallback(lambda res: self._foo_node.get(u"newdir"))
-        d.addCallback(lambda node:
-            self.failUnlessEqual(node._node.get_version(), MDMF_VERSION))
+        d.addCallback(lambda res: self._foo_node.get("newdir"))
+        d.addCallback(
+            lambda node: self.failUnlessEqual(node._node.get_version(), MDMF_VERSION)
+        )
         return d
 
     def test_POST_mkdir_sdmf(self):
         d = self.POST(self.public_url + "/foo?t=mkdir&name=newdir&format=sdmf")
-        d.addCallback(lambda res: self._foo_node.get(u"newdir"))
-        d.addCallback(lambda node:
-            self.failUnlessEqual(node._node.get_version(), SDMF_VERSION))
+        d.addCallback(lambda res: self._foo_node.get("newdir"))
+        d.addCallback(
+            lambda node: self.failUnlessEqual(node._node.get_version(), SDMF_VERSION)
+        )
         return d
 
     @inlineCallbacks
     def test_POST_mkdir_bad_format(self):
-        url = (self.webish_url + self.public_url +
-               "/foo?t=mkdir&name=newdir&format=foo")
-        yield self.assertHTTPError(url, 400, "Unknown format: foo",
-                                   method="post")
+        url = self.webish_url + self.public_url + "/foo?t=mkdir&name=newdir&format=foo"
+        yield self.assertHTTPError(url, 400, "Unknown format: foo", method="post")
 
     def test_POST_mkdir_initial_children(self):
         (newkids, caps) = self._create_initial_children()
-        d = self.POST2(self.public_url +
-                       "/foo?t=mkdir-with-children&name=newdir",
-                       json.dumps(newkids))
-        d.addCallback(lambda res:
-                      self.failUnlessNodeHasChild(self._foo_node, u"newdir"))
-        d.addCallback(lambda res: self._foo_node.get(u"newdir"))
+        d = self.POST2(
+            self.public_url + "/foo?t=mkdir-with-children&name=newdir",
+            json.dumps(newkids),
+        )
+        d.addCallback(lambda res: self.failUnlessNodeHasChild(self._foo_node, "newdir"))
+        d.addCallback(lambda res: self._foo_node.get("newdir"))
         d.addCallback(self.failUnlessNodeKeysAre, list(newkids.keys()))
-        d.addCallback(lambda res: self._foo_node.get(u"newdir"))
-        d.addCallback(self.failUnlessROChildURIIs, u"child-imm", caps['filecap1'])
+        d.addCallback(lambda res: self._foo_node.get("newdir"))
+        d.addCallback(self.failUnlessROChildURIIs, "child-imm", caps["filecap1"])
         return d
 
     def test_POST_mkdir_initial_children_mdmf(self):
         (newkids, caps) = self._create_initial_children()
-        d = self.POST2(self.public_url +
-                       "/foo?t=mkdir-with-children&name=newdir&format=mdmf",
-                       json.dumps(newkids))
-        d.addCallback(lambda res:
-                      self.failUnlessNodeHasChild(self._foo_node, u"newdir"))
-        d.addCallback(lambda res: self._foo_node.get(u"newdir"))
-        d.addCallback(lambda node:
-            self.failUnlessEqual(node._node.get_version(), MDMF_VERSION))
-        d.addCallback(lambda res: self._foo_node.get(u"newdir"))
-        d.addCallback(self.failUnlessROChildURIIs, u"child-imm",
-                       caps['filecap1'])
+        d = self.POST2(
+            self.public_url + "/foo?t=mkdir-with-children&name=newdir&format=mdmf",
+            json.dumps(newkids),
+        )
+        d.addCallback(lambda res: self.failUnlessNodeHasChild(self._foo_node, "newdir"))
+        d.addCallback(lambda res: self._foo_node.get("newdir"))
+        d.addCallback(
+            lambda node: self.failUnlessEqual(node._node.get_version(), MDMF_VERSION)
+        )
+        d.addCallback(lambda res: self._foo_node.get("newdir"))
+        d.addCallback(self.failUnlessROChildURIIs, "child-imm", caps["filecap1"])
         return d
 
     # XXX: Duplication.
     def test_POST_mkdir_initial_children_sdmf(self):
         (newkids, caps) = self._create_initial_children()
-        d = self.POST2(self.public_url +
-                       "/foo?t=mkdir-with-children&name=newdir&format=sdmf",
-                       json.dumps(newkids))
-        d.addCallback(lambda res:
-                      self.failUnlessNodeHasChild(self._foo_node, u"newdir"))
-        d.addCallback(lambda res: self._foo_node.get(u"newdir"))
-        d.addCallback(lambda node:
-            self.failUnlessEqual(node._node.get_version(), SDMF_VERSION))
-        d.addCallback(lambda res: self._foo_node.get(u"newdir"))
-        d.addCallback(self.failUnlessROChildURIIs, u"child-imm",
-                       caps['filecap1'])
+        d = self.POST2(
+            self.public_url + "/foo?t=mkdir-with-children&name=newdir&format=sdmf",
+            json.dumps(newkids),
+        )
+        d.addCallback(lambda res: self.failUnlessNodeHasChild(self._foo_node, "newdir"))
+        d.addCallback(lambda res: self._foo_node.get("newdir"))
+        d.addCallback(
+            lambda node: self.failUnlessEqual(node._node.get_version(), SDMF_VERSION)
+        )
+        d.addCallback(lambda res: self._foo_node.get("newdir"))
+        d.addCallback(self.failUnlessROChildURIIs, "child-imm", caps["filecap1"])
         return d
 
     @inlineCallbacks
     def test_POST_mkdir_initial_children_bad_format(self):
         (newkids, caps) = self._create_initial_children()
-        url = (self.webish_url + self.public_url +
-               "/foo?t=mkdir-with-children&name=newdir&format=foo")
-        yield self.assertHTTPError(url, 400, "Unknown format: foo",
-                                   method="post", data=json.dumps(newkids).encode("utf-8"))
+        url = (
+            self.webish_url
+            + self.public_url
+            + "/foo?t=mkdir-with-children&name=newdir&format=foo"
+        )
+        yield self.assertHTTPError(
+            url,
+            400,
+            "Unknown format: foo",
+            method="post",
+            data=json.dumps(newkids).encode("utf-8"),
+        )
 
     def test_POST_mkdir_immutable(self):
         (newkids, caps) = self._create_immutable_children()
-        d = self.POST2(self.public_url +
-                       "/foo?t=mkdir-immutable&name=newdir",
-                       json.dumps(newkids))
-        d.addCallback(lambda res:
-                      self.failUnlessNodeHasChild(self._foo_node, u"newdir"))
-        d.addCallback(lambda res: self._foo_node.get(u"newdir"))
+        d = self.POST2(
+            self.public_url + "/foo?t=mkdir-immutable&name=newdir", json.dumps(newkids)
+        )
+        d.addCallback(lambda res: self.failUnlessNodeHasChild(self._foo_node, "newdir"))
+        d.addCallback(lambda res: self._foo_node.get("newdir"))
         d.addCallback(self.failUnlessNodeKeysAre, list(newkids.keys()))
-        d.addCallback(lambda res: self._foo_node.get(u"newdir"))
-        d.addCallback(self.failUnlessROChildURIIs, u"child-imm", caps['filecap1'])
-        d.addCallback(lambda res: self._foo_node.get(u"newdir"))
-        d.addCallback(self.failUnlessROChildURIIs, u"unknownchild-imm", caps['unknown_immcap'])
-        d.addCallback(lambda res: self._foo_node.get(u"newdir"))
-        d.addCallback(self.failUnlessROChildURIIs, u"dirchild-imm", caps['immdircap'])
-        d.addCallback(lambda res: self._foo_node.get(u"newdir"))
-        d.addCallback(self.failUnlessROChildURIIs, u"dirchild-lit", caps['litdircap'])
-        d.addCallback(lambda res: self._foo_node.get(u"newdir"))
-        d.addCallback(self.failUnlessROChildURIIs, u"dirchild-empty", caps['emptydircap'])
+        d.addCallback(lambda res: self._foo_node.get("newdir"))
+        d.addCallback(self.failUnlessROChildURIIs, "child-imm", caps["filecap1"])
+        d.addCallback(lambda res: self._foo_node.get("newdir"))
+        d.addCallback(
+            self.failUnlessROChildURIIs, "unknownchild-imm", caps["unknown_immcap"]
+        )
+        d.addCallback(lambda res: self._foo_node.get("newdir"))
+        d.addCallback(self.failUnlessROChildURIIs, "dirchild-imm", caps["immdircap"])
+        d.addCallback(lambda res: self._foo_node.get("newdir"))
+        d.addCallback(self.failUnlessROChildURIIs, "dirchild-lit", caps["litdircap"])
+        d.addCallback(lambda res: self._foo_node.get("newdir"))
+        d.addCallback(
+            self.failUnlessROChildURIIs, "dirchild-empty", caps["emptydircap"]
+        )
         return d
 
     def test_POST_mkdir_immutable_bad(self):
         (newkids, caps) = self._create_initial_children()
-        d = self.shouldFail2(error.Error, "POST_mkdir_immutable_bad",
-                             "400 Bad Request",
-                             "needed to be immutable but was not",
-                             self.POST2,
-                             self.public_url +
-                             "/foo?t=mkdir-immutable&name=newdir",
-                             json.dumps(newkids))
+        d = self.shouldFail2(
+            error.Error,
+            "POST_mkdir_immutable_bad",
+            "400 Bad Request",
+            "needed to be immutable but was not",
+            self.POST2,
+            self.public_url + "/foo?t=mkdir-immutable&name=newdir",
+            json.dumps(newkids),
+        )
         return d
 
     def test_POST_mkdir_2(self):
         d = self.POST2(self.public_url + "/foo/newdir?t=mkdir", "")
-        d.addCallback(lambda res:
-                      self.failUnlessNodeHasChild(self._foo_node, u"newdir"))
-        d.addCallback(lambda res: self._foo_node.get(u"newdir"))
+        d.addCallback(lambda res: self.failUnlessNodeHasChild(self._foo_node, "newdir"))
+        d.addCallback(lambda res: self._foo_node.get("newdir"))
         d.addCallback(self.failUnlessNodeKeysAre, [])
         return d
 
     def test_POST_mkdirs_2(self):
         d = self.POST2(self.public_url + "/foo/bardir/newdir?t=mkdir", "")
-        d.addCallback(lambda res:
-                      self.failUnlessNodeHasChild(self._foo_node, u"bardir"))
-        d.addCallback(lambda res: self._foo_node.get(u"bardir"))
-        d.addCallback(lambda bardirnode: bardirnode.get(u"newdir"))
+        d.addCallback(lambda res: self.failUnlessNodeHasChild(self._foo_node, "bardir"))
+        d.addCallback(lambda res: self._foo_node.get("bardir"))
+        d.addCallback(lambda bardirnode: bardirnode.get("newdir"))
         d.addCallback(self.failUnlessNodeKeysAre, [])
         return d
 
     def test_POST_mkdir_no_parentdir_noredirect(self):
         d = self.POST("/uri?t=mkdir")
+
         def _after_mkdir(res):
             uri.DirectoryURI.init_from_string(res)
+
         d.addCallback(_after_mkdir)
         return d
 
     def test_POST_mkdir_no_parentdir_noredirect_mdmf(self):
         d = self.POST("/uri?t=mkdir&format=mdmf")
+
         def _after_mkdir(res):
             u = uri.from_string(res)
             # Check that this is an MDMF writecap
             self.failUnlessIsInstance(u, uri.MDMFDirectoryURI)
+
         d.addCallback(_after_mkdir)
         return d
 
     def test_POST_mkdir_no_parentdir_noredirect_sdmf(self):
         d = self.POST("/uri?t=mkdir&format=sdmf")
+
         def _after_mkdir(res):
             u = uri.from_string(res)
             self.failUnlessIsInstance(u, uri.DirectoryURI)
+
         d.addCallback(_after_mkdir)
         return d
 
     @inlineCallbacks
     def test_POST_mkdir_no_parentdir_noredirect_bad_format(self):
         url = self.webish_url + self.public_url + "/uri?t=mkdir&format=foo"
-        yield self.assertHTTPError(url, 400, "Unknown format: foo",
-                                   method="post")
+        yield self.assertHTTPError(url, 400, "Unknown format: foo", method="post")
 
     def test_POST_mkdir_no_parentdir_noredirect2(self):
         # make sure form-based arguments (as on the welcome page) still work
         d = self.POST("/uri", t="mkdir")
+
         def _after_mkdir(res):
             uri.DirectoryURI.init_from_string(res)
+
         d.addCallback(_after_mkdir)
         d.addErrback(self.explain_web_error)
         return d
@@ -3534,18 +4297,23 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
     @inlineCallbacks
     def test_POST_mkdir_no_parentdir_redirect(self):
         url = self.webish_url + "/uri?t=mkdir&redirect_to_result=true"
-        target = yield self.shouldRedirectTo(url, None, method="post",
-                                             code=http.SEE_OTHER)
+        target = yield self.shouldRedirectTo(
+            url, None, method="post", code=http.SEE_OTHER
+        )
         target = urlunquote(str(target, "ascii"))
         self.failUnless(target.startswith("uri/URI:DIR2:"), target)
 
     @inlineCallbacks
     def test_POST_mkdir_no_parentdir_redirect2(self):
         body, headers = self.build_form(t="mkdir", redirect_to_result="true")
-        target = yield self.shouldRedirectTo(self.webish_url + "/uri", None,
-                                             method="post",
-                                             data=body, headers=headers,
-                                             code=http.SEE_OTHER)
+        target = yield self.shouldRedirectTo(
+            self.webish_url + "/uri",
+            None,
+            method="post",
+            data=body,
+            headers=headers,
+            code=http.SEE_OTHER,
+        )
         target = urlunquote(str(target, "ascii"))
         self.failUnless(target.startswith("uri/URI:DIR2:"), target)
 
@@ -3566,86 +4334,125 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         mdmfcap = make_mutable_file_uri(mdmf=True)
         litdircap = "URI:DIR2-LIT:ge3dumj2mewdcotyfqydulbshj5x2lbm"
         emptydircap = "URI:DIR2-LIT:"
-        newkids = {u"child-imm":        ["filenode", {"rw_uri": filecap1,
-                                                      "ro_uri": self._make_readonly(filecap1),
-                                                      "metadata": md1, }],
-                   u"child-mutable":    ["filenode", {"rw_uri": filecap2,
-                                                      "ro_uri": self._make_readonly(filecap2)}],
-                   u"child-mutable-ro": ["filenode", {"ro_uri": filecap3}],
-                   u"unknownchild-rw":  ["unknown",  {"rw_uri": unknown_rwcap,
-                                                      "ro_uri": unknown_rocap}],
-                   u"unknownchild-ro":  ["unknown",  {"ro_uri": unknown_rocap}],
-                   u"unknownchild-imm": ["unknown",  {"ro_uri": unknown_immcap}],
-                   u"dirchild":         ["dirnode",  {"rw_uri": dircap,
-                                                      "ro_uri": self._make_readonly(dircap)}],
-                   u"dirchild-lit":     ["dirnode",  {"ro_uri": litdircap}],
-                   u"dirchild-empty":   ["dirnode",  {"ro_uri": emptydircap}],
-                   u"child-mutable-mdmf": ["filenode", {"rw_uri": mdmfcap,
-                                                        "ro_uri": self._make_readonly(mdmfcap)}],
-                   }
-        return newkids, {'filecap1': filecap1,
-                         'filecap2': filecap2,
-                         'filecap3': filecap3,
-                         'unknown_rwcap': unknown_rwcap,
-                         'unknown_rocap': unknown_rocap,
-                         'unknown_immcap': unknown_immcap,
-                         'dircap': dircap,
-                         'litdircap': litdircap,
-                         'emptydircap': emptydircap,
-                         'mdmfcap': mdmfcap}
+        newkids = {
+            "child-imm": [
+                "filenode",
+                {
+                    "rw_uri": filecap1,
+                    "ro_uri": self._make_readonly(filecap1),
+                    "metadata": md1,
+                },
+            ],
+            "child-mutable": [
+                "filenode",
+                {"rw_uri": filecap2, "ro_uri": self._make_readonly(filecap2)},
+            ],
+            "child-mutable-ro": ["filenode", {"ro_uri": filecap3}],
+            "unknownchild-rw": [
+                "unknown",
+                {"rw_uri": unknown_rwcap, "ro_uri": unknown_rocap},
+            ],
+            "unknownchild-ro": ["unknown", {"ro_uri": unknown_rocap}],
+            "unknownchild-imm": ["unknown", {"ro_uri": unknown_immcap}],
+            "dirchild": [
+                "dirnode",
+                {"rw_uri": dircap, "ro_uri": self._make_readonly(dircap)},
+            ],
+            "dirchild-lit": ["dirnode", {"ro_uri": litdircap}],
+            "dirchild-empty": ["dirnode", {"ro_uri": emptydircap}],
+            "child-mutable-mdmf": [
+                "filenode",
+                {"rw_uri": mdmfcap, "ro_uri": self._make_readonly(mdmfcap)},
+            ],
+        }
+        return newkids, {
+            "filecap1": filecap1,
+            "filecap2": filecap2,
+            "filecap3": filecap3,
+            "unknown_rwcap": unknown_rwcap,
+            "unknown_rocap": unknown_rocap,
+            "unknown_immcap": unknown_immcap,
+            "dircap": dircap,
+            "litdircap": litdircap,
+            "emptydircap": emptydircap,
+            "mdmfcap": mdmfcap,
+        }
 
     def _create_immutable_children(self):
         contents, n, filecap1 = self.makefile(12)
         md1 = {"metakey1": "metavalue1"}
-        tnode = create_chk_filenode("immutable directory contents\n"*10,
-                                    self.get_all_contents())
+        tnode = create_chk_filenode(
+            "immutable directory contents\n" * 10, self.get_all_contents()
+        )
         dnode = DirectoryNode(tnode, None, None)
         assert not dnode.is_mutable()
         immdircap = dnode.get_uri()
         litdircap = "URI:DIR2-LIT:ge3dumj2mewdcotyfqydulbshj5x2lbm"
         emptydircap = "URI:DIR2-LIT:"
-        newkids = {u"child-imm":        ["filenode", {"ro_uri": filecap1,
-                                                      "metadata": md1, }],
-                   u"unknownchild-imm": ["unknown",  {"ro_uri": unknown_immcap}],
-                   u"dirchild-imm":     ["dirnode",  {"ro_uri": immdircap}],
-                   u"dirchild-lit":     ["dirnode",  {"ro_uri": litdircap}],
-                   u"dirchild-empty":   ["dirnode",  {"ro_uri": emptydircap}],
-                   }
-        return newkids, {'filecap1': filecap1,
-                         'unknown_immcap': unknown_immcap,
-                         'immdircap': immdircap,
-                         'litdircap': litdircap,
-                         'emptydircap': emptydircap}
+        newkids = {
+            "child-imm": [
+                "filenode",
+                {
+                    "ro_uri": filecap1,
+                    "metadata": md1,
+                },
+            ],
+            "unknownchild-imm": ["unknown", {"ro_uri": unknown_immcap}],
+            "dirchild-imm": ["dirnode", {"ro_uri": immdircap}],
+            "dirchild-lit": ["dirnode", {"ro_uri": litdircap}],
+            "dirchild-empty": ["dirnode", {"ro_uri": emptydircap}],
+        }
+        return newkids, {
+            "filecap1": filecap1,
+            "unknown_immcap": unknown_immcap,
+            "immdircap": immdircap,
+            "litdircap": litdircap,
+            "emptydircap": emptydircap,
+        }
 
     def test_POST_mkdir_no_parentdir_initial_children(self):
         (newkids, caps) = self._create_initial_children()
         d = self.POST2("/uri?t=mkdir-with-children", json.dumps(newkids))
+
         def _after_mkdir(res):
             self.failUnless(res.startswith(b"URI:DIR"), res)
             n = self.s.create_node_from_uri(res)
             d2 = self.failUnlessNodeKeysAre(n, list(newkids.keys()))
-            d2.addCallback(lambda ign:
-                           self.failUnlessROChildURIIs(n, u"child-imm",
-                                                       caps['filecap1']))
-            d2.addCallback(lambda ign:
-                           self.failUnlessRWChildURIIs(n, u"child-mutable",
-                                                       caps['filecap2']))
-            d2.addCallback(lambda ign:
-                           self.failUnlessROChildURIIs(n, u"child-mutable-ro",
-                                                       caps['filecap3']))
-            d2.addCallback(lambda ign:
-                           self.failUnlessRWChildURIIs(n, u"unknownchild-rw",
-                                                       caps['unknown_rwcap']))
-            d2.addCallback(lambda ign:
-                           self.failUnlessROChildURIIs(n, u"unknownchild-ro",
-                                                       caps['unknown_rocap']))
-            d2.addCallback(lambda ign:
-                           self.failUnlessROChildURIIs(n, u"unknownchild-imm",
-                                                       caps['unknown_immcap']))
-            d2.addCallback(lambda ign:
-                           self.failUnlessRWChildURIIs(n, u"dirchild",
-                                                       caps['dircap']))
+            d2.addCallback(
+                lambda ign: self.failUnlessROChildURIIs(
+                    n, "child-imm", caps["filecap1"]
+                )
+            )
+            d2.addCallback(
+                lambda ign: self.failUnlessRWChildURIIs(
+                    n, "child-mutable", caps["filecap2"]
+                )
+            )
+            d2.addCallback(
+                lambda ign: self.failUnlessROChildURIIs(
+                    n, "child-mutable-ro", caps["filecap3"]
+                )
+            )
+            d2.addCallback(
+                lambda ign: self.failUnlessRWChildURIIs(
+                    n, "unknownchild-rw", caps["unknown_rwcap"]
+                )
+            )
+            d2.addCallback(
+                lambda ign: self.failUnlessROChildURIIs(
+                    n, "unknownchild-ro", caps["unknown_rocap"]
+                )
+            )
+            d2.addCallback(
+                lambda ign: self.failUnlessROChildURIIs(
+                    n, "unknownchild-imm", caps["unknown_immcap"]
+                )
+            )
+            d2.addCallback(
+                lambda ign: self.failUnlessRWChildURIIs(n, "dirchild", caps["dircap"])
+            )
             return d2
+
         d.addCallback(_after_mkdir)
         return d
 
@@ -3654,55 +4461,74 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         # the regular /uri?t=mkdir operation is specified to ignore its body.
         # Only t=mkdir-with-children pays attention to it.
         (newkids, caps) = self._create_initial_children()
-        url = self.webish_url + "/uri?t=mkdir" # without children
-        yield self.assertHTTPError(url, 400,
-                                   "t=mkdir does not accept children=, "
-                                   "try t=mkdir-with-children instead",
-                                   method="post", data=json.dumps(newkids).encode("utf-8"))
+        url = self.webish_url + "/uri?t=mkdir"  # without children
+        yield self.assertHTTPError(
+            url,
+            400,
+            "t=mkdir does not accept children=, " "try t=mkdir-with-children instead",
+            method="post",
+            data=json.dumps(newkids).encode("utf-8"),
+        )
 
     @inlineCallbacks
     def test_POST_noparent_bad(self):
         url = self.webish_url + "/uri?t=bogus"
-        yield self.assertHTTPError(url, 400,
-                                   "/uri accepts only PUT, PUT?t=mkdir, "
-                                   "POST?t=upload, and POST?t=mkdir",
-                                   method="post")
+        yield self.assertHTTPError(
+            url,
+            400,
+            "/uri accepts only PUT, PUT?t=mkdir, " "POST?t=upload, and POST?t=mkdir",
+            method="post",
+        )
 
     def test_POST_mkdir_no_parentdir_immutable(self):
         (newkids, caps) = self._create_immutable_children()
         d = self.POST2("/uri?t=mkdir-immutable", json.dumps(newkids))
+
         def _after_mkdir(res):
             self.failUnless(res.startswith(b"URI:DIR"), res)
             n = self.s.create_node_from_uri(res)
             d2 = self.failUnlessNodeKeysAre(n, list(newkids.keys()))
-            d2.addCallback(lambda ign:
-                           self.failUnlessROChildURIIs(n, u"child-imm",
-                                                          caps['filecap1']))
-            d2.addCallback(lambda ign:
-                           self.failUnlessROChildURIIs(n, u"unknownchild-imm",
-                                                          caps['unknown_immcap']))
-            d2.addCallback(lambda ign:
-                           self.failUnlessROChildURIIs(n, u"dirchild-imm",
-                                                          caps['immdircap']))
-            d2.addCallback(lambda ign:
-                           self.failUnlessROChildURIIs(n, u"dirchild-lit",
-                                                          caps['litdircap']))
-            d2.addCallback(lambda ign:
-                           self.failUnlessROChildURIIs(n, u"dirchild-empty",
-                                                          caps['emptydircap']))
+            d2.addCallback(
+                lambda ign: self.failUnlessROChildURIIs(
+                    n, "child-imm", caps["filecap1"]
+                )
+            )
+            d2.addCallback(
+                lambda ign: self.failUnlessROChildURIIs(
+                    n, "unknownchild-imm", caps["unknown_immcap"]
+                )
+            )
+            d2.addCallback(
+                lambda ign: self.failUnlessROChildURIIs(
+                    n, "dirchild-imm", caps["immdircap"]
+                )
+            )
+            d2.addCallback(
+                lambda ign: self.failUnlessROChildURIIs(
+                    n, "dirchild-lit", caps["litdircap"]
+                )
+            )
+            d2.addCallback(
+                lambda ign: self.failUnlessROChildURIIs(
+                    n, "dirchild-empty", caps["emptydircap"]
+                )
+            )
             return d2
+
         d.addCallback(_after_mkdir)
         return d
 
     def test_POST_mkdir_no_parentdir_immutable_bad(self):
         (newkids, caps) = self._create_initial_children()
-        d = self.shouldFail2(error.Error,
-                             "test_POST_mkdir_no_parentdir_immutable_bad",
-                             "400 Bad Request",
-                             "needed to be immutable but was not",
-                             self.POST2,
-                             "/uri?t=mkdir-immutable",
-                             json.dumps(newkids))
+        d = self.shouldFail2(
+            error.Error,
+            "test_POST_mkdir_no_parentdir_immutable_bad",
+            "400 Bad Request",
+            "needed to be immutable but was not",
+            self.POST2,
+            "/uri?t=mkdir-immutable",
+            json.dumps(newkids),
+        )
         return d
 
     @inlineCallbacks
@@ -3714,8 +4540,9 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
             '<form(?: action="([^"]*)"| method="post"| enctype="multipart/form-data"){3}>.*'
             '<input (?:type="hidden" |name="t" |value="([^"]*?)" ){3}/>[ ]*'
             '<input (?:type="hidden" |name="([^"]*)" |value="([^"]*)" ){3}/>[ ]*'
-            '<input (type="submit" |class="btn" |value="Create a directory[^"]*" ){3}/>')
-        html = res.replace('\n', ' ')
+            '<input (type="submit" |class="btn" |value="Create a directory[^"]*" ){3}/>'
+        )
+        html = res.replace("\n", " ")
         mo = MKDIR_BUTTON_RE.search(html)
         self.failUnless(mo, html)
         formaction = mo.group(1)
@@ -3723,68 +4550,86 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         formaname = mo.group(3)
         formavalue = mo.group(4)
 
-        url = self.webish_url + "/%s?t=%s&%s=%s" % (formaction, formt,
-                                                    formaname, formavalue)
-        target = yield self.shouldRedirectTo(url, None,
-                                             method="post",
-                                             code=http.SEE_OTHER)
+        url = self.webish_url + "/%s?t=%s&%s=%s" % (
+            formaction,
+            formt,
+            formaname,
+            formavalue,
+        )
+        target = yield self.shouldRedirectTo(
+            url, None, method="post", code=http.SEE_OTHER
+        )
         target = urlunquote(str(target, "utf-8"))
         self.failUnless(target.startswith("uri/URI:DIR2:"), target)
 
-    def test_POST_mkdir_replace(self): # return value?
+    def test_POST_mkdir_replace(self):  # return value?
         d = self.POST(self.public_url + "/foo", t="mkdir", name="sub")
-        d.addCallback(lambda res: self._foo_node.get(u"sub"))
+        d.addCallback(lambda res: self._foo_node.get("sub"))
         d.addCallback(self.failUnlessNodeKeysAre, [])
         return d
 
-    def test_POST_mkdir_no_replace_queryarg(self): # return value?
+    def test_POST_mkdir_no_replace_queryarg(self):  # return value?
         d = self.POST(self.public_url + "/foo?replace=false", t="mkdir", name="sub")
-        d.addBoth(self.shouldFail, error.Error,
-                  "POST_mkdir_no_replace_queryarg",
-                  "409 Conflict",
-                  "There was already a child by that name, and you asked me "
-                  "to not replace it")
-        d.addCallback(lambda res: self._foo_node.get(u"sub"))
-        d.addCallback(self.failUnlessNodeKeysAre, [u"baz.txt"])
+        d.addBoth(
+            self.shouldFail,
+            error.Error,
+            "POST_mkdir_no_replace_queryarg",
+            "409 Conflict",
+            "There was already a child by that name, and you asked me "
+            "to not replace it",
+        )
+        d.addCallback(lambda res: self._foo_node.get("sub"))
+        d.addCallback(self.failUnlessNodeKeysAre, ["baz.txt"])
         return d
 
-    def test_POST_mkdir_no_replace_field(self): # return value?
-        d = self.POST(self.public_url + "/foo", t="mkdir", name="sub",
-                      replace="false")
-        d.addBoth(self.shouldFail, error.Error, "POST_mkdir_no_replace_field",
-                  "409 Conflict",
-                  "There was already a child by that name, and you asked me "
-                  "to not replace it")
-        d.addCallback(lambda res: self._foo_node.get(u"sub"))
-        d.addCallback(self.failUnlessNodeKeysAre, [u"baz.txt"])
+    def test_POST_mkdir_no_replace_field(self):  # return value?
+        d = self.POST(self.public_url + "/foo", t="mkdir", name="sub", replace="false")
+        d.addBoth(
+            self.shouldFail,
+            error.Error,
+            "POST_mkdir_no_replace_field",
+            "409 Conflict",
+            "There was already a child by that name, and you asked me "
+            "to not replace it",
+        )
+        d.addCallback(lambda res: self._foo_node.get("sub"))
+        d.addCallback(self.failUnlessNodeKeysAre, ["baz.txt"])
         return d
 
     @inlineCallbacks
     def test_POST_mkdir_whendone_field(self):
-        body, headers = self.build_form(t="mkdir", name="newdir",
-                                        when_done="/THERE")
-        yield self.shouldRedirectTo(self.webish_url + self.public_url + "/foo",
-                                    "/THERE",
-                                    method="post", data=body, headers=headers,
-                                    code=http.FOUND)
-        res = yield self._foo_node.get(u"newdir")
+        body, headers = self.build_form(t="mkdir", name="newdir", when_done="/THERE")
+        yield self.shouldRedirectTo(
+            self.webish_url + self.public_url + "/foo",
+            "/THERE",
+            method="post",
+            data=body,
+            headers=headers,
+            code=http.FOUND,
+        )
+        res = yield self._foo_node.get("newdir")
         self.failUnlessNodeKeysAre(res, [])
 
     @inlineCallbacks
     def test_POST_mkdir_whendone_queryarg(self):
         body, headers = self.build_form(t="mkdir", name="newdir")
         url = self.webish_url + self.public_url + "/foo?when_done=/THERE"
-        yield self.shouldRedirectTo(url, "/THERE",
-                                    method="post", data=body, headers=headers,
-                                    code=http.FOUND)
-        res = yield self._foo_node.get(u"newdir")
+        yield self.shouldRedirectTo(
+            url, "/THERE", method="post", data=body, headers=headers, code=http.FOUND
+        )
+        res = yield self._foo_node.get("newdir")
         self.failUnlessNodeKeysAre(res, [])
 
     def test_POST_bad_t(self):
-        d = self.shouldFail2(error.Error, "POST_bad_t",
-                             "400 Bad Request",
-                             "POST to a directory with bad t=BOGUS",
-                             self.POST, self.public_url + "/foo", t="BOGUS")
+        d = self.shouldFail2(
+            error.Error,
+            "POST_bad_t",
+            "400 Bad Request",
+            "POST to a directory with bad t=BOGUS",
+            self.POST,
+            self.public_url + "/foo",
+            t="BOGUS",
+        )
         return d
 
     def test_POST_set_children(self, command_name="set_children"):
@@ -3814,15 +4659,20 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
                                                   "mtime": 1002777696.7564139
                                                  }
                                                } ]
-                    }""" % (newuri9, newuri10, newuri11)
+                    }""" % (
+            newuri9,
+            newuri10,
+            newuri11,
+        )
 
         url = self.webish_url + self.public_url + "/foo" + "?t=" + command_name
 
         d = do_http("post", url, data=reqbody)
+
         def _then(res):
-            self.failUnlessURIMatchesROChild(newuri9, self._foo_node, u"atomic_added_1")
-            self.failUnlessURIMatchesROChild(newuri10, self._foo_node, u"atomic_added_2")
-            self.failUnlessURIMatchesROChild(newuri11, self._foo_node, u"atomic_added_3")
+            self.failUnlessURIMatchesROChild(newuri9, self._foo_node, "atomic_added_1")
+            self.failUnlessURIMatchesROChild(newuri10, self._foo_node, "atomic_added_2")
+            self.failUnlessURIMatchesROChild(newuri11, self._foo_node, "atomic_added_3")
 
         d.addCallback(_then)
         d.addErrback(self.dump_error)
@@ -3834,87 +4684,126 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
     def test_POST_link_uri(self):
         contents, n, newuri = self.makefile(8)
         d = self.POST(self.public_url + "/foo", t="uri", name="new.txt", uri=newuri)
-        d.addCallback(self.failUnlessURIMatchesROChild, self._foo_node, u"new.txt")
-        d.addCallback(lambda res:
-                      self.failUnlessChildContentsAre(self._foo_node, u"new.txt",
-                                                      contents))
+        d.addCallback(self.failUnlessURIMatchesROChild, self._foo_node, "new.txt")
+        d.addCallback(
+            lambda res: self.failUnlessChildContentsAre(
+                self._foo_node, "new.txt", contents
+            )
+        )
         return d
 
     def test_POST_link_uri_replace(self):
         contents, n, newuri = self.makefile(8)
         d = self.POST(self.public_url + "/foo", t="uri", name="bar.txt", uri=newuri)
-        d.addCallback(self.failUnlessURIMatchesROChild, self._foo_node, u"bar.txt")
-        d.addCallback(lambda res:
-                      self.failUnlessChildContentsAre(self._foo_node, u"bar.txt",
-                                                      contents))
+        d.addCallback(self.failUnlessURIMatchesROChild, self._foo_node, "bar.txt")
+        d.addCallback(
+            lambda res: self.failUnlessChildContentsAre(
+                self._foo_node, "bar.txt", contents
+            )
+        )
         return d
 
     def test_POST_link_uri_unknown_bad(self):
-        d = self.POST(self.public_url + "/foo", t="uri", name="future.txt", uri=unknown_rwcap)
-        d.addBoth(self.shouldFail, error.Error,
-                  "POST_link_uri_unknown_bad",
-                  "400 Bad Request",
-                  "unknown cap in a write slot")
+        d = self.POST(
+            self.public_url + "/foo", t="uri", name="future.txt", uri=unknown_rwcap
+        )
+        d.addBoth(
+            self.shouldFail,
+            error.Error,
+            "POST_link_uri_unknown_bad",
+            "400 Bad Request",
+            "unknown cap in a write slot",
+        )
         return d
 
     def test_POST_link_uri_unknown_ro_good(self):
-        d = self.POST(self.public_url + "/foo", t="uri", name="future-ro.txt", uri=unknown_rocap)
-        d.addCallback(self.failUnlessURIMatchesROChild, self._foo_node, u"future-ro.txt")
+        d = self.POST(
+            self.public_url + "/foo", t="uri", name="future-ro.txt", uri=unknown_rocap
+        )
+        d.addCallback(self.failUnlessURIMatchesROChild, self._foo_node, "future-ro.txt")
         return d
 
     def test_POST_link_uri_unknown_imm_good(self):
-        d = self.POST(self.public_url + "/foo", t="uri", name="future-imm.txt", uri=unknown_immcap)
-        d.addCallback(self.failUnlessURIMatchesROChild, self._foo_node, u"future-imm.txt")
+        d = self.POST(
+            self.public_url + "/foo", t="uri", name="future-imm.txt", uri=unknown_immcap
+        )
+        d.addCallback(
+            self.failUnlessURIMatchesROChild, self._foo_node, "future-imm.txt"
+        )
         return d
 
     def test_POST_link_uri_no_replace_queryarg(self):
         contents, n, newuri = self.makefile(8)
-        d = self.POST(self.public_url + "/foo?replace=false", t="uri",
-                      name="bar.txt", uri=newuri)
-        d.addBoth(self.shouldFail, error.Error,
-                  "POST_link_uri_no_replace_queryarg",
-                  "409 Conflict",
-                  "There was already a child by that name, and you asked me "
-                  "to not replace it")
+        d = self.POST(
+            self.public_url + "/foo?replace=false", t="uri", name="bar.txt", uri=newuri
+        )
+        d.addBoth(
+            self.shouldFail,
+            error.Error,
+            "POST_link_uri_no_replace_queryarg",
+            "409 Conflict",
+            "There was already a child by that name, and you asked me "
+            "to not replace it",
+        )
         d.addCallback(lambda res: self.GET(self.public_url + "/foo/bar.txt"))
         d.addCallback(self.failUnlessIsBarDotTxt)
         return d
 
     def test_POST_link_uri_no_replace_field(self):
         contents, n, newuri = self.makefile(8)
-        d = self.POST(self.public_url + "/foo", t="uri", replace="false",
-                      name="bar.txt", uri=newuri)
-        d.addBoth(self.shouldFail, error.Error,
-                  "POST_link_uri_no_replace_field",
-                  "409 Conflict",
-                  "There was already a child by that name, and you asked me "
-                  "to not replace it")
+        d = self.POST(
+            self.public_url + "/foo",
+            t="uri",
+            replace="false",
+            name="bar.txt",
+            uri=newuri,
+        )
+        d.addBoth(
+            self.shouldFail,
+            error.Error,
+            "POST_link_uri_no_replace_field",
+            "409 Conflict",
+            "There was already a child by that name, and you asked me "
+            "to not replace it",
+        )
         d.addCallback(lambda res: self.GET(self.public_url + "/foo/bar.txt"))
         d.addCallback(self.failUnlessIsBarDotTxt)
         return d
 
-    def test_POST_delete(self, command_name='delete'):
+    def test_POST_delete(self, command_name="delete"):
         d = self._foo_node.list()
+
         def _check_before(children):
-            self.failUnlessIn(u"bar.txt", children)
+            self.failUnlessIn("bar.txt", children)
+
         d.addCallback(_check_before)
-        d.addCallback(lambda res: self.POST(self.public_url + "/foo", t=command_name, name="bar.txt"))
+        d.addCallback(
+            lambda res: self.POST(
+                self.public_url + "/foo", t=command_name, name="bar.txt"
+            )
+        )
         d.addCallback(lambda res: self._foo_node.list())
+
         def _check_after(children):
-            self.failIfIn(u"bar.txt", children)
+            self.failIfIn("bar.txt", children)
+
         d.addCallback(_check_after)
         return d
 
     def test_POST_unlink(self):
-        return self.test_POST_delete(command_name='unlink')
+        return self.test_POST_delete(command_name="unlink")
 
     def test_POST_rename_file(self):
-        d = self.POST(self.public_url + "/foo", t="rename",
-                      from_name="bar.txt", to_name='wibble.txt')
-        d.addCallback(lambda res:
-                      self.failIfNodeHasChild(self._foo_node, u"bar.txt"))
-        d.addCallback(lambda res:
-                      self.failUnlessNodeHasChild(self._foo_node, u"wibble.txt"))
+        d = self.POST(
+            self.public_url + "/foo",
+            t="rename",
+            from_name="bar.txt",
+            to_name="wibble.txt",
+        )
+        d.addCallback(lambda res: self.failIfNodeHasChild(self._foo_node, "bar.txt"))
+        d.addCallback(
+            lambda res: self.failUnlessNodeHasChild(self._foo_node, "wibble.txt")
+        )
         d.addCallback(lambda res: self.GET(self.public_url + "/foo/wibble.txt"))
         d.addCallback(self.failUnlessIsBarDotTxt)
         d.addCallback(lambda res: self.GET(self.public_url + "/foo/wibble.txt?t=json"))
@@ -3922,10 +4811,12 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         return d
 
     def test_POST_rename_file_redundant(self):
-        d = self.POST(self.public_url + "/foo", t="rename",
-                      from_name="bar.txt", to_name='bar.txt')
-        d.addCallback(lambda res:
-                      self.failUnlessNodeHasChild(self._foo_node, u"bar.txt"))
+        d = self.POST(
+            self.public_url + "/foo", t="rename", from_name="bar.txt", to_name="bar.txt"
+        )
+        d.addCallback(
+            lambda res: self.failUnlessNodeHasChild(self._foo_node, "bar.txt")
+        )
         d.addCallback(lambda res: self.GET(self.public_url + "/foo/bar.txt"))
         d.addCallback(self.failUnlessIsBarDotTxt)
         d.addCallback(lambda res: self.GET(self.public_url + "/foo/bar.txt?t=json"))
@@ -3934,12 +4825,11 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
 
     def test_POST_rename_file_replace(self):
         # rename a file and replace a directory with it
-        d = self.POST(self.public_url + "/foo", t="rename",
-                      from_name="bar.txt", to_name='empty')
-        d.addCallback(lambda res:
-                      self.failIfNodeHasChild(self._foo_node, u"bar.txt"))
-        d.addCallback(lambda res:
-                      self.failUnlessNodeHasChild(self._foo_node, u"empty"))
+        d = self.POST(
+            self.public_url + "/foo", t="rename", from_name="bar.txt", to_name="empty"
+        )
+        d.addCallback(lambda res: self.failIfNodeHasChild(self._foo_node, "bar.txt"))
+        d.addCallback(lambda res: self.failUnlessNodeHasChild(self._foo_node, "empty"))
         d.addCallback(lambda res: self.GET(self.public_url + "/foo/empty"))
         d.addCallback(self.failUnlessIsBarDotTxt)
         d.addCallback(lambda res: self.GET(self.public_url + "/foo/empty?t=json"))
@@ -3948,34 +4838,56 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
 
     def test_POST_rename_file_no_replace_queryarg(self):
         # rename a file and replace a directory with it
-        d = self.POST(self.public_url + "/foo?replace=false", t="rename",
-                      from_name="bar.txt", to_name='empty')
-        d.addBoth(self.shouldFail, error.Error,
-                  "POST_rename_file_no_replace_queryarg",
-                  "409 Conflict",
-                  "There was already a child by that name, and you asked me "
-                  "to not replace it")
+        d = self.POST(
+            self.public_url + "/foo?replace=false",
+            t="rename",
+            from_name="bar.txt",
+            to_name="empty",
+        )
+        d.addBoth(
+            self.shouldFail,
+            error.Error,
+            "POST_rename_file_no_replace_queryarg",
+            "409 Conflict",
+            "There was already a child by that name, and you asked me "
+            "to not replace it",
+        )
         d.addCallback(lambda res: self.GET(self.public_url + "/foo/empty?t=json"))
         d.addCallback(self.failUnlessIsEmptyJSON)
         return d
 
     def test_POST_rename_file_no_replace_field(self):
         # rename a file and replace a directory with it
-        d = self.POST(self.public_url + "/foo", t="rename", replace="false",
-                      from_name="bar.txt", to_name='empty')
-        d.addBoth(self.shouldFail, error.Error,
-                  "POST_rename_file_no_replace_field",
-                  "409 Conflict",
-                  "There was already a child by that name, and you asked me "
-                  "to not replace it")
+        d = self.POST(
+            self.public_url + "/foo",
+            t="rename",
+            replace="false",
+            from_name="bar.txt",
+            to_name="empty",
+        )
+        d.addBoth(
+            self.shouldFail,
+            error.Error,
+            "POST_rename_file_no_replace_field",
+            "409 Conflict",
+            "There was already a child by that name, and you asked me "
+            "to not replace it",
+        )
         d.addCallback(lambda res: self.GET(self.public_url + "/foo/empty?t=json"))
         d.addCallback(self.failUnlessIsEmptyJSON)
         return d
 
     def test_POST_rename_file_no_replace_same_link(self):
-        d = self.POST(self.public_url + "/foo", t="rename",
-                      replace="false", from_name="bar.txt", to_name="bar.txt")
-        d.addCallback(lambda res: self.failUnlessNodeHasChild(self._foo_node, u"bar.txt"))
+        d = self.POST(
+            self.public_url + "/foo",
+            t="rename",
+            replace="false",
+            from_name="bar.txt",
+            to_name="bar.txt",
+        )
+        d.addCallback(
+            lambda res: self.failUnlessNodeHasChild(self._foo_node, "bar.txt")
+        )
         d.addCallback(lambda res: self.GET(self.public_url + "/foo/bar.txt"))
         d.addCallback(self.failUnlessIsBarDotTxt)
         d.addCallback(lambda res: self.GET(self.public_url + "/foo/bar.txt?t=json"))
@@ -3983,10 +4895,14 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         return d
 
     def test_POST_rename_file_replace_only_files(self):
-        d = self.POST(self.public_url + "/foo", t="rename",
-                      replace="only-files", from_name="bar.txt",
-                      to_name="baz.txt")
-        d.addCallback(lambda res: self.failIfNodeHasChild(self._foo_node, u"bar.txt"))
+        d = self.POST(
+            self.public_url + "/foo",
+            t="rename",
+            replace="only-files",
+            from_name="bar.txt",
+            to_name="baz.txt",
+        )
+        d.addCallback(lambda res: self.failIfNodeHasChild(self._foo_node, "bar.txt"))
         d.addCallback(lambda res: self.GET(self.public_url + "/foo/baz.txt"))
         d.addCallback(self.failUnlessIsBarDotTxt)
         d.addCallback(lambda res: self.GET(self.public_url + "/foo/baz.txt?t=json"))
@@ -3994,12 +4910,18 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         return d
 
     def test_POST_rename_file_replace_only_files_conflict(self):
-        d = self.shouldFail2(error.Error, "POST_relink_file_replace_only_files_conflict",
-                             "409 Conflict",
-                             "There was already a child by that name, and you asked me to not replace it.",
-                             self.POST, self.public_url + "/foo", t="relink",
-                             replace="only-files", from_name="bar.txt",
-                             to_name="empty")
+        d = self.shouldFail2(
+            error.Error,
+            "POST_relink_file_replace_only_files_conflict",
+            "409 Conflict",
+            "There was already a child by that name, and you asked me to not replace it.",
+            self.POST,
+            self.public_url + "/foo",
+            t="relink",
+            replace="only-files",
+            from_name="bar.txt",
+            to_name="empty",
+        )
         d.addCallback(lambda res: self.GET(self.public_url + "/foo/bar.txt"))
         d.addCallback(self.failUnlessIsBarDotTxt)
         d.addCallback(lambda res: self.GET(self.public_url + "/foo/bar.txt?t=json"))
@@ -4012,48 +4934,64 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         self.failUnlessReallyEqual(len(data[1]["children"]), 0)
 
     def test_POST_rename_file_to_slash_fail(self):
-        d = self.POST(self.public_url + "/foo", t="rename",
-                      from_name="bar.txt", to_name='kirk/spock.txt')
-        d.addBoth(self.shouldFail, error.Error,
-                  "test_POST_rename_file_to_slash_fail",
-                  "400 Bad Request",
-                  "to_name= may not contain a slash",
-                  )
-        d.addCallback(lambda res:
-                      self.failUnlessNodeHasChild(self._foo_node, u"bar.txt"))
+        d = self.POST(
+            self.public_url + "/foo",
+            t="rename",
+            from_name="bar.txt",
+            to_name="kirk/spock.txt",
+        )
+        d.addBoth(
+            self.shouldFail,
+            error.Error,
+            "test_POST_rename_file_to_slash_fail",
+            "400 Bad Request",
+            "to_name= may not contain a slash",
+        )
+        d.addCallback(
+            lambda res: self.failUnlessNodeHasChild(self._foo_node, "bar.txt")
+        )
         return d
 
     def test_POST_rename_file_from_slash_fail(self):
-        d = self.POST(self.public_url + "/foo", t="rename",
-                      from_name="sub/bar.txt", to_name='spock.txt')
-        d.addBoth(self.shouldFail, error.Error,
-                  "test_POST_rename_from_file_slash_fail",
-                  "400 Bad Request",
-                  "from_name= may not contain a slash",
-                  )
-        d.addCallback(lambda res:
-                      self.failUnlessNodeHasChild(self._foo_node, u"bar.txt"))
+        d = self.POST(
+            self.public_url + "/foo",
+            t="rename",
+            from_name="sub/bar.txt",
+            to_name="spock.txt",
+        )
+        d.addBoth(
+            self.shouldFail,
+            error.Error,
+            "test_POST_rename_from_file_slash_fail",
+            "400 Bad Request",
+            "from_name= may not contain a slash",
+        )
+        d.addCallback(
+            lambda res: self.failUnlessNodeHasChild(self._foo_node, "bar.txt")
+        )
         return d
 
     def test_POST_rename_dir(self):
-        d = self.POST(self.public_url, t="rename",
-                      from_name="foo", to_name='plunk')
-        d.addCallback(lambda res:
-                      self.failIfNodeHasChild(self.public_root, u"foo"))
-        d.addCallback(lambda res:
-                      self.failUnlessNodeHasChild(self.public_root, u"plunk"))
+        d = self.POST(self.public_url, t="rename", from_name="foo", to_name="plunk")
+        d.addCallback(lambda res: self.failIfNodeHasChild(self.public_root, "foo"))
+        d.addCallback(
+            lambda res: self.failUnlessNodeHasChild(self.public_root, "plunk")
+        )
         d.addCallback(lambda res: self.GET(self.public_url + "/plunk?t=json"))
         d.addCallback(self.failUnlessIsFooJSON)
         return d
 
     def test_POST_relink_file(self):
-        d = self.POST(self.public_url + "/foo", t="relink",
-                      from_name="bar.txt",
-                      to_dir=str(self.public_root.get_uri(), "utf-8") + "/foo/sub")
-        d.addCallback(lambda res:
-                      self.failIfNodeHasChild(self._foo_node, u"bar.txt"))
-        d.addCallback(lambda res:
-                      self.failUnlessNodeHasChild(self._sub_node, u"bar.txt"))
+        d = self.POST(
+            self.public_url + "/foo",
+            t="relink",
+            from_name="bar.txt",
+            to_dir=str(self.public_root.get_uri(), "utf-8") + "/foo/sub",
+        )
+        d.addCallback(lambda res: self.failIfNodeHasChild(self._foo_node, "bar.txt"))
+        d.addCallback(
+            lambda res: self.failUnlessNodeHasChild(self._sub_node, "bar.txt")
+        )
         d.addCallback(lambda res: self.GET(self.public_url + "/foo/sub/bar.txt"))
         d.addCallback(self.failUnlessIsBarDotTxt)
         d.addCallback(lambda res: self.GET(self.public_url + "/foo/sub/bar.txt?t=json"))
@@ -4061,27 +4999,35 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         return d
 
     def test_POST_relink_file_new_name(self):
-        d = self.POST(self.public_url + "/foo", t="relink",
-                      from_name="bar.txt",
-                      to_name="wibble.txt", to_dir=str(self.public_root.get_uri(), "utf-8") + "/foo/sub")
-        d.addCallback(lambda res:
-                      self.failIfNodeHasChild(self._foo_node, u"bar.txt"))
-        d.addCallback(lambda res:
-                      self.failIfNodeHasChild(self._sub_node, u"bar.txt"))
-        d.addCallback(lambda res:
-                      self.failUnlessNodeHasChild(self._sub_node, u"wibble.txt"))
+        d = self.POST(
+            self.public_url + "/foo",
+            t="relink",
+            from_name="bar.txt",
+            to_name="wibble.txt",
+            to_dir=str(self.public_root.get_uri(), "utf-8") + "/foo/sub",
+        )
+        d.addCallback(lambda res: self.failIfNodeHasChild(self._foo_node, "bar.txt"))
+        d.addCallback(lambda res: self.failIfNodeHasChild(self._sub_node, "bar.txt"))
+        d.addCallback(
+            lambda res: self.failUnlessNodeHasChild(self._sub_node, "wibble.txt")
+        )
         d.addCallback(lambda res: self.GET(self.public_url + "/foo/sub/wibble.txt"))
         d.addCallback(self.failUnlessIsBarDotTxt)
-        d.addCallback(lambda res: self.GET(self.public_url + "/foo/sub/wibble.txt?t=json"))
+        d.addCallback(
+            lambda res: self.GET(self.public_url + "/foo/sub/wibble.txt?t=json")
+        )
         d.addCallback(self.failUnlessIsBarJSON)
         return d
 
     def test_POST_relink_file_replace(self):
-        d = self.POST(self.public_url + "/foo", t="relink",
-                      from_name="bar.txt",
-                      to_name="baz.txt", to_dir=str(self.public_root.get_uri(), "utf-8") + "/foo/sub")
-        d.addCallback(lambda res:
-                      self.failIfNodeHasChild(self._foo_node, u"bar.txt"))
+        d = self.POST(
+            self.public_url + "/foo",
+            t="relink",
+            from_name="bar.txt",
+            to_name="baz.txt",
+            to_dir=str(self.public_root.get_uri(), "utf-8") + "/foo/sub",
+        )
+        d.addCallback(lambda res: self.failIfNodeHasChild(self._foo_node, "bar.txt"))
         d.addCallback(lambda res: self.GET(self.public_url + "/foo/sub/baz.txt"))
         d.addCallback(self.failUnlessIsBarDotTxt)
         d.addCallback(lambda res: self.GET(self.public_url + "/foo/sub/baz.txt?t=json"))
@@ -4089,12 +5035,19 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         return d
 
     def test_POST_relink_file_no_replace(self):
-        d = self.shouldFail2(error.Error, "POST_relink_file_no_replace",
-                             "409 Conflict",
-                             "There was already a child by that name, and you asked me to not replace it",
-                             self.POST, self.public_url + "/foo", t="relink",
-                             replace="false", from_name="bar.txt",
-                             to_name="baz.txt", to_dir=str(self.public_root.get_uri(), "utf-8") + "/foo/sub")
+        d = self.shouldFail2(
+            error.Error,
+            "POST_relink_file_no_replace",
+            "409 Conflict",
+            "There was already a child by that name, and you asked me to not replace it",
+            self.POST,
+            self.public_url + "/foo",
+            t="relink",
+            replace="false",
+            from_name="bar.txt",
+            to_name="baz.txt",
+            to_dir=str(self.public_root.get_uri(), "utf-8") + "/foo/sub",
+        )
         d.addCallback(lambda res: self.GET(self.public_url + "/foo/bar.txt"))
         d.addCallback(self.failUnlessIsBarDotTxt)
         d.addCallback(lambda res: self.GET(self.public_url + "/foo/bar.txt?t=json"))
@@ -4104,10 +5057,17 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         return d
 
     def test_POST_relink_file_no_replace_explicitly_same_link(self):
-        d = self.POST(self.public_url + "/foo", t="relink",
-                      replace="false", from_name="bar.txt",
-                      to_name="bar.txt", to_dir=str(self.public_root.get_uri(), "utf-8") + "/foo")
-        d.addCallback(lambda res: self.failUnlessNodeHasChild(self._foo_node, u"bar.txt"))
+        d = self.POST(
+            self.public_url + "/foo",
+            t="relink",
+            replace="false",
+            from_name="bar.txt",
+            to_name="bar.txt",
+            to_dir=str(self.public_root.get_uri(), "utf-8") + "/foo",
+        )
+        d.addCallback(
+            lambda res: self.failUnlessNodeHasChild(self._foo_node, "bar.txt")
+        )
         d.addCallback(lambda res: self.GET(self.public_url + "/foo/bar.txt"))
         d.addCallback(self.failUnlessIsBarDotTxt)
         d.addCallback(lambda res: self.GET(self.public_url + "/foo/bar.txt?t=json"))
@@ -4115,11 +5075,15 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         return d
 
     def test_POST_relink_file_replace_only_files(self):
-        d = self.POST(self.public_url + "/foo", t="relink",
-                      replace="only-files", from_name="bar.txt",
-                      to_name="baz.txt", to_dir=str(self.public_root.get_uri(), "utf-8") + "/foo/sub")
-        d.addCallback(lambda res:
-                      self.failIfNodeHasChild(self._foo_node, u"bar.txt"))
+        d = self.POST(
+            self.public_url + "/foo",
+            t="relink",
+            replace="only-files",
+            from_name="bar.txt",
+            to_name="baz.txt",
+            to_dir=str(self.public_root.get_uri(), "utf-8") + "/foo/sub",
+        )
+        d.addCallback(lambda res: self.failIfNodeHasChild(self._foo_node, "bar.txt"))
         d.addCallback(lambda res: self.GET(self.public_url + "/foo/sub/baz.txt"))
         d.addCallback(self.failUnlessIsBarDotTxt)
         d.addCallback(lambda res: self.GET(self.public_url + "/foo/sub/baz.txt?t=json"))
@@ -4127,12 +5091,19 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         return d
 
     def test_POST_relink_file_replace_only_files_conflict(self):
-        d = self.shouldFail2(error.Error, "POST_relink_file_replace_only_files_conflict",
-                             "409 Conflict",
-                             "There was already a child by that name, and you asked me to not replace it.",
-                             self.POST, self.public_url + "/foo", t="relink",
-                             replace="only-files", from_name="bar.txt",
-                             to_name="sub", to_dir=str(self.public_root.get_uri(), "utf-8") + "/foo")
+        d = self.shouldFail2(
+            error.Error,
+            "POST_relink_file_replace_only_files_conflict",
+            "409 Conflict",
+            "There was already a child by that name, and you asked me to not replace it.",
+            self.POST,
+            self.public_url + "/foo",
+            t="relink",
+            replace="only-files",
+            from_name="bar.txt",
+            to_name="sub",
+            to_dir=str(self.public_root.get_uri(), "utf-8") + "/foo",
+        )
         d.addCallback(lambda res: self.GET(self.public_url + "/foo/bar.txt"))
         d.addCallback(self.failUnlessIsBarDotTxt)
         d.addCallback(lambda res: self.GET(self.public_url + "/foo/bar.txt?t=json"))
@@ -4140,33 +5111,51 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         return d
 
     def test_POST_relink_file_to_slash_fail(self):
-        d = self.shouldFail2(error.Error, "test_POST_rename_file_slash_fail",
-                             "400 Bad Request",
-                             "to_name= may not contain a slash",
-                             self.POST, self.public_url + "/foo", t="relink",
-                             from_name="bar.txt",
-                             to_name="slash/fail.txt", to_dir=str(self.public_root.get_uri(), "utf-8") + "/foo/sub")
-        d.addCallback(lambda res:
-                      self.failUnlessNodeHasChild(self._foo_node, u"bar.txt"))
-        d.addCallback(lambda res:
-                      self.failIfNodeHasChild(self._sub_node, u"slash/fail.txt"))
-        d.addCallback(lambda ign:
-                      self.shouldFail2(error.Error,
-                                       "test_POST_rename_file_slash_fail2",
-                                       "400 Bad Request",
-                                       "from_name= may not contain a slash",
-                                       self.POST, self.public_url + "/foo",
-                                       t="relink",
-                                       from_name="nope/bar.txt",
-                                       to_name="fail.txt",
-                                       to_dir=str(self.public_root.get_uri(), "utf-8") + "/foo/sub"))
+        d = self.shouldFail2(
+            error.Error,
+            "test_POST_rename_file_slash_fail",
+            "400 Bad Request",
+            "to_name= may not contain a slash",
+            self.POST,
+            self.public_url + "/foo",
+            t="relink",
+            from_name="bar.txt",
+            to_name="slash/fail.txt",
+            to_dir=str(self.public_root.get_uri(), "utf-8") + "/foo/sub",
+        )
+        d.addCallback(
+            lambda res: self.failUnlessNodeHasChild(self._foo_node, "bar.txt")
+        )
+        d.addCallback(
+            lambda res: self.failIfNodeHasChild(self._sub_node, "slash/fail.txt")
+        )
+        d.addCallback(
+            lambda ign: self.shouldFail2(
+                error.Error,
+                "test_POST_rename_file_slash_fail2",
+                "400 Bad Request",
+                "from_name= may not contain a slash",
+                self.POST,
+                self.public_url + "/foo",
+                t="relink",
+                from_name="nope/bar.txt",
+                to_name="fail.txt",
+                to_dir=str(self.public_root.get_uri(), "utf-8") + "/foo/sub",
+            )
+        )
         return d
 
     def test_POST_relink_file_explicitly_same_link(self):
-        d = self.POST(self.public_url + "/foo", t="relink",
-                      from_name="bar.txt",
-                      to_name="bar.txt", to_dir=str(self.public_root.get_uri(), "utf-8") + "/foo")
-        d.addCallback(lambda res: self.failUnlessNodeHasChild(self._foo_node, u"bar.txt"))
+        d = self.POST(
+            self.public_url + "/foo",
+            t="relink",
+            from_name="bar.txt",
+            to_name="bar.txt",
+            to_dir=str(self.public_root.get_uri(), "utf-8") + "/foo",
+        )
+        d.addCallback(
+            lambda res: self.failUnlessNodeHasChild(self._foo_node, "bar.txt")
+        )
         d.addCallback(lambda res: self.GET(self.public_url + "/foo/bar.txt"))
         d.addCallback(self.failUnlessIsBarDotTxt)
         d.addCallback(lambda res: self.GET(self.public_url + "/foo/bar.txt?t=json"))
@@ -4174,9 +5163,10 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         return d
 
     def test_POST_relink_file_implicitly_same_link(self):
-        d = self.POST(self.public_url + "/foo", t="relink",
-                      from_name="bar.txt")
-        d.addCallback(lambda res: self.failUnlessNodeHasChild(self._foo_node, u"bar.txt"))
+        d = self.POST(self.public_url + "/foo", t="relink", from_name="bar.txt")
+        d.addCallback(
+            lambda res: self.failUnlessNodeHasChild(self._foo_node, "bar.txt")
+        )
         d.addCallback(lambda res: self.GET(self.public_url + "/foo/bar.txt"))
         d.addCallback(self.failUnlessIsBarDotTxt)
         d.addCallback(lambda res: self.GET(self.public_url + "/foo/bar.txt?t=json"))
@@ -4184,11 +5174,17 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         return d
 
     def test_POST_relink_file_same_dir(self):
-        d = self.POST(self.public_url + "/foo", t="relink",
-                      from_name="bar.txt",
-                      to_name="baz.txt", to_dir=str(self.public_root.get_uri(), "utf-8") + "/foo")
-        d.addCallback(lambda res: self.failIfNodeHasChild(self._foo_node, u"bar.txt"))
-        d.addCallback(lambda res: self.failUnlessNodeHasChild(self._sub_node, u"baz.txt"))
+        d = self.POST(
+            self.public_url + "/foo",
+            t="relink",
+            from_name="bar.txt",
+            to_name="baz.txt",
+            to_dir=str(self.public_root.get_uri(), "utf-8") + "/foo",
+        )
+        d.addCallback(lambda res: self.failIfNodeHasChild(self._foo_node, "bar.txt"))
+        d.addCallback(
+            lambda res: self.failUnlessNodeHasChild(self._sub_node, "baz.txt")
+        )
         d.addCallback(lambda res: self.GET(self.public_url + "/foo/baz.txt"))
         d.addCallback(self.failUnlessIsBarDotTxt)
         d.addCallback(lambda res: self.GET(self.public_url + "/foo/baz.txt?t=json"))
@@ -4196,31 +5192,49 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         return d
 
     def test_POST_relink_file_bad_replace(self):
-        d = self.shouldFail2(error.Error, "test_POST_relink_file_bad_replace",
-                             "400 Bad Request", "invalid replace= argument: 'boogabooga'",
-                             self.POST,
-                             self.public_url + "/foo", t="relink",
-                             replace="boogabooga", from_name="bar.txt",
-                             to_dir=str(self.public_root.get_uri(), "utf-8") + "/foo/sub")
+        d = self.shouldFail2(
+            error.Error,
+            "test_POST_relink_file_bad_replace",
+            "400 Bad Request",
+            "invalid replace= argument: 'boogabooga'",
+            self.POST,
+            self.public_url + "/foo",
+            t="relink",
+            replace="boogabooga",
+            from_name="bar.txt",
+            to_dir=str(self.public_root.get_uri(), "utf-8") + "/foo/sub",
+        )
         return d
 
     def test_POST_relink_file_multi_level(self):
         d = self.POST2(self.public_url + "/foo/sub/level2?t=mkdir", "")
-        d.addCallback(lambda res: self.POST(self.public_url + "/foo", t="relink",
-                      from_name="bar.txt", to_dir=str(self.public_root.get_uri(), "utf-8") + "/foo/sub/level2"))
-        d.addCallback(lambda res: self.failIfNodeHasChild(self._foo_node, u"bar.txt"))
-        d.addCallback(lambda res: self.failIfNodeHasChild(self._sub_node, u"bar.txt"))
+        d.addCallback(
+            lambda res: self.POST(
+                self.public_url + "/foo",
+                t="relink",
+                from_name="bar.txt",
+                to_dir=str(self.public_root.get_uri(), "utf-8") + "/foo/sub/level2",
+            )
+        )
+        d.addCallback(lambda res: self.failIfNodeHasChild(self._foo_node, "bar.txt"))
+        d.addCallback(lambda res: self.failIfNodeHasChild(self._sub_node, "bar.txt"))
         d.addCallback(lambda res: self.GET(self.public_url + "/foo/sub/level2/bar.txt"))
         d.addCallback(self.failUnlessIsBarDotTxt)
-        d.addCallback(lambda res: self.GET(self.public_url + "/foo/sub/level2/bar.txt?t=json"))
+        d.addCallback(
+            lambda res: self.GET(self.public_url + "/foo/sub/level2/bar.txt?t=json")
+        )
         d.addCallback(self.failUnlessIsBarJSON)
         return d
 
     def test_POST_relink_file_to_uri(self):
-        d = self.POST(self.public_url + "/foo", t="relink", target_type="uri",
-                      from_name="bar.txt", to_dir=self._sub_uri)
-        d.addCallback(lambda res:
-                      self.failIfNodeHasChild(self._foo_node, u"bar.txt"))
+        d = self.POST(
+            self.public_url + "/foo",
+            t="relink",
+            target_type="uri",
+            from_name="bar.txt",
+            to_dir=self._sub_uri,
+        )
+        d.addCallback(lambda res: self.failIfNodeHasChild(self._foo_node, "bar.txt"))
         d.addCallback(lambda res: self.GET(self.public_url + "/foo/sub/bar.txt"))
         d.addCallback(self.failUnlessIsBarDotTxt)
         d.addCallback(lambda res: self.GET(self.public_url + "/foo/sub/bar.txt?t=json"))
@@ -4228,19 +5242,31 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         return d
 
     def test_POST_relink_file_to_nonexistent_dir(self):
-        d = self.shouldFail2(error.Error, "POST_relink_file_to_nonexistent_dir",
-                            "404 Not Found", "No such child: nopechucktesta",
-                            self.POST, self.public_url + "/foo", t="relink",
-                            from_name="bar.txt",
-                            to_dir=str(self.public_root.get_uri(), "utf-8") + "/nopechucktesta")
+        d = self.shouldFail2(
+            error.Error,
+            "POST_relink_file_to_nonexistent_dir",
+            "404 Not Found",
+            "No such child: nopechucktesta",
+            self.POST,
+            self.public_url + "/foo",
+            t="relink",
+            from_name="bar.txt",
+            to_dir=str(self.public_root.get_uri(), "utf-8") + "/nopechucktesta",
+        )
         return d
 
     def test_POST_relink_file_into_file(self):
-        d = self.shouldFail2(error.Error, "POST_relink_file_into_file",
-                             "400 Bad Request", "to_dir is not a directory",
-                             self.POST, self.public_url + "/foo", t="relink",
-                             from_name="bar.txt",
-                             to_dir=str(self.public_root.get_uri(), "utf-8") + "/foo/baz.txt")
+        d = self.shouldFail2(
+            error.Error,
+            "POST_relink_file_into_file",
+            "400 Bad Request",
+            "to_dir is not a directory",
+            self.POST,
+            self.public_url + "/foo",
+            t="relink",
+            from_name="bar.txt",
+            to_dir=str(self.public_root.get_uri(), "utf-8") + "/foo/baz.txt",
+        )
         d.addCallback(lambda res: self.GET(self.public_url + "/foo/baz.txt"))
         d.addCallback(self.failUnlessIsBazDotTxt)
         d.addCallback(lambda res: self.GET(self.public_url + "/foo/bar.txt"))
@@ -4250,11 +5276,17 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         return d
 
     def test_POST_relink_file_to_bad_uri(self):
-        d =  self.shouldFail2(error.Error, "POST_relink_file_to_bad_uri",
-                              "400 Bad Request", "to_dir is not a directory",
-                              self.POST, self.public_url + "/foo", t="relink",
-                              from_name="bar.txt",
-                              to_dir="URI:DIR2:mn5jlyjnrjeuydyswlzyui72i:rmneifcj6k6sycjljjhj3f6majsq2zqffydnnul5hfa4j577arma")
+        d = self.shouldFail2(
+            error.Error,
+            "POST_relink_file_to_bad_uri",
+            "400 Bad Request",
+            "to_dir is not a directory",
+            self.POST,
+            self.public_url + "/foo",
+            t="relink",
+            from_name="bar.txt",
+            to_dir="URI:DIR2:mn5jlyjnrjeuydyswlzyui72i:rmneifcj6k6sycjljjhj3f6majsq2zqffydnnul5hfa4j577arma",
+        )
         d.addCallback(lambda res: self.GET(self.public_url + "/foo/bar.txt"))
         d.addCallback(self.failUnlessIsBarDotTxt)
         d.addCallback(lambda res: self.GET(self.public_url + "/foo/bar.txt?t=json"))
@@ -4262,34 +5294,42 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         return d
 
     def test_POST_relink_dir(self):
-        d = self.POST(self.public_url + "/foo", t="relink",
-                      from_name="bar.txt",
-                      to_dir=str(self.public_root.get_uri(), "ascii") + "/foo/empty")
-        d.addCallback(lambda res: self.POST(self.public_url + "/foo",
-                      t="relink", from_name="empty",
-                      to_dir=str(self.public_root.get_uri(), "ascii") + "/foo/sub"))
-        d.addCallback(lambda res:
-                      self.failIfNodeHasChild(self._foo_node, u"empty"))
-        d.addCallback(lambda res:
-                      self.failUnlessNodeHasChild(self._sub_node, u"empty"))
-        d.addCallback(lambda res:
-                      self._sub_node.get_child_at_path(u"empty"))
-        d.addCallback(lambda node:
-                      self.failUnlessNodeHasChild(node, u"bar.txt"))
-        d.addCallback(lambda res:
-                      self.GET(self.public_url + "/foo/sub/empty/bar.txt"))
+        d = self.POST(
+            self.public_url + "/foo",
+            t="relink",
+            from_name="bar.txt",
+            to_dir=str(self.public_root.get_uri(), "ascii") + "/foo/empty",
+        )
+        d.addCallback(
+            lambda res: self.POST(
+                self.public_url + "/foo",
+                t="relink",
+                from_name="empty",
+                to_dir=str(self.public_root.get_uri(), "ascii") + "/foo/sub",
+            )
+        )
+        d.addCallback(lambda res: self.failIfNodeHasChild(self._foo_node, "empty"))
+        d.addCallback(lambda res: self.failUnlessNodeHasChild(self._sub_node, "empty"))
+        d.addCallback(lambda res: self._sub_node.get_child_at_path("empty"))
+        d.addCallback(lambda node: self.failUnlessNodeHasChild(node, "bar.txt"))
+        d.addCallback(lambda res: self.GET(self.public_url + "/foo/sub/empty/bar.txt"))
         d.addCallback(self.failUnlessIsBarDotTxt)
         return d
 
     @inlineCallbacks
-    def shouldRedirectTo(self, url, target_location, method="get",
-                         code=None, **args):
-        response = yield treq.request(method, url, persistent=False,
-                                      allow_redirects=False, **args)
-        codes = [http.MOVED_PERMANENTLY,
-                 http.FOUND,
-                 http.TEMPORARY_REDIRECT,
-                 ] if code is None else [code]
+    def shouldRedirectTo(self, url, target_location, method="get", code=None, **args):
+        response = yield treq.request(
+            method, url, persistent=False, allow_redirects=False, **args
+        )
+        codes = (
+            [
+                http.MOVED_PERMANENTLY,
+                http.FOUND,
+                http.TEMPORARY_REDIRECT,
+            ]
+            if code is None
+            else [code]
+        )
         yield response.content()
         self.assertIn(response.code, codes)
         location = response.headers.getRawHeaders(b"location")[0]
@@ -4304,45 +5344,59 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         # this is supposed to give us a redirect to /uri/$URI, plus arguments
         targetbase = self.webish_url + "/uri/%s" % urlquote(self._bar_txt_uri)
         yield self.shouldRedirectTo(base, targetbase)
-        yield self.shouldRedirectTo(base+"&filename=bar.txt",
-                                    targetbase+"?filename=bar.txt")
-        yield self.shouldRedirectTo(base+"&t=json",
-                                    targetbase+"?t=json")
+        yield self.shouldRedirectTo(
+            base + "&filename=bar.txt", targetbase + "?filename=bar.txt"
+        )
+        yield self.shouldRedirectTo(base + "&t=json", targetbase + "?t=json")
 
         self.log(None, "about to get file by uri")
         data = yield self.GET(relbase, followRedirect=True)
         self.failUnlessIsBarDotTxt(data)
         self.log(None, "got file by uri, about to get dir by uri")
-        data = yield self.GET("/uri?uri=%s&t=json" % str(self._foo_uri, "ascii"),
-                              followRedirect=True)
+        data = yield self.GET(
+            "/uri?uri=%s&t=json" % str(self._foo_uri, "ascii"), followRedirect=True
+        )
         self.failUnlessIsFooJSON(data)
         self.log(None, "got dir by uri")
 
     def test_GET_URI_form_bad(self):
-        d = self.shouldFail2(error.Error, "test_GET_URI_form_bad",
-                             "400 Bad Request", "GET /uri requires uri=",
-                             self.GET, "/uri")
+        d = self.shouldFail2(
+            error.Error,
+            "test_GET_URI_form_bad",
+            "400 Bad Request",
+            "GET /uri requires uri=",
+            self.GET,
+            "/uri",
+        )
         return d
 
     @inlineCallbacks
     def test_GET_rename_form(self):
         data = yield self.GET(
-            self.public_url + "/foo?t=rename-form&name=bar.txt",
-            followRedirect=True
+            self.public_url + "/foo?t=rename-form&name=bar.txt", followRedirect=True
         )
-        soup = BeautifulSoup(data, 'html5lib')
+        soup = BeautifulSoup(data, "html5lib")
         assert_soup_has_favicon(self, soup)
         assert_soup_has_tag_with_attributes(
-            self, soup, u"input",
-            {u"name": u"when_done", u"value": u".", u"type": u"hidden"},
+            self,
+            soup,
+            "input",
+            {"name": "when_done", "value": ".", "type": "hidden"},
         )
         assert_soup_has_tag_with_attributes(
-            self, soup, u"input",
-            {u"readonly": u"true", u"name": u"from_name", u"value": u"bar.txt", u"type": u"text"},
+            self,
+            soup,
+            "input",
+            {
+                "readonly": "true",
+                "name": "from_name",
+                "value": "bar.txt",
+                "type": "text",
+            },
         )
 
     def log(self, res, msg):
-        #print("MSG: %s  RES: %s" % (msg, res))
+        # print("MSG: %s  RES: %s" % (msg, res))
         log.msg(msg)
         return res
 
@@ -4350,9 +5404,9 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         base = "/uri/%s" % str(self._bar_txt_uri, "ascii")
         d = self.GET(base)
         d.addCallback(self.failUnlessIsBarDotTxt)
-        d.addCallback(lambda res: self.GET(base+"?filename=bar.txt"))
+        d.addCallback(lambda res: self.GET(base + "?filename=bar.txt"))
         d.addCallback(self.failUnlessIsBarDotTxt)
-        d.addCallback(lambda res: self.GET(base+"?filename=bar.txt&save=true"))
+        d.addCallback(lambda res: self.GET(base + "?filename=bar.txt&save=true"))
         d.addCallback(self.failUnlessIsBarDotTxt)
         return d
 
@@ -4374,87 +5428,107 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
 
     def test_PUT_DIRURL_uri(self):
         d = self.s.create_dirnode()
+
         def _made_dir(dn):
             new_uri = dn.get_uri()
             # replace /foo with a new (empty) directory
             d = self.PUT(self.public_url + "/foo?t=uri", new_uri)
-            d.addCallback(lambda res:
-                          self.failUnlessReallyEqual(res.strip(), new_uri))
-            d.addCallback(lambda res:
-                          self.failUnlessRWChildURIIs(self.public_root,
-                                                      u"foo",
-                                                      new_uri))
+            d.addCallback(lambda res: self.failUnlessReallyEqual(res.strip(), new_uri))
+            d.addCallback(
+                lambda res: self.failUnlessRWChildURIIs(
+                    self.public_root, "foo", new_uri
+                )
+            )
             return d
+
         d.addCallback(_made_dir)
         return d
 
     def test_PUT_DIRURL_uri_noreplace(self):
         d = self.s.create_dirnode()
+
         def _made_dir(dn):
             new_uri = dn.get_uri()
             # replace /foo with a new (empty) directory, but ask that
             # replace=false, so it should fail
-            d = self.shouldFail2(error.Error, "test_PUT_DIRURL_uri_noreplace",
-                                 "409 Conflict", "There was already a child by that name, and you asked me to not replace it",
-                                 self.PUT,
-                                 self.public_url + "/foo?t=uri&replace=false",
-                                 new_uri)
-            d.addCallback(lambda res:
-                          self.failUnlessRWChildURIIs(self.public_root,
-                                                      u"foo",
-                                                      self._foo_uri))
+            d = self.shouldFail2(
+                error.Error,
+                "test_PUT_DIRURL_uri_noreplace",
+                "409 Conflict",
+                "There was already a child by that name, and you asked me to not replace it",
+                self.PUT,
+                self.public_url + "/foo?t=uri&replace=false",
+                new_uri,
+            )
+            d.addCallback(
+                lambda res: self.failUnlessRWChildURIIs(
+                    self.public_root, "foo", self._foo_uri
+                )
+            )
             return d
+
         d.addCallback(_made_dir)
         return d
 
     def test_PUT_DIRURL_bad_t(self):
-        d = self.shouldFail2(error.Error, "test_PUT_DIRURL_bad_t",
-                             "400 Bad Request", "PUT to a directory",
-                             self.PUT, self.public_url + "/foo?t=BOGUS", "")
-        d.addCallback(lambda res:
-                      self.failUnlessRWChildURIIs(self.public_root,
-                                                  u"foo",
-                                                  self._foo_uri))
+        d = self.shouldFail2(
+            error.Error,
+            "test_PUT_DIRURL_bad_t",
+            "400 Bad Request",
+            "PUT to a directory",
+            self.PUT,
+            self.public_url + "/foo?t=BOGUS",
+            "",
+        )
+        d.addCallback(
+            lambda res: self.failUnlessRWChildURIIs(
+                self.public_root, "foo", self._foo_uri
+            )
+        )
         return d
 
     def test_PUT_NEWFILEURL_uri(self):
         contents, n, new_uri = self.makefile(8)
         d = self.PUT(self.public_url + "/foo/new.txt?t=uri", new_uri)
         d.addCallback(lambda res: self.failUnlessReallyEqual(res.strip(), new_uri))
-        d.addCallback(lambda res:
-                      self.failUnlessChildContentsAre(self._foo_node, u"new.txt",
-                                                      contents))
+        d.addCallback(
+            lambda res: self.failUnlessChildContentsAre(
+                self._foo_node, "new.txt", contents
+            )
+        )
         return d
 
     def test_PUT_NEWFILEURL_mdmf(self):
         new_contents = self.NEWFILE_CONTENTS * 300000
-        d = self.PUT(self.public_url + \
-                     "/foo/mdmf.txt?format=mdmf",
-                     new_contents)
-        d.addCallback(lambda ignored:
-            self.GET(self.public_url + "/foo/mdmf.txt?t=json"))
+        d = self.PUT(self.public_url + "/foo/mdmf.txt?format=mdmf", new_contents)
+        d.addCallback(
+            lambda ignored: self.GET(self.public_url + "/foo/mdmf.txt?t=json")
+        )
+
         def _got_json(raw):
             data = json.loads(raw)
             data = data[1]
             self.failUnlessIn("format", data)
             self.failUnlessEqual(data["format"], "MDMF")
-            self.failUnless(data['rw_uri'].startswith("URI:MDMF"))
-            self.failUnless(data['ro_uri'].startswith("URI:MDMF"))
+            self.failUnless(data["rw_uri"].startswith("URI:MDMF"))
+            self.failUnless(data["ro_uri"].startswith("URI:MDMF"))
+
         d.addCallback(_got_json)
         return d
 
     def test_PUT_NEWFILEURL_sdmf(self):
         new_contents = self.NEWFILE_CONTENTS * 300000
-        d = self.PUT(self.public_url + \
-                     "/foo/sdmf.txt?format=sdmf",
-                     new_contents)
-        d.addCallback(lambda ignored:
-            self.GET(self.public_url + "/foo/sdmf.txt?t=json"))
+        d = self.PUT(self.public_url + "/foo/sdmf.txt?format=sdmf", new_contents)
+        d.addCallback(
+            lambda ignored: self.GET(self.public_url + "/foo/sdmf.txt?t=json")
+        )
+
         def _got_json(raw):
             data = json.loads(raw)
             data = data[1]
             self.failUnlessIn("format", data)
             self.failUnlessEqual(data["format"], "SDMF")
+
         d.addCallback(_got_json)
         return d
 
@@ -4462,89 +5536,110 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
     def test_PUT_NEWFILEURL_bad_format(self):
         new_contents = self.NEWFILE_CONTENTS * 300000
         url = self.webish_url + self.public_url + "/foo/foo.txt?format=foo"
-        yield self.assertHTTPError(url, 400, "Unknown format: foo",
-                                   method="put", data=new_contents)
+        yield self.assertHTTPError(
+            url, 400, "Unknown format: foo", method="put", data=new_contents
+        )
 
     def test_PUT_NEWFILEURL_uri_replace(self):
         contents, n, new_uri = self.makefile(8)
         d = self.PUT(self.public_url + "/foo/bar.txt?t=uri", new_uri)
         d.addCallback(lambda res: self.failUnlessReallyEqual(res.strip(), new_uri))
-        d.addCallback(lambda res:
-                      self.failUnlessChildContentsAre(self._foo_node, u"bar.txt",
-                                                      contents))
+        d.addCallback(
+            lambda res: self.failUnlessChildContentsAre(
+                self._foo_node, "bar.txt", contents
+            )
+        )
         return d
 
     def test_PUT_NEWFILEURL_uri_no_replace(self):
         contents, n, new_uri = self.makefile(8)
         d = self.PUT(self.public_url + "/foo/bar.txt?t=uri&replace=false", new_uri)
-        d.addBoth(self.shouldFail, error.Error,
-                  "PUT_NEWFILEURL_uri_no_replace",
-                  "409 Conflict",
-                  "There was already a child by that name, and you asked me "
-                  "to not replace it")
+        d.addBoth(
+            self.shouldFail,
+            error.Error,
+            "PUT_NEWFILEURL_uri_no_replace",
+            "409 Conflict",
+            "There was already a child by that name, and you asked me "
+            "to not replace it",
+        )
         return d
 
     def test_PUT_NEWFILEURL_uri_unknown_bad(self):
         d = self.PUT(self.public_url + "/foo/put-future.txt?t=uri", unknown_rwcap)
-        d.addBoth(self.shouldFail, error.Error,
-                  "POST_put_uri_unknown_bad",
-                  "400 Bad Request",
-                  "unknown cap in a write slot")
+        d.addBoth(
+            self.shouldFail,
+            error.Error,
+            "POST_put_uri_unknown_bad",
+            "400 Bad Request",
+            "unknown cap in a write slot",
+        )
         return d
 
     def test_PUT_NEWFILEURL_uri_unknown_ro_good(self):
         d = self.PUT(self.public_url + "/foo/put-future-ro.txt?t=uri", unknown_rocap)
-        d.addCallback(self.failUnlessURIMatchesROChild, self._foo_node,
-                      u"put-future-ro.txt")
+        d.addCallback(
+            self.failUnlessURIMatchesROChild, self._foo_node, "put-future-ro.txt"
+        )
         return d
 
     def test_PUT_NEWFILEURL_uri_unknown_imm_good(self):
         d = self.PUT(self.public_url + "/foo/put-future-imm.txt?t=uri", unknown_immcap)
-        d.addCallback(self.failUnlessURIMatchesROChild, self._foo_node,
-                      u"put-future-imm.txt")
+        d.addCallback(
+            self.failUnlessURIMatchesROChild, self._foo_node, "put-future-imm.txt"
+        )
         return d
 
     def test_PUT_NEWFILE_URI(self):
         file_contents = b"New file contents here\n"
         d = self.PUT("/uri", file_contents)
+
         def _check(uri):
             assert isinstance(uri, bytes), uri
             self.failUnlessIn(uri, self.get_all_contents())
-            self.failUnlessReallyEqual(self.get_all_contents()[uri],
-                                       file_contents)
+            self.failUnlessReallyEqual(self.get_all_contents()[uri], file_contents)
             return self.GET("/uri/%s" % str(uri, "utf-8"))
+
         d.addCallback(_check)
+
         def _check2(res):
             self.failUnlessReallyEqual(res, file_contents)
+
         d.addCallback(_check2)
         return d
 
     def test_PUT_NEWFILE_URI_not_mutable(self):
         file_contents = b"New file contents here\n"
         d = self.PUT("/uri?mutable=false", file_contents)
+
         def _check(uri):
             assert isinstance(uri, bytes), uri
             self.failUnlessIn(uri, self.get_all_contents())
-            self.failUnlessReallyEqual(self.get_all_contents()[uri],
-                                       file_contents)
+            self.failUnlessReallyEqual(self.get_all_contents()[uri], file_contents)
             return self.GET("/uri/%s" % str(uri, "utf-8"))
+
         d.addCallback(_check)
+
         def _check2(res):
             self.failUnlessReallyEqual(res, file_contents)
+
         d.addCallback(_check2)
         return d
 
     def test_PUT_NEWFILE_URI_only_PUT(self):
         d = self.PUT("/uri?t=bogus", b"")
-        d.addBoth(self.shouldFail, error.Error,
-                  "PUT_NEWFILE_URI_only_PUT",
-                  "400 Bad Request",
-                  "/uri accepts only PUT, PUT?t=mkdir, POST?t=upload, and POST?t=mkdir")
+        d.addBoth(
+            self.shouldFail,
+            error.Error,
+            "PUT_NEWFILE_URI_only_PUT",
+            "400 Bad Request",
+            "/uri accepts only PUT, PUT?t=mkdir, POST?t=upload, and POST?t=mkdir",
+        )
         return d
 
     def test_PUT_NEWFILE_URI_mutable(self):
         file_contents = b"New file contents here\n"
         d = self.PUT("/uri?mutable=true", file_contents)
+
         def _check1(filecap):
             filecap = filecap.strip()
             self.failUnless(filecap.startswith(b"URI:SSK:"), filecap)
@@ -4553,53 +5648,65 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
             self.failUnlessIn(u.get_storage_index(), self.get_all_contents())
             n = self.s.create_node_from_uri(filecap)
             return n.download_best_version()
+
         d.addCallback(_check1)
+
         def _check2(data):
             self.failUnlessReallyEqual(data, file_contents)
             return self.GET("/uri/%s" % urlquote(str(self.filecap, "utf-8")))
+
         d.addCallback(_check2)
+
         def _check3(res):
             self.failUnlessReallyEqual(res, file_contents)
+
         d.addCallback(_check3)
         return d
 
     def test_PUT_mkdir(self):
         d = self.PUT("/uri?t=mkdir", "")
+
         def _check(uri):
             n = self.s.create_node_from_uri(uri.strip())
             d2 = self.failUnlessNodeKeysAre(n, [])
-            d2.addCallback(lambda res:
-                           self.GET("/uri/%s?t=json" % str(uri, "utf-8")))
+            d2.addCallback(lambda res: self.GET("/uri/%s?t=json" % str(uri, "utf-8")))
             return d2
+
         d.addCallback(_check)
         d.addCallback(self.failUnlessIsEmptyJSON)
         return d
 
     def test_PUT_mkdir_mdmf(self):
         d = self.PUT("/uri?t=mkdir&format=mdmf", "")
+
         def _got(res):
             u = uri.from_string(res)
             # Check that this is an MDMF writecap
             self.failUnlessIsInstance(u, uri.MDMFDirectoryURI)
+
         d.addCallback(_got)
         return d
 
     def test_PUT_mkdir_sdmf(self):
         d = self.PUT("/uri?t=mkdir&format=sdmf", "")
+
         def _got(res):
             u = uri.from_string(res)
             self.failUnlessIsInstance(u, uri.DirectoryURI)
+
         d.addCallback(_got)
         return d
 
     @inlineCallbacks
     def test_PUT_mkdir_bad_format(self):
         url = self.webish_url + "/uri?t=mkdir&format=foo"
-        yield self.assertHTTPError(url, 400, "Unknown format: foo",
-                                   method="put", data=b"")
+        yield self.assertHTTPError(
+            url, 400, "Unknown format: foo", method="put", data=b""
+        )
 
     def test_POST_check(self):
         d = self.POST(self.public_url + "/foo", t="check", name="bar.txt")
+
         def _done(res):
             # this returns a string form of the results, which are probably
             # None since we're using fake filenodes.
@@ -4607,88 +5714,104 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
             # FakeCHKFileNode to count how many times .check() has been
             # called.
             pass
+
         d.addCallback(_done)
         return d
 
-
     def test_PUT_update_at_offset(self):
-        file_contents = b"test file" * 100000 # about 900 KiB
+        file_contents = b"test file" * 100000  # about 900 KiB
         d = self.PUT("/uri?mutable=true", file_contents)
+
         def _then(filecap):
             self.filecap = filecap
             new_data = file_contents[:100]
             new = b"replaced and so on"
             new_data += new
-            new_data += file_contents[len(new_data):]
+            new_data += file_contents[len(new_data) :]
             assert len(new_data) == len(file_contents)
             self.new_data = new_data
+
         d.addCallback(_then)
-        d.addCallback(lambda ignored:
-            self.PUT("/uri/%s?replace=True&offset=100" % str(self.filecap, "utf-8"),
-                     b"replaced and so on"))
+        d.addCallback(
+            lambda ignored: self.PUT(
+                "/uri/%s?replace=True&offset=100" % str(self.filecap, "utf-8"),
+                b"replaced and so on",
+            )
+        )
+
         def _get_data(filecap):
             n = self.s.create_node_from_uri(filecap)
             return n.download_best_version()
+
         d.addCallback(_get_data)
-        d.addCallback(lambda results:
-            self.failUnlessEqual(results, self.new_data))
+        d.addCallback(lambda results: self.failUnlessEqual(results, self.new_data))
         # Now try appending things to the file
-        d.addCallback(lambda ignored:
-            self.PUT("/uri/%s?offset=%d" % (str(self.filecap, "utf-8"), len(self.new_data)),
-                     b"puppies" * 100))
+        d.addCallback(
+            lambda ignored: self.PUT(
+                "/uri/%s?offset=%d" % (str(self.filecap, "utf-8"), len(self.new_data)),
+                b"puppies" * 100,
+            )
+        )
         d.addCallback(_get_data)
-        d.addCallback(lambda results:
-            self.failUnlessEqual(results, self.new_data + (b"puppies" * 100)))
+        d.addCallback(
+            lambda results: self.failUnlessEqual(
+                results, self.new_data + (b"puppies" * 100)
+            )
+        )
         # and try replacing the beginning of the file
-        d.addCallback(lambda ignored:
-            self.PUT("/uri/%s?offset=0" % str(self.filecap, "utf-8"), b"begin"))
+        d.addCallback(
+            lambda ignored: self.PUT(
+                "/uri/%s?offset=0" % str(self.filecap, "utf-8"), b"begin"
+            )
+        )
         d.addCallback(_get_data)
-        d.addCallback(lambda results:
-            self.failUnlessEqual(results, b"begin"+self.new_data[len(b"begin"):]+(b"puppies"*100)))
+        d.addCallback(
+            lambda results: self.failUnlessEqual(
+                results, b"begin" + self.new_data[len(b"begin") :] + (b"puppies" * 100)
+            )
+        )
         return d
 
     @inlineCallbacks
     def test_PUT_update_at_invalid_offset(self):
-        file_contents = b"test file" * 100000 # about 900 KiB
+        file_contents = b"test file" * 100000  # about 900 KiB
         filecap = yield self.PUT("/uri?mutable=true", file_contents)
         # Negative offsets should cause an error.
         url = self.webish_url + "/uri/%s?offset=-1" % str(filecap, "utf-8")
-        yield self.assertHTTPError(url, 400, "Invalid offset",
-                                   method="put", data=b"foo")
+        yield self.assertHTTPError(
+            url, 400, "Invalid offset", method="put", data=b"foo"
+        )
 
     @inlineCallbacks
     def test_PUT_update_at_offset_immutable(self):
         file_contents = b"Test file" * 100000
         filecap = yield self.PUT("/uri", file_contents)
         url = self.webish_url + "/uri/%s?offset=50" % str(filecap, "utf-8")
-        yield self.assertHTTPError(url, 400, "immutable",
-                                   method="put", data=b"foo")
+        yield self.assertHTTPError(url, 400, "immutable", method="put", data=b"foo")
 
     @inlineCallbacks
     def test_bad_method(self):
         url = self.webish_url + self.public_url + "/foo/bar.txt"
-        yield self.assertHTTPError(url, 501,
-                                   "I don't know how to treat a BOGUS request.",
-                                   method="BOGUS")
+        yield self.assertHTTPError(
+            url, 501, "I don't know how to treat a BOGUS request.", method="BOGUS"
+        )
 
     @inlineCallbacks
     def test_short_url(self):
         url = self.webish_url + "/uri"
-        yield self.assertHTTPError(url, 501,
-                                   "I don't know how to treat a DELETE request.",
-                                   method="DELETE")
+        yield self.assertHTTPError(
+            url, 501, "I don't know how to treat a DELETE request.", method="DELETE"
+        )
 
     @inlineCallbacks
     def test_ophandle_bad(self):
         url = self.webish_url + "/operations/bogus?t=status"
-        yield self.assertHTTPError(url, 404,
-                                   "unknown/expired handle 'bogus'")
+        yield self.assertHTTPError(url, 404, "unknown/expired handle 'bogus'")
 
     @inlineCallbacks
     def test_ophandle_cancel(self):
         url = self.webish_url + self.public_url + "/foo?t=start-manifest&ophandle=128"
-        yield do_http("post", url,
-                      allow_redirects=True, browser_like_redirects=True)
+        yield do_http("post", url, allow_redirects=True, browser_like_redirects=True)
         res = yield self.GET("/operations/128?t=status&output=JSON")
         data = json.loads(res)
         self.failUnless("finished" in data, res)
@@ -4705,9 +5828,12 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
 
     @inlineCallbacks
     def test_ophandle_retainfor(self):
-        url = self.webish_url + self.public_url + "/foo?t=start-manifest&ophandle=129&retain-for=60"
-        yield do_http("post", url,
-                      allow_redirects=True, browser_like_redirects=True)
+        url = (
+            self.webish_url
+            + self.public_url
+            + "/foo?t=start-manifest&ophandle=129&retain-for=60"
+        )
+        yield do_http("post", url, allow_redirects=True, browser_like_redirects=True)
         res = yield self.GET("/operations/129?t=status&output=JSON&retain-for=0")
         data = json.loads(res)
         self.failUnless("finished" in data, res)
@@ -4720,10 +5846,11 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
     @inlineCallbacks
     def test_ophandle_release_after_complete(self):
         url = self.webish_url + self.public_url + "/foo?t=start-manifest&ophandle=130"
-        yield do_http("post", url,
-                      allow_redirects=True, browser_like_redirects=True)
+        yield do_http("post", url, allow_redirects=True, browser_like_redirects=True)
         yield self.wait_for_operation(None, "130")
-        yield self.GET("/operations/130?t=status&output=JSON&release-after-complete=true")
+        yield self.GET(
+            "/operations/130?t=status&output=JSON&release-after-complete=true"
+        )
         # the release-after-complete=true will cause the handle to be expired
         op_url = self.webish_url + "/operations/130?t=status&output=JSON"
         yield self.assertHTTPError(op_url, 404, "unknown/expired handle '130'")
@@ -4732,8 +5859,11 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
     def test_uncollected_ophandle_expiration(self):
         # uncollected ophandles should expire after 4 days
         def _make_uncollected_ophandle(ophandle):
-            url = (self.webish_url + self.public_url +
-                   "/foo?t=start-manifest&ophandle=%d" % ophandle)
+            url = (
+                self.webish_url
+                + self.public_url
+                + "/foo?t=start-manifest&ophandle=%d" % ophandle
+            )
             # When we start the operation, the webapi server will want to
             # redirect us to the page for the ophandle, so we get
             # confirmation that the operation has started. If the manifest
@@ -4743,18 +5873,21 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
             # ophandle to test the uncollected timeout anymore. So, instead,
             # catch+ignore any 302 here and don't follow it.
             d = treq.request("post", url, persistent=False)
+
             def _ignore_redirect(f):
                 f.trap(client.ResponseFailed)
                 e = f.value
                 reasons = e.reasons
                 r0 = reasons[0]
                 r0.trap(error.PageRedirect)
+
             d.addErrback(_ignore_redirect)
             return d
+
         # Create an ophandle, don't collect it, then advance the clock by
         # 4 days - 1 second and make sure that the ophandle is still there.
         yield _make_uncollected_ophandle(131)
-        yield self.clock.advance((96*60*60) - 1) # 96 hours = 4 days
+        yield self.clock.advance((96 * 60 * 60) - 1)  # 96 hours = 4 days
         res = yield self.GET("/operations/131?t=status&output=JSON")
         data = json.loads(res)
         self.failUnless("finished" in data, res)
@@ -4762,7 +5895,7 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         # Create an ophandle, don't collect it, then try to collect it
         # after 4 days. It should be gone.
         yield _make_uncollected_ophandle(132)
-        yield self.clock.advance(96*60*60)
+        yield self.clock.advance(96 * 60 * 60)
         op_url = self.webish_url + "/operations/132?t=status&output=JSON"
         yield self.assertHTTPError(op_url, 404, "unknown/expired handle '132'")
 
@@ -4770,16 +5903,21 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
     def test_collected_ophandle_expiration(self):
         # collected ophandles should expire after 1 day
         def _make_collected_ophandle(ophandle):
-            url = (self.webish_url + self.public_url +
-                   "/foo?t=start-manifest&ophandle=%d" % ophandle)
+            url = (
+                self.webish_url
+                + self.public_url
+                + "/foo?t=start-manifest&ophandle=%d" % ophandle
+            )
             # By following the initial redirect, we collect the ophandle
             # we've just created.
-            return do_http("post", url,
-                           allow_redirects=True, browser_like_redirects=True)
+            return do_http(
+                "post", url, allow_redirects=True, browser_like_redirects=True
+            )
+
         # Create a collected ophandle, then collect it after 23 hours
         # and 59 seconds to make sure that it is still there.
         yield _make_collected_ophandle(133)
-        yield self.clock.advance((24*60*60) - 1)
+        yield self.clock.advance((24 * 60 * 60) - 1)
         res = yield self.GET("/operations/133?t=status&output=JSON")
         data = json.loads(res)
         self.failUnless("finished" in data, res)
@@ -4787,7 +5925,7 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         # Create another uncollected ophandle, then try to collect it
         # after 24 hours to make sure that it is gone.
         yield _make_collected_ophandle(134)
-        yield self.clock.advance(24*60*60)
+        yield self.clock.advance(24 * 60 * 60)
         op_url = self.webish_url + "/operations/134?t=status&output=JSON"
         yield self.assertHTTPError(op_url, 404, "unknown/expired handle '134'")
 
@@ -4797,13 +5935,15 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
 
         Unit test reproducer for https://tahoe-lafs.org/trac/tahoe-lafs/ticket/3590
         """
+
         def req(method, path, **kwargs):
-            return treq.request(method, self.webish_url + path, persistent=False,
-                                **kwargs)
+            return treq.request(
+                method, self.webish_url + path, persistent=False, **kwargs
+            )
 
         response = yield req("POST", "/uri?format=sdmf&t=mkdir")
         dircap = yield response.content()
-        assert dircap.startswith(b'URI:DIR2:')
+        assert dircap.startswith(b"URI:DIR2:")
         dircap_uri = "/uri/?uri={}&t=json".format(urlquote(dircap))
 
         response = yield req(
@@ -4812,15 +5952,18 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         )
         self.assertEqual(
             str(response.request.absoluteURI, "utf-8"),
-            self.webish_url + "/uri/{}?t=json".format(urlquote(dircap)))
+            self.webish_url + "/uri/{}?t=json".format(urlquote(dircap)),
+        )
         if response.code >= 400:
             raise Error(response.code, response=response.content())
 
     def test_incident(self):
         d = self.POST("/report_incident", details="eek")
+
         def _done(res):
             self.failIfIn(b"<html>", res)
             self.failUnlessIn(b"An incident report has been saved", res)
+
         d.addCallback(_done)
         return d
 
@@ -4832,8 +5975,10 @@ class Web(WebMixin, WebErrorMixin, testutil.StallMixin, testutil.ReallyEqualMixi
         f.close()
 
         d = self.GET("/static/subdir/hello.txt")
+
         def _check(res):
             self.failUnlessReallyEqual(res, b"hello")
+
         d.addCallback(_check)
         return d
 
@@ -4851,6 +5996,7 @@ class HumanizeExceptionTests(TrialTestCase):
     """
     Tests for ``humanize_exception``.
     """
+
     def test_mustbereadonly(self):
         """
         ``humanize_exception`` describes ``MustBeReadonlyError``.

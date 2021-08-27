@@ -21,8 +21,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 from traceback import extract_stack, format_list
 
@@ -37,6 +60,7 @@ class NonQualifier(IncidentQualifier, object):
     def check_event(self, ev):
         return False
 
+
 def disable_foolscap_incidents():
     # Foolscap-0.2.9 (at least) uses "trailing delay" in its default incident
     # reporter: after a severe log event is recorded (thus triggering an
@@ -47,13 +71,15 @@ def disable_foolscap_incidents():
     # this disables the timer for the entire process: do not call this from
     # regular runtime code; only use it for unit tests that are running under
     # Trial.
-    #IncidentReporter.TRAILING_DELAY = None
+    # IncidentReporter.TRAILING_DELAY = None
     #
     # Also, using Incidents more than doubles the test time. So we just
     # disable them entirely.
     from foolscap.logging.log import theLogger
+
     iq = NonQualifier()
     theLogger.setIncidentQualifier(iq)
+
 
 # we disable incident reporting for all unit tests.
 disable_foolscap_incidents()
@@ -83,7 +109,10 @@ def _configure_hypothesis():
 
     profile_name = environ.get("TAHOE_LAFS_HYPOTHESIS_PROFILE", "default")
     settings.load_profile(profile_name)
+
+
 _configure_hypothesis()
+
 
 def logging_for_pb_listener():
     """
@@ -91,6 +120,7 @@ def logging_for_pb_listener():
     information.
     """
     original__init__ = Listener.__init__
+
     def _listener__init__(self, *a, **kw):
         original__init__(self, *a, **kw)
         # Capture the stack here, where Listener is instantiated.  This is
@@ -102,8 +132,10 @@ def logging_for_pb_listener():
     def _listener_startService(self):
         service.Service.startService(self)
         d = self._ep.listen(self)
+
         def _listening(lp):
             self._lp = lp
+
         d.addCallbacks(
             _listening,
             # Make sure that this listen failure is reported promptly and with
@@ -115,15 +147,21 @@ def logging_for_pb_listener():
                 ),
             ),
         )
+
     Listener.__init__ = _listener__init__
     Listener.startService = _listener_startService
+
+
 logging_for_pb_listener()
 
 import sys
+
 if sys.platform == "win32":
     from allmydata.windows.fixups import initialize
+
     initialize()
 
 from eliot import to_file
 from allmydata.util.jsonbytes import AnyBytesJSONEncoder
+
 to_file(open("eliot.log", "wb"), encoder=AnyBytesJSONEncoder)

@@ -9,8 +9,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import attr
 
@@ -39,6 +62,7 @@ from allmydata.crypto import (
     error,
 )
 
+
 @attr.s
 class MatchesNodePublicKey(object):
     """
@@ -47,6 +71,7 @@ class MatchesNodePublicKey(object):
     To verify, the private key is loaded from the node's private config
     directory at the time the match is checked.
     """
+
     basedir = attr.ib()
 
     def match(self, other):
@@ -60,7 +85,7 @@ class MatchesNodePublicKey(object):
 
         :return Mismatch: If the keys don't match.
         """
-        config = read_config(self.basedir, u"tub.port")
+        config = read_config(self.basedir, "tub.port")
         privkey_bytes = config.get_private_config("node.privkey").encode("utf-8")
         private_key = ed25519.signing_keypair_from_string(privkey_bytes)[0]
         signature = ed25519.sign_data(private_key, b"")
@@ -91,15 +116,15 @@ def matches_storage_announcement(basedir, anonymous=True, options=None):
     :return: A matcher with the requested behavior.
     """
     announcement = {
-        u"permutation-seed-base32": matches_base32(),
+        "permutation-seed-base32": matches_base32(),
     }
     if anonymous:
-        announcement[u"anonymous-storage-FURL"] = matches_furl()
+        announcement["anonymous-storage-FURL"] = matches_furl()
     if options:
-        announcement[u"storage-options"] = MatchesListwise(options)
+        announcement["storage-options"] = MatchesListwise(options)
     return MatchesStructure(
         # Has each of these keys with associated values that match
-        service_name=Equals(u"storage"),
+        service_name=Equals("storage"),
         ann=MatchesDict(announcement),
         signing_key=MatchesNodePublicKey(basedir),
     )
@@ -119,12 +144,12 @@ def matches_base32():
     return AfterPreprocessing(base32.a2b, Always())
 
 
-
 class MatchesSameElements(object):
     """
     Match if the two-tuple value given contains two elements that are equal to
     each other.
     """
+
     def match(self, value):
         left, right = value
         return Equals(left).match(right)

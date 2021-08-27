@@ -7,8 +7,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2, PY3
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import os
 import time
@@ -31,7 +54,7 @@ from twisted.web.template import (
     tags,
 )
 
-import allmydata # to display import path
+import allmydata  # to display import path
 from allmydata.util import log, jsonbytes as json
 from allmydata.interfaces import IFileNode
 from allmydata.web import (
@@ -59,6 +82,7 @@ from allmydata.web.private import (
     create_private_tree,
 )
 from allmydata import uri
+
 
 class URIHandler(resource.Resource, object):
     """
@@ -92,14 +116,14 @@ class URIHandler(resource.Resource, object):
         # so, using URL.from_text(req.uri) isn't going to work because
         # it seems Nevow was creating absolute URLs including
         # host/port whereas req.uri is absolute (but lacks host/port)
-        redir_uri = URL.from_text(req.prePathURL().decode('utf8'))
+        redir_uri = URL.from_text(req.prePathURL().decode("utf8"))
         redir_uri = redir_uri.child(urlquote(uri_arg))
         # add back all the query args that AREN'T "?uri="
         for k, values in req.args.items():
             if k != b"uri":
                 for v in values:
-                    redir_uri = redir_uri.add(k.decode('utf8'), v.decode('utf8'))
-        return redirectTo(redir_uri.to_text().encode('utf8'), req)
+                    redir_uri = redir_uri.add(k.decode("utf8"), v.decode("utf8"))
+        return redirectTo(redir_uri.to_text().encode("utf8"), req)
 
     @render_exception
     def render_PUT(self, req):
@@ -118,8 +142,7 @@ class URIHandler(resource.Resource, object):
         if t == "mkdir":
             return unlinked.PUTUnlinkedCreateDirectory(req, self.client)
         errmsg = (
-            "/uri accepts only PUT, PUT?t=mkdir, POST?t=upload, "
-            "and POST?t=mkdir"
+            "/uri accepts only PUT, PUT?t=mkdir, POST?t=upload, " "and POST?t=mkdir"
         )
         raise WebError(errmsg, http.BAD_REQUEST)
 
@@ -141,13 +164,12 @@ class URIHandler(resource.Resource, object):
         if t == "mkdir":
             return unlinked.POSTUnlinkedCreateDirectory(req, self.client)
         elif t == "mkdir-with-children":
-            return unlinked.POSTUnlinkedCreateDirectoryWithChildren(req,
-                                                                    self.client)
+            return unlinked.POSTUnlinkedCreateDirectoryWithChildren(req, self.client)
         elif t == "mkdir-immutable":
-            return unlinked.POSTUnlinkedCreateImmutableDirectory(req,
-                                                                 self.client)
-        errmsg = ("/uri accepts only PUT, PUT?t=mkdir, POST?t=upload, "
-                  "and POST?t=mkdir")
+            return unlinked.POSTUnlinkedCreateImmutableDirectory(req, self.client)
+        errmsg = (
+            "/uri accepts only PUT, PUT?t=mkdir, POST?t=upload, " "and POST?t=mkdir"
+        )
         raise WebError(errmsg, http.BAD_REQUEST)
 
     @exception_to_child
@@ -161,20 +183,21 @@ class URIHandler(resource.Resource, object):
         # passed -- we re-direct to the non-trailing-slash version so
         # that there is just one valid URI for "uri" resource.
         if not name:
-            u = DecodedURL.from_text(req.uri.decode('utf8'))
+            u = DecodedURL.from_text(req.uri.decode("utf8"))
             u = u.replace(
                 path=(s for s in u.path if s),  # remove empty segments
             )
-            return Redirect(u.to_uri().to_text().encode('utf8'))
+            return Redirect(u.to_uri().to_text().encode("utf8"))
         try:
             node = self.client.create_node_from_uri(name)
             return directory.make_handler_for(node, self.client)
         except (TypeError, AssertionError) as e:
-            log.msg(format="Failed to parse cap, perhaps due to bug: %(e)s",
-                    e=e, level=log.WEIRD)
-            raise WebError(
-                "'{}' is not a valid file- or directory- cap".format(name)
+            log.msg(
+                format="Failed to parse cap, perhaps due to bug: %(e)s",
+                e=e,
+                level=log.WEIRD,
             )
+            raise WebError("'{}' is not a valid file- or directory- cap".format(name))
 
 
 class FileHandler(resource.Resource, object):
@@ -194,16 +217,17 @@ class FileHandler(resource.Resource, object):
             node = self.client.create_node_from_uri(name)
         except (TypeError, AssertionError):
             # I think this can no longer be reached
-            raise WebError("%r is not a valid file- or directory- cap"
-                           % name)
+            raise WebError("%r is not a valid file- or directory- cap" % name)
         if not IFileNode.providedBy(node):
             raise WebError("%r is not a file-cap" % name)
         return filenode.FileNodeDownloadHandler(self.client, node)
 
     @render_exception
     def render_GET(self, req):
-        raise WebError("/file must be followed by a file-cap and a name",
-                       http.NOT_FOUND)
+        raise WebError(
+            "/file must be followed by a file-cap and a name", http.NOT_FOUND
+        )
+
 
 class IncidentReporter(MultiFormatResource):
     """Handler for /report_incident POST request"""
@@ -213,13 +237,17 @@ class IncidentReporter(MultiFormatResource):
         if req.method != b"POST":
             raise WebError("/report_incident can only be used with POST")
 
-        log.msg(format="User reports incident through web page: %(details)s",
-                details=get_arg(req, "details", ""),
-                level=log.WEIRD, umid="LkD9Pw")
+        log.msg(
+            format="User reports incident through web page: %(details)s",
+            details=get_arg(req, "details", ""),
+            level=log.WEIRD,
+            umid="LkD9Pw",
+        )
         req.setHeader("content-type", "text/plain; charset=UTF-8")
         return b"An incident report has been saved to logs/incidents/ in the node directory."
 
-SPACE = u"\u00A0"*2
+
+SPACE = "\u00A0" * 2
 
 
 class Root(MultiFormatResource):
@@ -286,41 +314,43 @@ class Root(MultiFormatResource):
     @render_exception
     def render_JSON(self, req):
         req.setHeader("content-type", "application/json; charset=utf-8")
-        intro_summaries = [s.summary for s in self._client.introducer_connection_statuses()]
+        intro_summaries = [
+            s.summary for s in self._client.introducer_connection_statuses()
+        ]
         sb = self._client.get_storage_broker()
         servers = self._describe_known_servers(sb)
         result = {
             "introducers": {
                 "statuses": intro_summaries,
             },
-            "servers": servers
+            "servers": servers,
         }
         return json.dumps(result, indent=1) + "\n"
 
-
     def _describe_known_servers(self, broker):
-        return sorted(list(
-            self._describe_server(server)
-            for server
-            in broker.get_known_servers()
-        ), key=lambda o: sorted(o.items()))
-
+        return sorted(
+            list(
+                self._describe_server(server) for server in broker.get_known_servers()
+            ),
+            key=lambda o: sorted(o.items()),
+        )
 
     def _describe_server(self, server):
         status = server.get_connection_status()
         description = {
-            u"nodeid": server.get_serverid(),
-            u"connection_status": status.summary,
-            u"available_space": server.get_available_space(),
-            u"nickname": server.get_nickname(),
-            u"version": None,
-            u"last_received_data": status.last_received_time,
+            "nodeid": server.get_serverid(),
+            "connection_status": status.summary,
+            "available_space": server.get_available_space(),
+            "nickname": server.get_nickname(),
+            "version": None,
+            "last_received_data": status.last_received_time,
         }
         version = server.get_version()
         if version is not None:
-            description[u"version"] = version[b"application-version"]
+            description["version"] = version[b"application-version"]
 
         return description
+
 
 class RootElement(Element):
 
@@ -335,11 +365,11 @@ class RootElement(Element):
         "not-configured": "Not Configured",
         "yes": "Connected",
         "no": "Disconnected",
-        }
+    }
 
     @renderer
     def my_nodeid(self, req, tag):
-        tubid_s = "TubID: "+self._client.get_long_tubid()
+        tubid_s = "TubID: " + self._client.get_long_tubid()
         return tags.td(self._client.get_long_nodeid(), title=tubid_s)
 
     @renderer
@@ -347,8 +377,9 @@ class RootElement(Element):
         return tag(self._client.nickname)
 
     def _connected_introducers(self):
-        return len([1 for cs in self._client.introducer_connection_statuses()
-                    if cs.connected])
+        return len(
+            [1 for cs in self._client.introducer_connection_statuses() if cs.connected]
+        )
 
     @renderer
     def connected_introducers(self, req, tag):
@@ -433,7 +464,7 @@ class RootElement(Element):
         try:
             uploader = self._client.getServiceNamed("uploader")
         except KeyError:
-            return "no" # we don't even have an Uploader
+            return "no"  # we don't even have an Uploader
         furl, connected = uploader.get_helper_info()
 
         if furl is None:
@@ -468,14 +499,14 @@ class RootElement(Element):
 
     @renderer
     def services_table(self, req, tag):
-        rows = [ self._describe_server_and_connection(server)
-                 for server in self._services() ]
+        rows = [
+            self._describe_server_and_connection(server) for server in self._services()
+        ]
         return SlotsSequenceElement(tag, rows)
 
     @renderer
     def introducers_table(self, req, tag):
-        rows = [ self._describe_connection_status(cs)
-                 for cs in self._get_introducers() ]
+        rows = [self._describe_connection_status(cs) for cs in self._get_introducers()]
         return SlotsSequenceElement(tag, rows)
 
     def _services(self):
@@ -486,7 +517,7 @@ class RootElement(Element):
     def _describe_server(server):
         """Return a dict containing server stats."""
         peerid = server.get_longname()
-        nickname =  server.get_nickname()
+        nickname = server.get_nickname()
         version = server.get_announcement().get("my-version", "")
 
         space = server.get_available_space()
@@ -516,8 +547,9 @@ class RootElement(Element):
         if cs.connected:
             summary = cs.summary
             if others:
-                hints = "\n".join(["* %s: %s\n" % (which, others[which])
-                                for which in sorted(others)])
+                hints = "\n".join(
+                    ["* %s: %s\n" % (which, others[which]) for which in sorted(others)]
+                )
                 details = "Other hints:\n" + hints
             else:
                 details = "(no other hints)"
@@ -533,7 +565,9 @@ class RootElement(Element):
         since = cs.last_connection_time
 
         if since is not None:
-            service_connection_status_rel_time = render_time_delta(since, self._now_fn())
+            service_connection_status_rel_time = render_time_delta(
+                since, self._now_fn()
+            )
             service_connection_status_abs_time = render_time_attr(since)
         else:
             service_connection_status_rel_time = "N/A"
@@ -543,7 +577,9 @@ class RootElement(Element):
 
         if last_received_data_time is not None:
             last_received_data_abs_time = render_time_attr(last_received_data_time)
-            last_received_data_rel_time = render_time_delta(last_received_data_time, self._now_fn())
+            last_received_data_rel_time = render_time_delta(
+                last_received_data_time, self._now_fn()
+            )
         else:
             last_received_data_abs_time = "N/A"
             last_received_data_rel_time = "N/A"
@@ -565,13 +601,14 @@ class RootElement(Element):
         form = tags.form(
             tags.fieldset(
                 tags.input(type="hidden", name="t", value="report-incident"),
-                "What went wrong?"+SPACE,
-                tags.input(type="text", name="details"), SPACE,
-                tags.input(type="submit", value=u"Save \u00BB"),
+                "What went wrong?" + SPACE,
+                tags.input(type="text", name="details"),
+                SPACE,
+                tags.input(type="submit", value="Save \u00BB"),
             ),
             action="report_incident",
             method="post",
-            enctype="multipart/form-data"
+            enctype="multipart/form-data",
         )
         return tags.div(form)
 

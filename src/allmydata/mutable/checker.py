@@ -7,8 +7,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 from six import ensure_str
 
 from allmydata.uri import from_string
@@ -18,7 +41,8 @@ from allmydata.check_results import CheckAndRepairResults, CheckResults
 
 from allmydata.mutable.common import MODE_CHECK, MODE_WRITE, CorruptShareError
 from allmydata.mutable.servermap import ServerMap, ServermapUpdater
-from allmydata.mutable.retrieve import Retrieve # for verifying
+from allmydata.mutable.retrieve import Retrieve  # for verifying
+
 
 class MutableChecker(object):
     SERVERMAP_MODE = MODE_CHECK
@@ -28,19 +52,24 @@ class MutableChecker(object):
         self._storage_broker = storage_broker
         self._history = history
         self._monitor = monitor
-        self.bad_shares = [] # list of (server,shnum,failure)
+        self.bad_shares = []  # list of (server,shnum,failure)
         self._storage_index = self._node.get_storage_index()
         self.need_repair = False
-        self.responded = set() # set of (binary) nodeids
+        self.responded = set()  # set of (binary) nodeids
 
     def check(self, verify=False, add_lease=False):
         servermap = ServerMap()
         # Updating the servermap in MODE_CHECK will stand a good chance
         # of finding all of the shares, and getting a good idea of
         # recoverability, etc, without verifying.
-        u = ServermapUpdater(self._node, self._storage_broker, self._monitor,
-                             servermap, self.SERVERMAP_MODE,
-                             add_lease=add_lease)
+        u = ServermapUpdater(
+            self._node,
+            self._storage_broker,
+            self._monitor,
+            servermap,
+            self.SERVERMAP_MODE,
+            add_lease=add_lease,
+        )
         if self._history:
             self._history.notify_mapupdate(u.get_status())
         d = u.update()
@@ -104,18 +133,17 @@ class MutableChecker(object):
         if not self.best_version:
             return
 
-        r = Retrieve(self._node, self._storage_broker, servermap,
-                     self.best_version, verify=True)
+        r = Retrieve(
+            self._node, self._storage_broker, servermap, self.best_version, verify=True
+        )
         d = r.download()
         d.addCallback(self._process_bad_shares)
         return d
-
 
     def _process_bad_shares(self, bad_shares):
         if bad_shares:
             self.need_repair = True
         self.bad_shares = bad_shares
-
 
     def _count_shares(self, smap, version):
         available_shares = smap.shares_available()
@@ -127,9 +155,9 @@ class MutableChecker(object):
         good_hosts = smap.all_servers_for_version(version)
         counters["count-good-share-hosts"] = len(good_hosts)
         vmap = smap.make_versionmap()
-        counters["count-wrong-shares"] = sum([len(shares)
-                                          for verinfo,shares in vmap.items()
-                                          if verinfo != version])
+        counters["count-wrong-shares"] = sum(
+            [len(shares) for verinfo, shares in vmap.items() if verinfo != version]
+        )
 
         return counters
 
@@ -143,15 +171,25 @@ class MutableChecker(object):
         unrecoverable = smap.unrecoverable_versions()
 
         if recoverable:
-            report.append("Recoverable Versions: " +
-                          "/".join(["%d*%s" % (len(vmap[v]),
-                                               smap.summarize_version(v))
-                                    for v in recoverable]))
+            report.append(
+                "Recoverable Versions: "
+                + "/".join(
+                    [
+                        "%d*%s" % (len(vmap[v]), smap.summarize_version(v))
+                        for v in recoverable
+                    ]
+                )
+            )
         if unrecoverable:
-            report.append("Unrecoverable Versions: " +
-                          "/".join(["%d*%s" % (len(vmap[v]),
-                                               smap.summarize_version(v))
-                                    for v in unrecoverable]))
+            report.append(
+                "Unrecoverable Versions: "
+                + "/".join(
+                    [
+                        "%d*%s" % (len(vmap[v]), smap.summarize_version(v))
+                        for v in unrecoverable
+                    ]
+                )
+            )
         if smap.unrecoverable_versions():
             healthy = False
             summary.append("some versions are unrecoverable")
@@ -167,16 +205,19 @@ class MutableChecker(object):
 
         if recoverable:
             best_version = smap.best_recoverable_version()
-            report.append("Best Recoverable Version: " +
-                          smap.summarize_version(best_version))
+            report.append(
+                "Best Recoverable Version: " + smap.summarize_version(best_version)
+            )
             counters = self._count_shares(smap, best_version)
             s = counters["count-shares-good"]
             k = counters["count-shares-needed"]
             N = counters["count-shares-expected"]
             if s < N:
                 healthy = False
-                report.append("Unhealthy: best version has only %d shares "
-                              "(encoding is %d-of-%d)" % (s, k, N))
+                report.append(
+                    "Unhealthy: best version has only %d shares "
+                    "(encoding is %d-of-%d)" % (s, k, N)
+                )
                 summary.append("%d shares (enc %d-of-%d)" % (s, k, N))
         elif unrecoverable:
             healthy = False
@@ -188,11 +229,11 @@ class MutableChecker(object):
             # couldn't find anything at all
             counters = {
                 "count-shares-good": 0,
-                "count-shares-needed": 3, # arbitrary defaults
+                "count-shares-needed": 3,  # arbitrary defaults
                 "count-shares-expected": 10,
                 "count-good-share-hosts": 0,
                 "count-wrong-shares": 0,
-                }
+            }
 
         corrupt_share_locators = []
         problems = []
@@ -212,14 +253,20 @@ class MutableChecker(object):
             summary.append(s)
             p = (serverid, self._storage_index, shnum, f)
             problems.append(p)
-            msg = ("CorruptShareError during mutable verify, "
-                   "serverid=%(serverid)s, si=%(si)s, shnum=%(shnum)d, "
-                   "where=%(where)s")
-            log.msg(format=msg, serverid=server.get_name(),
-                    si=base32.b2a(self._storage_index),
-                    shnum=shnum,
-                    where=ft,
-                    level=log.WEIRD, umid="EkK8QA")
+            msg = (
+                "CorruptShareError during mutable verify, "
+                "serverid=%(serverid)s, si=%(si)s, shnum=%(shnum)d, "
+                "where=%(where)s"
+            )
+            log.msg(
+                format=msg,
+                serverid=server.get_name(),
+                si=base32.b2a(self._storage_index),
+                shnum=shnum,
+                where=ft,
+                level=log.WEIRD,
+                umid="EkK8QA",
+            )
 
         sharemap = dictutil.DictOfSets()
         for verinfo in vmap:
@@ -233,32 +280,35 @@ class MutableChecker(object):
 
         count_happiness = servers_of_happiness(sharemap)
 
-        cr = CheckResults(from_string(self._node.get_uri()),
-                          self._storage_index,
-                          healthy=healthy, recoverable=bool(recoverable),
-                          count_happiness=count_happiness,
-                          count_shares_needed=counters["count-shares-needed"],
-                          count_shares_expected=counters["count-shares-expected"],
-                          count_shares_good=counters["count-shares-good"],
-                          count_good_share_hosts=counters["count-good-share-hosts"],
-                          count_recoverable_versions=len(recoverable),
-                          count_unrecoverable_versions=len(unrecoverable),
-                          servers_responding=list(smap.get_reachable_servers()),
-                          sharemap=sharemap,
-                          count_wrong_shares=counters["count-wrong-shares"],
-                          list_corrupt_shares=corrupt_share_locators,
-                          count_corrupt_shares=len(corrupt_share_locators),
-                          list_incompatible_shares=[],
-                          count_incompatible_shares=0,
-                          summary=summary,
-                          report=report,
-                          share_problems=problems,
-                          servermap=smap.copy())
+        cr = CheckResults(
+            from_string(self._node.get_uri()),
+            self._storage_index,
+            healthy=healthy,
+            recoverable=bool(recoverable),
+            count_happiness=count_happiness,
+            count_shares_needed=counters["count-shares-needed"],
+            count_shares_expected=counters["count-shares-expected"],
+            count_shares_good=counters["count-shares-good"],
+            count_good_share_hosts=counters["count-good-share-hosts"],
+            count_recoverable_versions=len(recoverable),
+            count_unrecoverable_versions=len(unrecoverable),
+            servers_responding=list(smap.get_reachable_servers()),
+            sharemap=sharemap,
+            count_wrong_shares=counters["count-wrong-shares"],
+            list_corrupt_shares=corrupt_share_locators,
+            count_corrupt_shares=len(corrupt_share_locators),
+            list_incompatible_shares=[],
+            count_incompatible_shares=0,
+            summary=summary,
+            report=report,
+            share_problems=problems,
+            servermap=smap.copy(),
+        )
         return cr
 
 
 class MutableCheckAndRepairer(MutableChecker):
-    SERVERMAP_MODE = MODE_WRITE # needed to get the privkey
+    SERVERMAP_MODE = MODE_WRITE  # needed to get the privkey
 
     def __init__(self, node, storage_broker, history, monitor):
         MutableChecker.__init__(self, node, storage_broker, history, monitor)
@@ -289,16 +339,19 @@ class MutableCheckAndRepairer(MutableChecker):
             return
         crr.repair_attempted = True
         d = self._node.repair(pre_repair_results, monitor=self._monitor)
+
         def _repair_finished(rr):
             crr.repair_successful = rr.get_successful()
             crr.post_repair_results = self._make_checker_results(rr.servermap)
-            crr.repair_results = rr # TODO?
+            crr.repair_results = rr  # TODO?
             return
+
         def _repair_error(f):
             # I'm not sure if I want to pass through a failure or not.
             crr.repair_successful = False
-            crr.repair_failure = f # TODO?
-            #crr.post_repair_results = ??
+            crr.repair_failure = f  # TODO?
+            # crr.post_repair_results = ??
             return f
+
         d.addCallbacks(_repair_finished, _repair_error)
         return d

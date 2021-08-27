@@ -7,8 +7,31 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from future.utils import PY2
+
 if PY2:
-    from future.builtins import filter, map, zip, ascii, chr, hex, input, next, oct, open, pow, round, super, bytes, dict, list, object, range, str, max, min  # noqa: F401
+    from future.builtins import (
+        filter,
+        map,
+        zip,
+        ascii,
+        chr,
+        hex,
+        input,
+        next,
+        oct,
+        open,
+        pow,
+        round,
+        super,
+        bytes,
+        dict,
+        list,
+        object,
+        range,
+        str,
+        max,
+        min,
+    )  # noqa: F401
 
 import time, os
 from pkg_resources import resource_filename
@@ -40,15 +63,16 @@ class IntroducerRoot(MultiFormatResource):
         self.putChild(b"", self)
         static_dir = resource_filename("allmydata.web", "static")
         for filen in os.listdir(static_dir):
-            self.putChild(filen.encode("utf-8"), static.File(os.path.join(static_dir, filen)))
+            self.putChild(
+                filen.encode("utf-8"), static.File(os.path.join(static_dir, filen))
+            )
 
     def _create_element(self):
         """
         Create a ``IntroducerRootElement`` which can be flattened into an HTML
         response.
         """
-        return IntroducerRootElement(
-            self.introducer_node, self.introducer_service)
+        return IntroducerRootElement(self.introducer_node, self.introducer_service)
 
     def render_HTML(self, req):
         """
@@ -67,7 +91,7 @@ class IntroducerRoot(MultiFormatResource):
             if s.service_name not in counts:
                 counts[s.service_name] = 0
             counts[s.service_name] += 1
-        res[u"subscription_summary"] = counts
+        res["subscription_summary"] = counts
 
         announcement_summary = {}
         for ad in self.introducer_service.get_announcements():
@@ -75,7 +99,7 @@ class IntroducerRoot(MultiFormatResource):
             if service_name not in announcement_summary:
                 announcement_summary[service_name] = 0
             announcement_summary[service_name] += 1
-        res[u"announcement_summary"] = announcement_summary
+        res["announcement_summary"] = announcement_summary
 
         return (json.dumps(res, indent=1) + "\n").encode("utf-8")
 
@@ -116,8 +140,10 @@ class IntroducerRootElement(Element):
             services[ad.service_name] += 1
         service_names = list(services.keys())
         service_names.sort()
-        return u", ".join(u"{}: {}".format(service_name, services[service_name])
-                          for service_name in service_names)
+        return ", ".join(
+            "{}: {}".format(service_name, services[service_name])
+            for service_name in service_names
+        )
 
     @renderer
     def client_summary(self, req, tag):
@@ -126,33 +152,40 @@ class IntroducerRootElement(Element):
             if s.service_name not in counts:
                 counts[s.service_name] = 0
             counts[s.service_name] += 1
-        return u", ".join(u"{}: {}".format(name, counts[name])
-                          for name in sorted(counts.keys()))
+        return ", ".join(
+            "{}: {}".format(name, counts[name]) for name in sorted(counts.keys())
+        )
 
     @renderer
     def services(self, req, tag):
         services = self.introducer_service.get_announcements()
         services.sort(key=lambda ad: (ad.service_name, ad.nickname))
-        services = [{
-            "serverid": ad.serverid,
-            "nickname": ad.nickname,
-            "connection-hints":
-                u"connection hints: " + u" ".join(ad.connection_hints),
-            "connected": u"?",
-            "announced": render_time(ad.when),
-            "version": ad.version,
-            "service_name": ad.service_name,
-        } for ad in services]
+        services = [
+            {
+                "serverid": ad.serverid,
+                "nickname": ad.nickname,
+                "connection-hints": "connection hints: "
+                + " ".join(ad.connection_hints),
+                "connected": "?",
+                "announced": render_time(ad.when),
+                "version": ad.version,
+                "service_name": ad.service_name,
+            }
+            for ad in services
+        ]
         return SlotsSequenceElement(tag, services)
 
     @renderer
     def subscribers(self, req, tag):
-        subscribers = [{
-            "nickname": s.nickname,
-            "tubid": s.tubid,
-            "connected": s.remote_address,
-            "since": render_time(s.when),
-            "version": s.version,
-            "service_name": s.service_name,
-        } for s in self.introducer_service.get_subscribers()]
+        subscribers = [
+            {
+                "nickname": s.nickname,
+                "tubid": s.tubid,
+                "connected": s.remote_address,
+                "since": render_time(s.when),
+                "version": s.version,
+                "service_name": s.service_name,
+            }
+            for s in self.introducer_service.get_subscribers()
+        ]
         return SlotsSequenceElement(tag, subscribers)
